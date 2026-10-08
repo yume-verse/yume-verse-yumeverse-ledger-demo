@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut">
+<title>夢次元記帳 網頁展示版</title>
+<meta name="description" content="Yumeverse 夢次元記帳 App 的網頁展示版，用來遠端查看畫面與操作流程。資料皆為示意。">
+<style>
+:root{
+  --cream:#FBF5EA; --ink:#3B322C; --ink-soft:#7A6F66;
+  --pink:#E8477F; --pink-deep:#C42A62; --pink-mid:#D93A6E; --pink-light:#F9C8DB; --pink-pale:#FDEDF3; --ink-pink:#8E3358;
+  --green:#7FA03F; --green-deep:#5A7A2C; --green-light:#C3D88E; --green-pale:#EDF2DC; --ink-green:#46562A;
+  --blue:#79B0DC; --blue-pale:#E9F4FC; --ink-blue:#376C95;
+  --orange:#F3A23F; --orange-pale:#FFF2DC; --ink-orange:#986023;
+  --butter:#F7E7A9; --line:#E8DCCB; --danger:#C65353; --shadow:rgba(146,104,76,.13);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--cream);color:var(--ink);
+  font-family:"SF Pro Rounded","PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+.dots{position:fixed;inset:0;pointer-events:none;z-index:0}
+.dots i{position:absolute;border-radius:50%}
+
+/* 版面 */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;padding:10px 16px;
+  background:rgba(251,245,234,.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(232,220,203,.6)}
+.brand{font-weight:900;font-size:18px;color:var(--pink)}
+.topbar .grow{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.chip-demo{background:var(--orange-pale);color:var(--ink-orange)}
+.chip-demo::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--orange)}
+.icon-btn{width:40px;height:40px;border:none;background:none;border-radius:12px;font-size:18px;color:var(--ink-soft)}
+.back-btn{border:none;background:none;color:var(--pink-mid);font-weight:800;font-size:15px;padding:6px 4px;min-height:40px}
+.page{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:6px 16px 120px;display:flex;flex-direction:column;gap:18px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:center;
+  background:rgba(255,255,255,.96);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar .inner{display:flex;width:100%;max-width:720px}
+.tab{flex:1;border:none;background:none;padding:8px 2px 9px;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:11px;font-weight:700;color:var(--ink-soft)}
+.tab .ico{font-size:20px;line-height:1.1;filter:grayscale(1);opacity:.75}
+.tab.on{color:var(--pink)}
+.tab.on .ico{filter:none;opacity:1}
+
+/* 元件 */
+.card{background:#fff;border:1.5px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px var(--shadow)}
+.pad{padding:18px}
+.pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+.pill.pink{background:var(--pink-pale);color:var(--ink-pink)}
+.pill.green{background:var(--green-pale);color:var(--ink-green)}
+.pill.orange{background:var(--orange-pale);color:var(--ink-orange)}
+.pill.blue{background:var(--blue-pale);color:var(--ink-blue)}
+.eyebrow{font-size:12px;font-weight:900;letter-spacing:1.4px;color:var(--pink-mid)}
+.h-page{font-size:28px;font-weight:900;margin:2px 0}
+.h-title{font-size:22px;font-weight:800;margin:6px 0 2px}
+.h-panel{font-size:18px;font-weight:800;margin:0}
+.h-sec{font-size:17px;font-weight:800;margin:0}
+.soft{color:var(--ink-soft)}
+.small{font-size:13px}
+.tiny{font-size:11px}
+.row{display:flex;align-items:center;gap:10px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.btn{position:relative;border:none;border-radius:999px;padding:12px 18px;min-height:44px;font-weight:800;font-size:15px;
+  background:var(--pink);color:#fff;box-shadow:0 5px 0 var(--pink-deep);transition:transform .1s,box-shadow .1s;margin-bottom:5px}
+.btn:active:not(:disabled){transform:translateY(4px);box-shadow:0 1px 0 var(--pink-deep)}
+.btn.full{width:100%}
+.btn.small{padding:8px 12px;min-height:36px;font-size:13px;box-shadow:0 4px 0 var(--pink-deep);margin-bottom:4px}
+.btn.green{background:var(--green);box-shadow:0 5px 0 var(--green-deep)}
+.btn.green.small{box-shadow:0 4px 0 var(--green-deep)}
+.btn.soft{background:var(--pink-pale);color:var(--ink-pink);border:1.5px solid var(--pink-light);box-shadow:0 5px 0 #F1C3D4}
+.btn.soft.small{box-shadow:0 4px 0 #F1C3D4}
+.btn.outline{background:#fff;color:var(--ink);border:1.5px solid var(--line);box-shadow:0 5px 0 #E6D9C7}
+.btn.danger{background:var(--danger);box-shadow:0 5px 0 #963D3D}
+.btn:disabled{background:#C9C1BB;box-shadow:none;color:#fff;border-color:transparent}
+.link{border:none;background:none;color:var(--pink-mid);font-weight:800;padding:8px 2px;min-height:40px}
+.field{width:100%;min-height:46px;padding:10px 12px;border-radius:14px;border:1.5px solid var(--line);background:#fff;font-size:16px;outline:none}
+.field:focus{border-color:var(--pink-light);box-shadow:0 0 0 3px var(--pink-pale)}
+textarea.field{min-height:72px;resize:vertical}
+label.lbl{display:block;font-size:12px;font-weight:800;color:var(--ink-soft);margin-bottom:6px}
+.seg{display:flex;background:#EFE7DA;border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;border:none;background:none;border-radius:9px;padding:8px 6px;font-size:13px;font-weight:700;color:var(--ink-soft)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.select-chip{position:relative}
+.select-chip select{appearance:none;-webkit-appearance:none;width:100%;min-height:44px;padding:0 34px 0 34px;border-radius:14px;
+  border:1.5px solid var(--line);background:#fff;font-size:13px;font-weight:800}
+.select-chip .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none}
+.select-chip::after{content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--ink-soft);pointer-events:none}
+.filters{display:flex;flex-direction:column;gap:8px}
+.filters .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{position:relative;overflow:hidden;padding:14px;display:flex;flex-direction:column;gap:8px}
+.metric::after{content:"";position:absolute;right:-12px;top:-12px;width:34px;height:34px;border-radius:50%;background:var(--pink-pale)}
+.metric .val{font-size:22px;font-weight:800}
+.meter{flex:1;height:9px;border-radius:999px;background:var(--cream);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:999px}
+.receipt{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:var(--cream)}
+.receipt .ic{width:38px;height:38px;border-radius:12px;background:#fff;display:grid;place-items:center;font-size:16px;flex:none}
+.receipt .sum{font-size:13px;font-weight:800}
+.receipt .amt{font-size:14px;font-weight:900;white-space:nowrap}
+.empty{text-align:center;padding:32px 16px}
+.empty .e{font-size:38px}
+.banner{display:flex;align-items:center;gap:12px;padding:16px;border-radius:var(--radius);
+  background:var(--orange-pale);border:1.5px solid rgba(243,162,63,.6);color:var(--ink-orange);box-shadow:0 10px 28px var(--shadow);
+  width:100%;text-align:left}
+.theme-card{border:1.5px solid var(--line);border-radius:20px;background:#fff;overflow:hidden;text-align:left;padding:0;box-shadow:0 8px 22px var(--shadow)}
+.theme-card .art{background:var(--pink-pale);padding:8px}
+.theme-card .art div{aspect-ratio:1;border-radius:15px;background:linear-gradient(180deg,var(--pink-pale),var(--cream));display:grid;place-items:center;font-size:44px}
+.theme-card .body{padding:11px;display:flex;flex-direction:column;gap:4px}
+.theme-card .go{width:28px;height:28px;border-radius:50%;background:var(--pink);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:900}
+.cart-dock{position:fixed;left:0;right:0;bottom:62px;z-index:25;display:flex;justify-content:center;padding:0 16px 10px;pointer-events:none}
+.cart-dock button{pointer-events:auto;width:100%;max-width:688px;display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;
+  border:1.5px solid var(--pink-light);background:#fff;box-shadow:0 12px 30px rgba(146,104,76,.22);text-align:left}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{width:40px;height:40px;border:none;border-radius:12px;background:var(--pink-pale);font-size:18px;font-weight:900;color:var(--ink-pink)}
+.pay-opt{border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:4px;min-height:74px}
+.pay-opt.on{border-color:var(--pink);background:var(--pink-pale);box-shadow:0 0 0 2px var(--pink-light)}
+.note-box{padding:12px;border-radius:14px;background:var(--green-pale);color:var(--ink-green);font-size:13px}
+.costume-card{border:1.5px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;text-align:left;padding:0;box-shadow:0 8px 22px var(--shadow)}
+.costume-card .ph{margin:8px;aspect-ratio:3/4;border-radius:14px;background:linear-gradient(180deg,var(--pink-pale),var(--cream));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-soft);font-size:11px;font-weight:700}
+.costume-card .ph b{font-size:30px}
+.costume-card .body{padding:4px 12px 12px;display:flex;flex-direction:column;gap:6px}
+.tag{display:inline-block;padding:5px 10px;border-radius:10px;background:var(--cream);border:1px solid var(--line);font-size:13px;margin:0 6px 6px 0}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:4px 0}
+.kv span:first-child{color:var(--ink-soft)}
+.kv span:last-child{font-weight:800;text-align:right}
+.err{color:var(--danger);font-weight:800;font-size:13px}
+.ok{color:var(--green-deep);font-weight:800}
+details.card summary{cursor:pointer;font-weight:800;list-style:none}
+details.card summary::-webkit-details-marker{display:none}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.check input{width:20px;height:20px;accent-color:var(--pink);flex:none;margin-top:1px}
+
+/* 彈出視窗 */
+.modal-wrap{position:fixed;inset:0;z-index:50;background:rgba(59,50,44,.38);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:640px;max-height:92vh;overflow:auto;background:var(--cream);border-radius:24px 24px 0 0;padding:8px 18px 24px;
+  box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+.sheet .grab{width:40px;height:5px;border-radius:9px;background:#D9CDBC;margin:4px auto 10px}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;position:sticky;top:-8px;background:var(--cream);padding:6px 0 10px;z-index:2}
+.sheet-foot{position:sticky;bottom:-24px;background:var(--cream);padding:12px 0 4px;margin-top:12px;border-top:1px solid var(--line)}
+@media (min-width:760px){
+  .modal-wrap{align-items:center}
+  .sheet{border-radius:24px;max-height:86vh}
+}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:60;background:var(--ink);color:#fff;font-size:13px;font-weight:800;
+  padding:12px 18px;border-radius:999px;max-width:calc(100% - 32px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+
+/* 登入 */
+.login-wrap{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px 18px}
+.login-card{width:100%;max-width:520px;background:#fff;border:2px solid var(--pink-light);border-radius:32px;overflow:hidden;
+  box-shadow:0 22px 60px rgba(142,51,88,.16)}
+.login-card.wide{max-width:940px;display:grid;grid-template-columns:1fr 460px}
+.login-head{display:flex;align-items:center;gap:12px;padding:22px 24px;background:var(--pink-pale);color:var(--ink-pink);font-weight:700}
+.login-head .av{width:52px;height:52px;border-radius:16px;background:linear-gradient(180deg,var(--pink-pale),var(--cream));border:1.5px solid var(--pink-light);display:grid;place-items:center;font-size:24px}
+.login-visual{padding:32px;background:linear-gradient(135deg,var(--pink-pale),var(--cream));position:relative;display:flex;flex-direction:column;gap:14px}
+.ribbon{align-self:flex-start;padding:7px 11px;border-radius:999px;background:#fff;border:1.5px solid var(--pink-light);font-size:12px;font-weight:800;color:var(--ink-pink)}
+.big{font-size:40px;font-weight:900;line-height:1.15}
+.outlined{color:#fff;-webkit-text-stroke:3px var(--pink);paint-order:stroke fill;text-shadow:0 4px 0 rgba(196,42,98,.25)}
+.login-form{padding:26px;display:flex;flex-direction:column;gap:16px}
+.demo-box{padding:14px;border-radius:16px;background:var(--cream);border:1.5px dashed var(--line);display:flex;flex-direction:column;gap:9px}
+.demo-btn{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;text-align:left}
+.notice{padding:12px 14px;border-radius:14px;background:var(--orange-pale);color:var(--ink-orange);font-size:13px;line-height:1.5}
+@media (max-width:959px){ .login-card.wide{display:block;max-width:620px} .login-card.wide .login-visual{display:none} }
+</style>
+</head>
+<body>
+<div class="dots" aria-hidden="true">
+  <i style="width:10px;height:10px;left:8%;top:10%;background:rgba(242,167,196,.5)"></i>
+  <i style="width:12px;height:12px;right:8%;top:18%;background:rgba(121,176,220,.45)"></i>
+  <i style="width:14px;height:14px;right:12%;bottom:16%;background:rgba(243,162,63,.35)"></i>
+</div>
+<div id="app"></div>
+
+<script>
+/* ===========================================================
+   夢次元記帳 網頁展示版
+   - 依 iOS App（SwiftUI）第二版的畫面與流程還原，給遠端查看進度用
+   - 所有資料皆為示意，只存在這個瀏覽器（localStorage），不會寫入 Notion
+   =========================================================== */
+const APP_VERSION = '2026-10-08';
+const STORE_KEY = 'yumeverse-ledger-demo-v1';
+
+/* ---------- 示意資料 ---------- */
+const USERS = {
+  company: { pw: 'demo', name: '公司管理員', role: 'company' },
+  momo:    { pw: 'demo', name: 'Coser 小桃（示意）', role: 'coser', coserId: 'momo' },
+  rin:     { pw: 'demo', name: 'Coser 小凜（示意）', role: 'coser', coserId: 'rin' }
+};
+const COSERS = [
+  { id: 'momo', name: '小桃 Momo（示意）', short: '小桃' },
+  { id: 'rin',  name: '小凜 Rin（示意）',  short: '小凜' }
+];
+const EVENTS = [
+  { id: 'ev-hk', name: '示意 A｜香港動漫節', date: '2026-07-28', venue: '香港會展', currency: 'HKD' },
+  { id: 'ev-tp', name: '示意 B｜台北同人祭', date: '2026-08-09', venue: '台北', currency: 'TWD' },
+  { id: 'ev-kr', name: '示意 C｜寫真即售會', date: '2026-09-05', venue: '台北', currency: 'TWD' }
+];
+const THEMES = [
+  { id: 't-star', coserId: 'momo', name: '星空魔法少女', subtitle: '示意主題・寫真本與周邊', emoji: '🌙', products: [
+    { id: 'p-star-book', name: '星空寫真書・單書', prices: { TWD: 800, HKD: 200 } },
+    { id: 'p-star-set',  name: '星空寫真書＋電子檔', prices: { TWD: 1200, HKD: 300 } },
+    { id: 'p-star-file', name: '星空 L 夾', prices: { TWD: 250, HKD: 60 } },
+    { id: 'p-star-dl',   name: '星空電子檔', prices: { TWD: 600, HKD: 150 }, digital: true } ] },
+  { id: 't-sea', coserId: 'momo', name: '夏日海邊', subtitle: '示意主題・拍立卡與明信片', emoji: '🌊', products: [
+    { id: 'p-sea-slide', name: '夏日拍立卡', prices: { TWD: 350, HKD: 90 } },
+    { id: 'p-sea-card',  name: '夏日明信片', prices: { TWD: 120, HKD: 30 } },
+    { id: 'p-sea-set',   name: '夏日寫真套組', prices: { TWD: 1500, HKD: 380 } } ] },
+  { id: 't-maid', coserId: 'momo', name: '原創女僕', subtitle: '示意主題・原創寫真本', emoji: '🎀', products: [
+    { id: 'p-maid-book', name: '原創寫真本', prices: { TWD: 900, HKD: 230 } },
+    { id: 'p-maid-big',  name: '原創大套組', prices: { TWD: 2500, HKD: 620 } } ] },
+  { id: 't-goods', coserId: 'momo', name: '現場周邊', subtitle: '示意・掛軸與舊拍', emoji: '🧧', products: [
+    { id: 'p-scroll', name: '掛軸海報', prices: { TWD: 1000, HKD: 250 } },
+    { id: 'p-cheki',  name: '舊拍', prices: { TWD: 300, HKD: 80 } } ] },
+  { id: 't-rin', coserId: 'rin', name: '小凜測試商品', subtitle: '示意・第二位 Coser', emoji: '🌸', products: [
+    { id: 'p-rin-card', name: '小凜明信片', prices: { TWD: 100, HKD: 25 } },
+    { id: 'p-rin-dl',   name: '小凜電子寫真', prices: { TWD: 300, HKD: 75 }, digital: true } ] }
+];
+// p-maid-big 故意不設初始庫存，用來展示「請先盤點再記帳」
+const SEED_STOCK = { 'p-star-book': 12, 'p-star-set': 6, 'p-star-file': 20, 'p-sea-slide': 15, 'p-sea-card': 40,
+  'p-sea-set': 4, 'p-maid-book': 10, 'p-scroll': 5, 'p-cheki': 18, 'p-rin-card': 30 };
+const SEED_TX = [
+  tx0('D-0726-01', 'ev-hk', 'momo', '2026-07-26T14:20', 'cash',     600, 'HKD', 'FAN-001', '星空寫真書・單書 ×3', 'paid', 'company', 3),
+  tx0('D-0726-02', 'ev-hk', 'momo', '2026-07-26T15:05', 'linepay',  390, 'HKD', null,      '夏日寫真套組 ×1・明信片 ×…', 'paid', 'company', 2),
+  tx0('D-0727-01', 'ev-hk', 'momo', '2026-07-27T13:40', 'transfer', 830, 'HKD', 'FAN-002', '原創寫真本 ×1・掛軸海報 ×1・舊拍 ×…', 'paid', 'company', 4),
+  tx0('D-0727-02', 'ev-hk', 'momo', '2026-07-27T16:10', 'cash',     450, 'HKD', null,      '個人互動收入・合照', 'paid', 'personal', null),
+  tx0('D-0728-01', 'ev-hk', 'momo', '2026-07-28T12:30', 'credit',   300, 'HKD', 'FAN-003', '星空寫真書＋電子檔 ×1', 'outstanding', 'company', 1),
+  tx0('D-0809-01', 'ev-tp', 'momo', '2026-08-09T11:15', 'cash',    1700, 'TWD', null,      '星空寫真書・單書 ×1・夏日拍立卡 ×…', 'paid', 'company', 4),
+  tx0('D-0809-02', 'ev-tp', 'momo', '2026-08-09T14:45', 'linepay', 2500, 'TWD', 'FAN-001', '原創大套組 ×1', 'paid', 'company', 1),
+  tx0('D-0809-03', 'ev-tp', 'rin',  '2026-08-09T15:20', 'cash',     400, 'TWD', null,      '小凜明信片 ×4', 'paid', 'company', 4),
+  tx0('D-0809-04', 'ev-tp', 'momo', '2026-08-09T17:00', 'credit',  1200, 'TWD', 'FAN-002', '星空寫真書＋電子檔 ×1', 'outstanding', 'company', 1)
+];
+function tx0(id, eventId, coserId, date, payment, total, currency, memberId, summary, status, scope, quantity) {
+  return { id, eventId, coserId, date, payment, total, currency, memberId, summary, status, scope, discount: 0, quantity, source: '示意資料' };
+}
+const SEED_MEMBERS = {
+  'FAN-001': { id: 'FAN-001', name: '示意粉絲 A', spend: 3100, tier: 'VIP', discount: 0.1 },
+  'FAN-002': { id: 'FAN-002', name: '示意粉絲 B', spend: 2030, tier: '常客', discount: 0.05 },
+  'FAN-003': { id: 'FAN-003', name: '示意粉絲 C', spend: 300, tier: '尚未分級', discount: 0 }
+};
+const SEED_COSTUMES = [
+  ['C-1', '原創', '萬用女僕裝(1)', '上衣+裙子+圍裙+頭飾', 'M', '', '倉庫 A'],
+  ['C-2', '原創', '萬用女僕裝(2)', '上衣+裙子+圍裙+頭飾', 'L', '', '倉庫 A'],
+  ['C-3', '示意作品 A', '魔法少女', '連身裙+披風+髮飾+手杖', 'S', '腰圍較小', '倉庫 A'],
+  ['C-4', '示意作品 B', '學生制服', '上衣+裙子+領結+襪子', 'M', '', '倉庫 B'],
+  ['C-5', '示意作品 C', '偶像舞台裝', '上衣+裙子+手套', 'M', '', '倉庫 B'],
+  ['C-6', '示意作品 D', '和風浴衣', '浴衣+腰帶', 'F', '均碼', '倉庫 A'],
+  ['C-7', '示意作品 E', '騎士團長', '外套+褲子+披風+腰帶', 'L', '', '倉庫 B'],
+  ['C-8', '示意作品 F', '水手服', '上衣+裙子+領巾', 'S', '', '倉庫 A'],
+  ['C-9', '示意作品 G', '冬季大衣', '大衣+圍巾', 'M', '', '倉庫 B'],
+  ['C-10', '示意作品 H', '巫女服', '上衣+褲裙+髮飾', 'M', '', '倉庫 A'],
+  ['C-11', '示意作品 I', '聖誕禮服', '連身裙+帽子', 'S', '', '倉庫 B'],
+  ['C-12', '示意作品 J', '軍裝', '外套+褲子+帽子+腰帶', '', '', '倉庫 B']
+].map(([code, work, character, items, size, sizeNote, location]) =>
+  ({ id: code, code, work, character, items, size, sizeNote, location, status: 'available' }));
+const NOTICE = [
+  '乙方借用甲方所有之服裝時，應填寫借用單，並於約定日期歸還。',
+  '借用期間乙方應善盡保管責任；服裝如有毀損、遺失，乙方應負擔修復費用或依購入價格賠償。正常使用之磨損不在此限。',
+  '服裝清洗方式依甲方指示辦理。'
+];
+const PAY = { cash: '現金', transfer: '轉帳', linepay: 'LINE Pay', credit: '賒帳', recorded: '現場表已收・方式未記' };
+const PAY_ICON = { cash: '💵', transfer: '🔁', linepay: '🟢', credit: '📄', recorded: '📋' };
+
+/* ---------- 狀態 ---------- */
+function freshState() {
+  const moves = Object.entries(SEED_STOCK).map(([pid, q], i) => {
+    const t = findProduct(pid).theme;
+    return { id: 'seed-' + i, productId: pid, coserId: t.coserId, kind: 'count', quantity: q, reason: '示意初始盤點', actor: 'system', date: '2026-07-20T02:00:00.000Z' };
+  });
+  return {
+    user: null, eventId: 'ev-hk', coserId: 'all', period: 'all',
+    tx: SEED_TX.map(t => ({ ...t })), members: JSON.parse(JSON.stringify(SEED_MEMBERS)),
+    moves, cash: {}, actual: {}, costumes: SEED_COSTUMES.map(c => ({ ...c })), loans: [],
+    cart: [], memberId: null, ledgerPending: false
+  };
+}
+function load() {
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  return null;
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+let S = load() || freshState();
+// 畫面暫存（不保存）
+const U = { tab: 'home', sub: null, modal: null, toast: null, posKey: '', fanInput: '', ledgerKey: '', invKey: '', invFilter: '全部',
+  costumeKey: '', costumeFilter: '全部', login: { account: '', password: '', error: '' } };
+
+/* ---------- 工具 ---------- */
+const $app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = (v, cur) => (v == null || isNaN(v)) ? '尚未建立' : (cur === 'HKD' ? 'HK$ ' : 'NT$ ') + Math.round(v).toLocaleString('en-US');
+const sum = (arr, f = x => x.total) => arr.reduce((a, b) => a + (f(b) || 0), 0);
+const todayStr = () => new Date().toISOString().slice(0, 10);
+function nowLocal() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); }
+const stamp = () => new Date().toISOString();   // 庫存異動排序用（含毫秒）
+function moveTime(iso) { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); }
+function shortTime(iso) { if (!iso) return '—'; const [d, t] = iso.split('T'); const [, m, dd] = d.split('-'); return `${+m}/${+dd} ${t || ''}`.trim(); }
+function findProduct(pid) { for (const theme of THEMES) { const product = theme.products.find(p => p.id === pid); if (product) return { theme, product }; } return null; }
+function toast(msg) { U.toast = msg; render(); clearTimeout(toast.t); toast.t = setTimeout(() => { U.toast = null; render(); }, 2200); }
+
+/* ---------- 衍生資料 ---------- */
+const me = () => USERS[S.user];
+const isCompany = () => S.user && me().role === 'company';
+const event = () => EVENTS.find(e => e.id === S.eventId) || EVENTS[0];
+const currency = () => event().currency;
+const coser = id => COSERS.find(c => c.id === id);
+const canCoser = id => isCompany() || me().coserId === id;
+const visibleCosers = () => isCompany() ? COSERS : COSERS.filter(c => c.id === me().coserId);
+const authorizedTx = () => S.tx.filter(t => canCoser(t.coserId));
+function periodOK(t) {
+  if (S.period === 'all') return true;
+  const d = (t.date || '').slice(0, 10);
+  if (S.period === 'today') return d === todayStr();
+  return d.slice(0, 7) === todayStr().slice(0, 7);
+}
+const scopedCoser = t => !isCompany() || S.coserId === 'all' || t.coserId === S.coserId;
+// 公司報表：活動＋Coser＋期間；Coser 帳號：本場自己的帳
+const records = () => authorizedTx().filter(t => t.eventId === S.eventId && scopedCoser(t) && (!isCompany() || periodOK(t)));
+const visibleThemes = () => THEMES.filter(t => canCoser(t.coserId) && (!isCompany() || S.coserId === 'all' || t.coserId === S.coserId));
+function stockOf(pid) {
+  let stock = null;
+  S.moves.filter(m => m.productId === pid).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).forEach(m => {
+    if (m.kind === 'count') stock = m.quantity; else if (stock != null) stock += m.quantity;
+  });
+  return stock;
+}
+const price = p => p.prices[currency()];
+const cartSubtotal = () => sum(S.cart, l => l.price * l.qty);
+const currentMember = () => S.memberId ? S.members[S.memberId] : null;
+const cartDiscount = () => { const m = currentMember(); return m ? Math.round(Math.min(1, Math.max(0, m.discount || 0)) * cartSubtotal()) : 0; };
+const cartTotal = () => cartSubtotal() - cartDiscount();
+const cartCount = () => sum(S.cart, l => l.qty);
+const products = () => visibleThemes().flatMap(t => t.products.map(p => ({ ...p, theme: t })));
+const lowStock = () => products().filter(p => !p.digital && stockOf(p.id) != null && stockOf(p.id) <= 5);
+const uncounted = () => products().filter(p => !p.digital && stockOf(p.id) == null);
+
+/* ---------- 動作 ---------- */
+function login(account, password) {
+  const u = USERS[account.trim()];
+  if (!u || u.pw !== password) { U.login.error = '帳號或密碼不正確，請使用下方示意帳號。'; render(); return; }
+  S.user = account.trim(); S.coserId = u.role === 'company' ? 'all' : u.coserId; S.period = 'all'; S.cart = []; S.memberId = null; S.ledgerPending = false;
+  U.tab = 'home'; U.sub = null; U.modal = null; U.login = { account: '', password: '', error: '' };
+  save(); render();
+}
+function logout() { S.user = null; S.cart = []; S.memberId = null; U.modal = null; U.sub = null; U.tab = 'home'; save(); render(); }
+function setEvent(id) { if (id !== S.eventId) { S.eventId = id; S.cart = []; S.memberId = null; } save(); render(); }
+function setCoser(id) { if (id !== S.coserId) { S.coserId = id; S.cart = []; S.memberId = null; } save(); render(); }
+
+function lookupMember(raw) {
+  const id = raw.trim().toUpperCase();
+  if (!id) { S.memberId = null; toast('未輸入粉絲 ID'); return; }
+  if (!S.members[id]) S.members[id] = { id, name: '未命名粉絲', spend: 0, tier: '尚未分級', discount: 0, sessionOnly: true };
+  S.memberId = id; U.fanInput = id; save(); render();
+}
+function addToCart(pid) {
+  const loc = findProduct(pid); if (!loc || !canCoser(loc.theme.coserId)) return;
+  const p = loc.product, stock = stockOf(pid);
+  if (!p.digital && stock == null) return toast('請先盤點此商品，再開始記帳');
+  if (!p.digital && stock <= 0) return;
+  const unit = price(p); if (unit == null) return toast('此場次正式售價尚未建立，不能加入結帳');
+  if (S.cart.length && S.cart[0].coserId !== loc.theme.coserId) return toast('一筆交易只能歸屬一位 Coser，請先結清目前購物車');
+  const line = S.cart.find(l => l.productId === pid);
+  if (line) { if (!p.digital && line.qty >= stock) return toast('已達目前庫存上限'); line.qty++; }
+  else S.cart.push({ productId: pid, coserId: loc.theme.coserId, name: p.name, price: unit, currency: currency(), qty: 1 });
+  save(); toast(`${p.name} 已加入`);
+}
+function changeQty(pid, d) {
+  const line = S.cart.find(l => l.productId === pid); if (!line) return;
+  const loc = findProduct(pid), stock = stockOf(pid);
+  if (d > 0 && !loc.product.digital && line.qty >= stock) return toast('已達目前庫存上限');
+  line.qty += d; if (line.qty <= 0) S.cart = S.cart.filter(l => l !== line);
+  save(); render();
+}
+function checkout(payment) {
+  if (!S.cart.length) return null;
+  if (payment === 'credit' && !S.memberId) { toast('賒帳需先輸入粉絲 ID'); return null; }
+  for (const l of S.cart) {
+    const p = findProduct(l.productId).product;
+    if (price(p) !== l.price || (!p.digital && (stockOf(p.id) ?? -1) < l.qty)) { toast('庫存或售價已變更，請重新確認商品'); return null; }
+  }
+  const now = nowLocal();
+  const id = 'W' + now.replace(/[-:T]/g, '').slice(2) + '-' + Math.random().toString(36).slice(2, 5).toUpperCase();
+  const tx = { id, eventId: S.eventId, coserId: S.cart[0].coserId, date: now, payment, total: cartTotal(), currency: currency(),
+    memberId: S.memberId, summary: S.cart.map(l => `${l.name} ×${l.qty}`).join('・'), status: payment === 'credit' ? 'outstanding' : 'paid',
+    scope: 'company', discount: cartDiscount(), quantity: cartCount(), source: '網頁展示版結帳' };
+  S.cart.forEach(l => { if (!findProduct(l.productId).product.digital)
+    S.moves.push({ id: `${id}-${l.productId}`, productId: l.productId, coserId: l.coserId, kind: 'sale', quantity: -l.qty, reason: '銷售・' + id, actor: S.user, date: stamp() }); });
+  S.tx.push(tx);
+  if (S.memberId && S.members[S.memberId]) { S.members[S.memberId].spend += tx.total; delete S.members[S.memberId].sessionOnly; }
+  S.cart = []; S.memberId = null; U.fanInput = '';
+  save(); return tx;
+}
+function markReceived(id) {
+  const t = S.tx.find(x => x.id === id); if (!t || !canCoser(t.coserId) || t.status !== 'outstanding') return;
+  t.status = 'paid'; t.payment = 'transfer'; save(); toast('已登記為轉帳收款');
+}
+function adjustStock(pid, kind, quantity, reason) {
+  S.moves.push({ id: 'M' + Date.now(), productId: pid, coserId: findProduct(pid).theme.coserId, kind, quantity, reason, actor: S.user, date: stamp() });
+  save(); toast('庫存已儲存');
+}
+
+/* ---------- 共用畫面片段 ---------- */
+function pill(text, tone = 'pink') { return `<span class="pill ${tone}">${esc(text)}</span>`; }
+function pageHeader(eyebrow, title, subtitle, badge, tone = 'orange') {
+  return `<div><div class="eyebrow">${esc(eyebrow)}</div><div class="h-page">${esc(title)}</div>
+    <div class="soft" style="font-size:14px">${esc(subtitle)}</div>${badge ? `<div style="margin-top:8px">${pill(badge, tone)}</div>` : ''}</div>`;
+}
+function metric(label, value, hint, tone = 'pink') {
+  return `<div class="card metric">${pill(label, tone)}<div class="val">${esc(value)}</div><div class="tiny soft">${esc(hint)}</div></div>`;
+}
+function empty(icon, title) { return `<div class="empty"><div class="e">${icon}</div><div style="font-weight:800">${esc(title)}</div></div>`; }
+function selectChip(act, icon, value, options) {
+  return `<div class="select-chip"><span class="ic">${icon}</span><select data-change="${act}">${options.map(([v, l]) =>
+    `<option value="${esc(v)}" ${v === value ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+}
+function eventOptions() { return EVENTS.map(e => [e.id, e.name]); }
+function coserOptions() { return [['all', '全部 Coser'], ...COSERS.map(c => [c.id, c.name])]; }
+function contextBar() {
+  if (isCompany()) return `<div class="filters">${selectChip('event', '📅', S.eventId, eventOptions())}${selectChip('coser', '👤', S.coserId, coserOptions())}</div>`;
+  return `<div class="filters">${selectChip('event', '📅', S.eventId, eventOptions())}<div class="small soft" style="font-weight:800">👤 ${esc(me().name)}</div></div>`;
+}
+function reportFilters() {
+  return `<div class="filters">${selectChip('event', '📅', S.eventId, eventOptions())}
+    <div class="two">${selectChip('coser', '👤', S.coserId, coserOptions())}${selectChip('period', '🕒', S.period, [['all', '全部期間'], ['month', '本月'], ['today', '今天']])}</div></div>`;
+}
+function receiptRow(t) {
+  return `<div class="receipt"><div class="ic">${PAY_ICON[t.payment] || '🧾'}</div>
+    <div style="flex:1;min-width:0"><div class="sum">${esc(t.summary)}</div>
+    <div class="tiny soft">${esc(shortTime(t.date))}・${t.status === 'outstanding' ? '待收款' : esc(PAY[t.payment])}${t.scope === 'personal' ? '・個人' : ''}</div></div>
+    <div class="amt" style="color:${t.status === 'outstanding' ? 'var(--pink-deep)' : 'var(--ink)'}">${money(t.total, t.currency)}</div></div>`;
+}
+
+/* ---------- 收款紀錄方式 ---------- */
+function paymentMethods() {
+  const cur = currency();
+  const paid = records().filter(t => t.currency === cur && t.status === 'paid');
+  const s = type => sum(paid.filter(t => t.payment === type));
+  const rows = [['cash', 'var(--pink)', s('cash')], ['transfer', 'var(--blue)', s('transfer')], ['linepay', 'var(--green)', s('linepay')]];
+  const rec = s('recorded'); if (rec > 0) rows.push(['recorded', 'var(--orange)', rec]);
+  const total = sum(rows, r => r[2]);
+  return `<div class="card pad stack">
+    <div><div class="between"><h3 class="h-panel">收款紀錄方式</h3>${pill(paid.length + ' 筆', 'green')}</div>
+    <div class="tiny soft" style="margin-top:4px">已收款項，含個人互動收入</div></div>
+    ${rows.map(([type, color, amt]) => {
+      const ratio = amt > 0 && total > 0 ? Math.max(.08, amt / total) : 0;
+      return `<div class="row"><div class="small" style="width:96px;flex:none">${PAY[type]}</div>
+        <div class="meter"><i style="width:${ratio * 100}%;background:${color}"></i></div>
+        <div class="small" style="min-width:84px;text-align:right;font-weight:800">${money(amt, cur)}</div></div>`;
+    }).join('')}
+    ${rec > 0 ? '<div class="tiny soft">香港紙本只證明現場已收，沒有記付款方式，因此不推定為現金、轉帳或 LINE Pay。</div>' : ''}
+  </div>`;
+}
+function inventorySummary() {
+  const title = isCompany() ? (S.coserId === 'all' ? '全公司庫存' : '所選 Coser 庫存') : '我的庫存';
+  return `<button class="card pad row" data-act="tab" data-tab="inventory" style="background:var(--green-pale);text-align:left;width:100%">
+    <span style="font-size:24px">📦</span><span style="flex:1"><span class="h-sec" style="display:block">${title}</span>
+    <span class="small soft">${lowStock().length} 項低庫存・${uncounted().length} 項未盤點</span><br><span class="tiny soft">跨活動共用庫存</span></span>
+    <span class="soft">›</span></button>`;
+}
+function recentRecords() {
+  const list = records().slice().sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1).slice(0, 4);
+  return `<div class="card pad stack"><div class="between"><h3 class="h-panel">最近帳務</h3>
+    <button class="link" data-act="${isCompany() ? 'tab' : 'sub'}" data-tab="ledger" data-sub="ledger">查看全部</button></div>
+    ${list.length ? list.map(receiptRow).join('') : '<div class="small soft">目前沒有紀錄，完成記帳後會顯示在這裡。</div>'}</div>`;
+}
+
+/* ---------- 頁面：總覽 ---------- */
+function pageHome() {
+  const head = `<div>${pill(isCompany() ? '公司管理員' : me().name)}<div class="h-title">${isCompany() ? '掌握每一場的成果' : '今天，也從容記帳'}</div>
+    <div class="soft" style="font-size:14px">${isCompany() ? '收入、待收與庫存，一眼掌握。' : '選好活動，開始記帳或盤點商品。'}</div></div>`;
+  if (!isCompany()) {
+    const cur = currency(), list = records().filter(t => t.currency === cur);
+    const paid = list.filter(t => t.status === 'paid' && t.scope === 'company');
+    const pending = list.filter(t => t.status === 'outstanding' && t.scope === 'company');
+    const personal = list.filter(t => t.status === 'paid' && t.scope === 'personal');
+    return `${head}${contextBar()}
+      <button class="btn full" data-act="tab" data-tab="pos">＋ 新增記帳</button>
+      <div class="stack"><h3 class="h-sec">本場銷售・${cur}</h3><div class="grid2">
+        ${metric('我經手的商品收入', money(sum(paid), cur), paid.length + ' 筆已收帳務')}
+        ${metric('待收款', money(sum(pending), cur), pending.length + ' 筆待追蹤', 'orange')}</div>
+        ${personal.length ? `<div class="small soft">個人互動收入 ${money(sum(personal), cur)}・另列，不併入公司收入</div>` : ''}
+        ${list.length ? '' : '<div class="small soft">此範圍尚無帳務紀錄</div>'}</div>
+      ${paymentMethods()}${inventorySummary()}${recentRecords()}`;
+  }
+  const ev = event(), cur = ev.currency, rows = records().filter(t => t.currency === cur);
+  const paid = rows.filter(t => t.status === 'paid');
+  const company = paid.filter(t => t.scope === 'company'), personal = paid.filter(t => t.scope === 'personal');
+  const qtyList = rows.filter(t => t.scope === 'company').map(t => t.quantity).filter(q => q != null);
+  const qty = qtyList.length ? sum(qtyList, q => q) : null;
+  const pending = rows.filter(t => t.status === 'outstanding' && t.scope === 'company');
+  const cosers = S.coserId === 'all' ? COSERS : COSERS.filter(c => c.id === S.coserId);
+  return `${head}${reportFilters()}
+    <div class="grid2">
+      ${metric('公司商品收入', money(sum(company), cur), company.length + ' 筆正式帳務列')}
+      ${metric('個人互動收入', money(sum(personal), cur), '獨立顯示，不列公司損益', 'orange')}
+      ${metric('已確認銷售量', qty == null ? '尚未建立' : qty + ' 件／次', qty == null ? '尚無銷售數量' : '記帳件數', 'green')}
+      ${metric('場次起始現金', money(S.cash[ev.id], cur), S.cash[ev.id] == null ? '尚未設定' : '已在對帳頁設定', 'blue')}
+    </div>
+    ${pending.length ? `<button class="banner" data-act="pendingBanner"><span style="font-size:22px">⚠️</span>
+      <span style="flex:1"><b style="display:block;color:var(--ink);font-size:17px">待收款 ${money(sum(pending), cur)}</b><span class="small soft">${pending.length} 筆待追蹤</span></span>
+      <b>查看 ›</b></button>` : ''}
+    ${paymentMethods()}
+    <div class="card pad stack"><div><h3 class="h-sec">各個Coser目前金額</h3><div class="tiny soft">本場已收的公司商品收入</div></div>
+      ${company.length ? cosers.map(c => { const a = sum(company.filter(t => t.coserId === c.id));
+        return `<div class="between" style="min-height:32px"><span class="small">${esc(c.short)}</span><b class="small" style="color:${a > 0 ? 'var(--pink-deep)' : 'var(--ink-soft)'}">${money(a, cur)}</b></div>`; }).join('')
+        : '<div class="small soft">尚無已收紀錄</div>'}</div>
+    ${inventorySummary()}${recentRecords()}
+    <details class="card pad"><summary>資料說明</summary><div class="small soft" style="margin-top:8px">網頁展示版：所有活動、商品、金額與粉絲資料皆為示意，只存在這個瀏覽器，不會寫入 Notion。收入不代表獲利。</div></details>`;
+}
+
+/* ---------- 頁面：快速結帳 ---------- */
+function pagePOS() {
+  const m = currentMember(), key = U.posKey.trim();
+  const themes = visibleThemes();
+  let body;
+  if (!key) {
+    body = themes.length ? `<div class="grid2">${themes.map(t => `<button class="theme-card" data-act="openTheme" data-id="${t.id}">
+      <div class="art"><div>${t.emoji}</div></div><div class="body"><b style="font-size:15px">${esc(t.name)}</b>
+      <span class="tiny soft" style="min-height:28px">${esc(t.subtitle)}</span>
+      <div class="between" style="margin-top:6px">${pill(coser(t.coserId).short)}<span class="go">›</span></div></div></button>`).join('')}</div>`
+      : empty('🛍', '目前沒有可販售的主題');
+  } else {
+    const list = products().filter(p => p.name.toLowerCase().includes(key.toLowerCase()));
+    body = list.length ? `<div class="stack">${list.map(productRow).join('')}</div>` : empty('🛍', '沒有符合的商品');
+  }
+  return `${contextBar()}
+    ${pageHeader('QUICK SALE', '依服裝主題選商品', '點主題卡挑選商品；也可以直接搜尋商品名稱。')}
+    <div class="card" style="padding:16px"><label class="lbl">粉絲 ID／會員卡</label>
+      <div class="row"><input class="field" id="fanInput" data-bind="fanInput" placeholder="輸入粉絲 ID（例如 FAN-001）" value="${esc(U.fanInput)}" autocomplete="off">
+      <button class="btn green" style="margin-bottom:5px" data-act="lookup">帶入</button></div>
+      ${m ? `<button class="link" data-act="removeMember">移除會員</button>
+        <div class="row" style="padding:12px;border-radius:14px;background:var(--green-pale);color:var(--ink-green)">
+          <span style="width:38px;height:38px;border-radius:12px;background:#fff;display:grid;place-items:center">♡</span>
+          <span style="flex:1"><b>${esc(m.id)}・${esc(m.tier)}</b><br><span class="tiny">${m.sessionOnly ? '新會員，完成記帳後建立' : '會員資料已帶入'}</span></span>
+          ${pill(m.discount > 0 ? Math.round(m.discount * 100) + '% OFF' : '尚無折扣', 'green')}</div>` : ''}</div>
+    <input class="field" id="posKey" data-bind="posKey" data-live="1" placeholder="搜尋商品" value="${esc(U.posKey)}" autocomplete="off">
+    ${body}
+    <div class="cart-dock"><button data-act="modal" data-modal="cart"><span style="font-size:20px">🛒</span>
+      <span style="flex:1"><b class="small">購物車・${cartCount()} 件</b><br><span class="h-sec" style="color:var(--pink-deep)">${money(cartTotal(), currency())}</span></span>
+      <b class="small" style="color:var(--pink-mid)">查看購物車 ⌃</b></button></div>`;
+}
+function productRow(p) {
+  const pr = price(p), stock = stockOf(p.id);
+  const disabled = pr == null || (!p.digital && (stock ?? 0) <= 0);
+  const stockText = p.digital ? '數位商品' : stock == null ? '請先到庫存頁盤點' : stock > 0 ? '庫存 ' + stock : '售罄';
+  return `<div class="card" style="padding:14px"><b>${esc(p.name)}</b><div class="small soft" style="margin:4px 0 8px">${stockText}</div>
+    <div class="between"><b style="color:var(--pink-deep)">${pr == null ? '售價未設定' : money(pr, currency())}</b>
+    <button class="btn soft small" data-act="add" data-id="${p.id}" ${disabled ? 'disabled' : ''}>＋ 加入</button></div></div>`;
+}
+
+/* ---------- 頁面：帳務 ---------- */
+function pageLedger() {
+  const key = U.ledgerKey.trim().toLowerCase();
+  const list = records().filter(t => (!S.ledgerPending || t.status === 'outstanding') &&
+    (!key || `${t.id} ${t.summary} ${t.memberId || ''}`.toLowerCase().includes(key))).sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1);
+  return `<div class="h-title">${isCompany() ? '公司帳務' : '我的交易紀錄'}</div>
+    ${isCompany() ? reportFilters() : contextBar()}
+    <input class="field" id="ledgerKey" data-bind="ledgerKey" data-live="1" placeholder="搜尋商品、交易編號或粉絲 ID" value="${esc(U.ledgerKey)}" autocomplete="off">
+    <label class="check" style="justify-content:space-between"><span>只看待收款</span><input type="checkbox" data-act="togglePending" ${S.ledgerPending ? 'checked' : ''}></label>
+    ${isCompany() ? '<button class="btn green full" data-act="sub" data-sub="reconcile">✓ 活動收銀對帳</button>' : ''}
+    ${list.length ? list.map(t => `<div class="stack" style="gap:8px"><div class="tiny soft">${esc(EVENTS.find(e => e.id === t.eventId)?.name || t.eventId)}</div>
+      ${receiptRow(t)}${t.status === 'outstanding' ? `<button class="btn green small full" data-act="receive" data-id="${t.id}">登記已收（轉帳）</button>` : ''}</div>`).join('')
+      : empty('🧾', '沒有符合的交易')}`;
+}
+
+/* ---------- 頁面：收銀對帳 ---------- */
+function pageReconcile() {
+  const ev = event(), cur = ev.currency;
+  const cash = sum(S.tx.filter(t => t.eventId === ev.id && t.status === 'paid' && t.payment === 'cash'));
+  const opening = S.cash[ev.id], actual = S.actual[ev.id];
+  const expected = opening == null ? null : opening + cash;
+  const diff = actual == null || expected == null ? null : actual - expected;
+  const varianceText = diff == null ? '輸入實點現金後顯示差額' : diff === 0 ? '✓ 現金完全相符' : (diff > 0 ? '多 ' : '少 ') + money(Math.abs(diff), cur);
+  const receivables = records().filter(t => t.status === 'outstanding');
+  return `${contextBar()}${pageHeader('CASH RECONCILIATION', '場次收銀對帳', ev.name + '・先記起始現金，收攤時輸入實點現金。', ev.venue, 'green')}
+    <div class="card pad" style="background:rgba(237,242,220,.55);border-color:var(--green-light)">
+      <h3 class="h-sec">全場共用現金箱</h3><div class="tiny soft" style="margin:6px 0 10px">只把已明確記為「現金」的收款加入現金箱。</div>
+      <div class="kv"><span>今日起始現金</span><span>${money(opening, cur)}</span></div>
+      <div class="kv"><span>＋ 現金銷售</span><span>${money(cash, cur)}</span></div>
+      <div class="between" style="font-size:20px;font-weight:900;color:var(--green-deep);padding:10px 0"><span>預估現金箱</span><span>${money(expected, cur)}</span></div>
+      <label class="lbl">收攤實點現金</label>
+      <div class="row"><input class="field" id="actualInput" inputmode="numeric" placeholder="輸入實點金額" value="${actual ?? ''}">
+      <button class="btn green" data-act="setActual">試算差額</button></div>
+      <div style="margin-top:12px;padding:12px;border-radius:14px;text-align:center;font-weight:800;background:${diff === 0 ? 'var(--green-pale)' : '#FFF1DD'};color:${diff === 0 ? 'var(--green-deep)' : '#A95D1E'}">${varianceText}</div>
+    </div>
+    <div class="card pad stack"><div class="between"><h3 class="h-panel">設定場次起始現金</h3>${pill('存在瀏覽器', 'orange')}</div>
+      <div class="row"><input class="field" id="openingInput" inputmode="numeric" placeholder="輸入起始現金" value="${opening ?? ''}">
+      <button class="btn" data-act="setOpening">套用</button></div></div>
+    <div class="card pad stack"><div class="between"><h3 class="h-panel">應收帳款</h3>${pill(receivables.length + ' 筆待收', 'orange')}</div>
+      ${receivables.length ? receivables.map(t => `<div class="receipt"><div style="flex:1"><div class="sum">${esc(t.memberId || '公司應收')}・${esc(t.summary)}</div>
+        <div class="tiny soft">${esc(t.id)}・${esc(shortTime(t.date))}・${esc(coser(t.coserId)?.short || '')}</div></div>
+        <div style="text-align:right"><div class="amt" style="color:var(--pink-deep)">${money(t.total, t.currency)}</div>
+        <button class="btn green small" data-act="receive" data-id="${t.id}">登記已收</button></div></div>`).join('') : empty('✓', '目前沒有待收應收')}</div>`;
+}
+
+/* ---------- 頁面：庫存 ---------- */
+function pageInventory() {
+  const key = U.invKey.trim().toLowerCase();
+  const list = products().filter(p => !key || p.name.toLowerCase().includes(key)).filter(p => {
+    const s = stockOf(p.id);
+    if (U.invFilter === '低庫存') return !p.digital && s != null && s <= 5;
+    if (U.invFilter === '未盤點') return !p.digital && s == null;
+    return true;
+  });
+  return `<div class="h-title">${isCompany() ? '商品庫存' : '我的庫存'}</div>
+    <div class="small soft">各活動共用商品庫存。先盤點，再記帳；售出時自動扣除。</div>
+    ${isCompany() ? selectChip('coser', '👤', S.coserId, coserOptions()) : ''}
+    <input class="field" id="invKey" data-bind="invKey" data-live="1" placeholder="搜尋商品" value="${esc(U.invKey)}" autocomplete="off">
+    <div class="seg">${['全部', '低庫存', '未盤點'].map(f => `<button class="${U.invFilter === f ? 'on' : ''}" data-act="invFilter" data-v="${f}">${f}</button>`).join('')}</div>
+    <div class="small soft">展示版的庫存只存在這個瀏覽器。</div>
+    ${list.length ? list.map(p => { const s = stockOf(p.id);
+      const tone = p.digital ? 'blue' : s == null ? 'orange' : s <= 5 ? 'pink' : 'green';
+      const label = p.digital ? '數位商品' : s == null ? '未盤點' : s <= 5 ? '低庫存 ' + s : '庫存 ' + s;
+      return `<button class="card row" style="padding:14px;text-align:left;width:100%" ${p.digital ? 'disabled' : `data-act="stockEdit" data-id="${p.id}"`}>
+        <span style="flex:1"><span class="tiny soft">${esc(coser(p.theme.coserId).short)}・${esc(p.theme.name)}</span><br><b>${esc(p.name)}</b></span>
+        ${pill(label, tone)}${p.digital ? '' : '<span class="soft">›</span>'}</button>`; }).join('') : empty('📦', '沒有符合的商品')}`;
+}
+
+/* ---------- 頁面：會員 ---------- */
+function pageMembers() {
+  const list = Object.values(S.members).filter(m => !m.sessionOnly).sort((a, b) => a.id < b.id ? -1 : 1);
+  return `${pageHeader('FAN MEMBERSHIP', '粉絲會員卡', '輸入粉絲 ID 帶入結帳；累積消費會跟著記帳更新。')}
+    ${list.length ? list.map(m => `<div class="card pad stack" style="gap:10px"><div class="row"><span style="font-size:22px">♡</span>
+      <span style="flex:1"><b>${esc(m.id)}</b><br><span class="tiny soft">${esc(m.name)}・示意會員</span></span>${pill(m.tier, 'green')}</div>
+      <div class="kv"><span>累積消費</span><span>${Math.round(m.spend).toLocaleString('en-US')}</span></div>
+      <div class="kv"><span>會員折扣</span><span>${m.discount > 0 ? Math.round(m.discount * 100) + '% OFF' : '尚無折扣'}</span></div>
+      <button class="btn soft small" data-act="useMember" data-id="${m.id}">帶入結帳</button></div>`).join('') : empty('♡', '尚無會員')}`;
+}
+
+/* ---------- 頁面：服裝借用 ---------- */
+const displayName = c => c.work ? `${c.work} - ${c.character}` : c.character;
+const itemList = c => (c.items || '').replace(/＋/g, '+').split('+').map(s => s.trim()).filter(Boolean);
+function pageCostumes() {
+  const key = U.costumeKey.trim().toLowerCase();
+  const list = S.costumes.filter(c => U.costumeFilter === '全部' || (U.costumeFilter === '可借用' ? c.status === 'available' : c.status === 'registered'))
+    .filter(c => !key || [c.code, c.work, c.character].some(v => v.toLowerCase().includes(key)));
+  const avail = S.costumes.filter(c => c.status === 'available').length;
+  return `${pageHeader('COSTUME LENDING', '服裝借用', '點選服裝查看借用細項與尺寸；填好借用單後，狀態會改為「已登記」。', avail + ' 件可借用', 'green')}
+    <input class="field" id="costumeKey" data-bind="costumeKey" data-live="1" placeholder="🔍 搜尋作品或角色" value="${esc(U.costumeKey)}" autocomplete="off">
+    <div class="seg">${['全部', '可借用', '已登記'].map(f => `<button class="${U.costumeFilter === f ? 'on' : ''}" data-act="costumeFilter" data-v="${f}">${f}</button>`).join('')}</div>
+    ${list.length ? `<div class="grid2">${list.map(c => `<button class="costume-card" data-act="sub" data-sub="costume:${c.id}">
+      <div class="ph"><b>👗</b>圖片準備中</div><div class="body"><b class="small" style="min-height:36px">${esc(displayName(c))}</b>
+      <div class="between">${statusPill(c)}<span class="tiny soft">${esc(c.size || '尺寸未填')}</span></div></div></button>`).join('')}</div>`
+      : empty('👗', '沒有符合的服裝')}`;
+}
+const statusPill = c => c.status === 'available' ? pill('可借用', 'green') : pill('已登記', 'orange');
+function pageCostumeDetail(id) {
+  const c = S.costumes.find(x => x.id === id); if (!c) return empty('👗', '找不到這件服裝');
+  const loan = S.loans.find(l => l.costumeId === id && l.status === '已登記');
+  const items = itemList(c);
+  const today = todayStr();
+  return `<div class="costume-card" style="max-width:320px;margin:0 auto;width:100%"><div class="ph" style="aspect-ratio:1"><b>👗</b>圖片準備中</div></div>
+    <div>${statusPill(c)}<div class="h-title">${esc(displayName(c))}</div></div>
+    <div class="card pad"><h3 class="h-sec" style="margin-bottom:10px">借用細項</h3>${items.length ? items.map(i => `<span class="tag">${esc(i)}</span>`).join('') : '<span class="soft">尚未填寫</span>'}</div>
+    <div class="card pad"><h3 class="h-sec" style="margin-bottom:8px">尺寸</h3><b style="font-size:18px">${esc(c.size || '尚未填寫')}</b>
+      ${c.sizeNote ? `<div class="soft">${esc(c.sizeNote)}</div>` : ''}${c.location ? `<div class="tiny soft" style="margin-top:4px">保存位置：${esc(c.location)}</div>` : ''}</div>
+    ${c.status === 'registered' ? `<div class="card pad stack"><h3 class="h-sec">目前借用</h3>${loan ? `
+      <div class="kv"><span>借用人</span><span>${esc(loan.borrower)}</span></div><div class="kv"><span>聯絡方式</span><span>${esc(loan.contact)}</span></div>
+      <div class="kv"><span>用途</span><span>${esc(loan.eventName ? loan.purpose + '・' + loan.eventName : loan.purpose)}</span></div>
+      <div class="kv"><span>借用日期</span><span>${esc(loan.loanDate)}</span></div>
+      <div class="kv"><span>約定歸還</span><span style="color:${loan.dueDate < today ? 'var(--danger)' : 'inherit'}">${esc(loan.dueDate)}${loan.dueDate < today ? '（逾期）' : ''}</span></div>
+      <div class="kv"><span>歸還方式</span><span>${esc(loan.returnMethod)}</span></div><div class="kv"><span>經手人</span><span>${esc(loan.handler)}</span></div>
+      <div class="tiny soft">${esc(loan.number)}</div>` : '<div class="soft">找不到對應的借用單。</div>'}
+      <button class="btn green small full" data-act="returnCostume" data-id="${c.id}">登記歸還</button></div>` : ''}
+    <button class="btn full" data-act="loanForm" data-id="${c.id}" ${c.status !== 'available' ? 'disabled' : ''}>${c.status === 'available' ? '填寫借用單' : '已登記，暫不可借用'}</button>`;
+}
+
+/* ---------- 頁面：更多／設定 ---------- */
+function pageMore() {
+  const items = isCompany()
+    ? [['sub', 'pos', '＋ 新增記帳'], ['sub', 'members', '♡ 會員查詢'], ['sub', 'costumes', '👕 服裝借用'], ['sub', 'settings', '⚙︎ 帳號與設定']]
+    : [['sub', 'ledger', '🧾 我的交易紀錄'], ['sub', 'settings', '⚙︎ 帳號與設定']];
+  return `<div>${pill(isCompany() ? '公司管理員' : 'Coser')}<div class="h-title">${esc(me().name)}</div>
+    <div class="soft" style="font-size:14px">${isCompany() ? '管理活動與團隊日常' : '管理自己的帳務與帳號'}</div></div>
+    <div class="stack">${items.map(([a, s, l]) => `<button class="btn outline full" data-act="${a}" data-sub="${s}">${l}</button>`).join('')}</div>`;
+}
+function pageSettings() {
+  return `<div class="h-title">設定</div>
+    <div class="card pad stack"><h3 class="h-sec">網頁展示版</h3>
+      <div class="small soft">這個網頁依 iOS App 的畫面與流程還原，給遠端查看進度用。所有資料皆為示意，只存在這個瀏覽器，不會寫入 Notion；正式 App 才會同步到 Notion。</div>
+      <div class="kv"><span>對應 App 版本</span><span>${APP_VERSION}</span></div>
+      <button class="btn outline full" data-act="confirmReset">重設示意資料</button></div>
+    <div class="card pad stack"><h3 class="h-sec">帳號</h3><div class="kv"><span>登入身分</span><span>${esc(me().name)}</span></div>
+      <button class="btn danger full" data-act="logout">登出</button></div>`;
+}
+
+/* ---------- 彈出視窗 ---------- */
+function sheet(title, body, foot = '') {
+  return `<div class="modal-wrap" data-act="closeModalBg"><div class="sheet" role="dialog" aria-label="${esc(title)}">
+    <div class="grab"></div><div class="sheet-head"><b style="font-size:17px">${esc(title)}</b><button class="link" data-act="closeModal">完成</button></div>
+    ${body}${foot ? `<div class="sheet-foot">${foot}</div>` : ''}</div></div>`;
+}
+function modalHTML() {
+  const m = U.modal; if (!m) return '';
+  if (m.type === 'theme') {
+    const t = THEMES.find(x => x.id === m.id);
+    return sheet(t.name, `<div class="eyebrow">${esc(coser(t.coserId).name)}・服裝主題</div>
+      <div class="small soft" style="margin:4px 0 12px">${esc(t.subtitle)}｜選擇要加入購物車的品項</div>
+      <div class="stack">${t.products.map(productRow).join('')}</div>`,
+      `<div class="between"><b>購物車 ${cartCount()} 件・合計 ${money(cartTotal(), currency())}</b><button class="btn small" data-act="modal" data-modal="cart">查看購物車</button></div>`);
+  }
+  if (m.type === 'cart') {
+    const cur = currency();
+    return sheet('購物車', S.cart.length ? `<div class="stack">${S.cart.map(l => `<div class="card" style="padding:14px">
+      <b>${esc(l.name)}</b><div class="small soft" style="margin:4px 0 10px">單價 ${money(l.price, cur)}・小計 ${money(l.price * l.qty, cur)}</div>
+      <div class="between"><div class="qty"><button data-act="qty" data-id="${l.productId}" data-d="-1" aria-label="減少">−</button><b>${l.qty}</b>
+      <button data-act="qty" data-id="${l.productId}" data-d="1" aria-label="增加">＋</button></div>
+      <button class="link" style="color:var(--danger)" data-act="removeLine" data-id="${l.productId}">🗑 移除</button></div></div>`).join('')}</div>`
+      : empty('🛒', '購物車是空的'),
+      `<div class="between" style="margin-bottom:12px"><b>合計</b><b style="font-size:20px;color:var(--pink-deep)">${money(cartTotal(), cur)}</b></div>
+       <button class="btn full" data-act="modal" data-modal="checkout" ${S.cart.length ? '' : 'disabled'}>前往收款</button>
+       <button class="btn outline full" style="margin-top:8px" data-act="closeModal">繼續選購</button>`);
+  }
+  if (m.type === 'checkout') {
+    const cur = currency(), mem = currentMember(), pay = m.pay || 'cash';
+    return sheet('確認收款', `<div class="eyebrow">CHECKOUT</div><div class="h-title" style="margin-bottom:12px">選擇收款方式</div>
+      <div class="kv"><span>商品小計</span><span>${money(cartSubtotal(), cur)}</span></div>
+      <div class="kv"><span>會員折扣</span><span>− ${money(cartDiscount(), cur)}</span></div>
+      <div class="between" style="font-size:20px;font-weight:900;color:var(--pink-deep);margin:8px 0 14px"><span>本次應收</span><span>${money(cartTotal(), cur)}</span></div>
+      <div class="grid2" style="grid-template-columns:1fr 1fr">${['cash', 'transfer', 'linepay', 'credit'].map(t => `<button class="pay-opt ${pay === t ? 'on' : ''}" data-act="pay" data-v="${t}">
+        <span style="font-size:20px">${PAY_ICON[t]}</span><b>${t === 'credit' ? '賒帳掛應收' : PAY[t]}</b></button>`).join('')}</div>
+      <div class="note-box" style="margin-top:14px">${mem ? `粉絲 ID：<b>${esc(mem.id)}</b>・${mem.discount > 0 ? '套用會員折扣' : '本次無折扣'}` : '未綁定粉絲 ID；仍可結帳。若要賒帳，請先輸入粉絲 ID 便於追蹤。'}</div>
+      <div class="tiny soft" style="margin-top:10px">請確認實際收到款項後再登記。LINE Pay 僅記錄付款方式。</div>`,
+      `<button class="btn full" data-act="confirmCheckout" ${S.cart.length ? '' : 'disabled'}>${pay === 'credit' ? '確認掛應收' : '確認已收款'}</button>`);
+  }
+  if (m.type === 'done') {
+    const t = S.tx.find(x => x.id === m.id);
+    return sheet('結帳完成', `<div class="empty"><div class="e">🎉</div><div class="h-title">結帳完成</div>
+      <div class="soft">${esc(PAY[t.payment])}・${t.status === 'outstanding' ? '已掛應收' : '已登記'}<br>展示版：存在這個瀏覽器，不會寫入 Notion</div>
+      <div class="h-title" style="color:var(--pink-deep)">${money(t.total, t.currency)}</div><div class="tiny soft">${esc(t.id)}</div></div>`,
+      `<button class="btn full" data-act="closeModal">繼續下一筆記帳</button>`);
+  }
+  if (m.type === 'stock') {
+    const loc = findProduct(m.id), p = loc.product, stock = stockOf(p.id);
+    const n = parseQty(m.quantity), issue = stockIssue(m, n);
+    const history = S.moves.filter(x => x.productId === p.id).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 10);
+    return sheet('庫存盤點', `<div class="stack">
+      <div><b style="font-size:17px">${esc(p.name)}</b><div class="soft">${stock == null ? '尚未建立庫存' : '目前庫存：' + stock + ' 件'}</div></div>
+      <div class="seg"><button class="${m.mode === 'count' ? 'on' : ''}" data-act="stockMode" data-v="count">${stock == null ? '首次盤點' : '重新盤點'}</button>
+        ${stock != null ? `<button class="${m.mode === 'restock' ? 'on' : ''}" data-act="stockMode" data-v="restock">補貨入庫</button>` : ''}</div>
+      <div><label class="lbl">${m.mode === 'count' ? '盤點後的實際總數' : '本次補貨數量'}</label>
+        <div class="row"><input class="field" id="stockQty" data-bind="modal.quantity" data-live="1" inputmode="numeric" value="${esc(m.quantity)}" autocomplete="off">
+        <div class="qty"><button data-act="stockStep" data-d="-1">−</button><button data-act="stockStep" data-d="1">＋</button></div></div></div>
+      <div><label class="lbl">原因（必填）</label><input class="field" id="stockReason" data-bind="modal.reason" data-live="1" value="${esc(m.reason)}" autocomplete="off"></div>
+      ${issue ? `<div class="err">⚠ ${esc(issue)}</div>` : `<div class="ok">儲存後：${m.mode === 'count' ? n : (stock || 0) + n} 件</div>`}
+      <div class="tiny soft">盤點填入實際總數；補貨只填新增數量。每次異動都保留時間與操作帳號。</div>
+      <div class="card pad stack" style="gap:8px"><b>最近異動</b>${history.length ? history.map(h => `<div style="border-top:1px solid var(--line);padding-top:8px">
+        <div class="small">${h.kind === 'count' ? '盤點總數' : h.kind === 'sale' ? '銷售' : '補貨'}：${h.quantity}</div>
+        <div class="tiny soft">${esc(h.reason)}・${esc(h.actor)}・${esc(moveTime(h.date))}</div></div>`).join('') : '<span class="soft small">尚無異動紀錄</span>'}</div></div>`,
+      `<div class="row"><button class="btn outline" style="flex:1" data-act="closeModal">取消</button>
+       <button class="btn" style="flex:1" data-act="saveStock" ${issue ? 'disabled' : ''}>儲存</button></div>`);
+  }
+  if (m.type === 'loan') {
+    const c = S.costumes.find(x => x.id === m.id), f = m.form, missing = loanMissing(f);
+    return sheet('填寫借用單', `<div class="stack">
+      <div class="card pad"><div class="kv"><span>名稱</span><span>${esc(displayName(c))}</span></div>${c.size ? `<div class="kv"><span>尺寸</span><span>${esc(c.sizeNote ? `${c.size}（${c.sizeNote}）` : c.size)}</span></div>` : ''}</div>
+      <div><label class="lbl">借用人</label><input class="field" id="lBorrower" data-bind="modal.form.borrower" data-live="1" placeholder="借用人姓名（必填）" value="${esc(f.borrower)}"></div>
+      <div><input class="field" id="lContact" data-bind="modal.form.contact" data-live="1" placeholder="聯絡方式：電話或 LINE ID（必填）" value="${esc(f.contact)}"></div>
+      <div><label class="lbl">借用用途</label><select class="field" data-change="loanPurpose">${['拍攝', '場次活動', '其他'].map(p => `<option ${f.purpose === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+      <input class="field" id="lEvent" data-bind="modal.form.eventName" placeholder="活動名稱（選填）" value="${esc(f.eventName)}">
+      <div class="filters"><div class="two"><div><label class="lbl">借用日期</label><input class="field" type="date" data-change="loanDate" value="${f.loanDate}"></div>
+        <div><label class="lbl">約定歸還日期</label><input class="field" type="date" data-change="dueDate" min="${f.loanDate}" value="${f.dueDate}"></div></div></div>
+      <div><label class="lbl">歸還方式</label><div class="seg">${['面交', '寄送'].map(r => `<button class="${f.returnMethod === r ? 'on' : ''}" data-act="loanReturn" data-v="${r}">${r}</button>`).join('')}</div></div>
+      <div class="card pad stack" style="gap:8px"><b>服裝借用注意事項</b>${NOTICE.map((t, i) => `<div class="small">${i + 1}. ${esc(t)}</div>`).join('')}
+        <label class="check"><input type="checkbox" data-act="loanAgree" ${f.agreed ? 'checked' : ''}><span>已閱讀並同意注意事項（必填）</span></label></div>
+      <div class="kv"><span>經手人</span><span>${esc(me().name)}</span></div>
+      <textarea class="field" id="lNote" data-bind="modal.form.note" placeholder="備註（選填）">${esc(f.note)}</textarea>
+      ${m.showMissing && missing.length ? `<div class="err">請補齊：${missing.join('、')}</div>` : ''}</div>`,
+      `<button class="btn full" data-act="submitLoan">送出借用單</button>`);
+  }
+  if (m.type === 'confirm') {
+    return `<div class="modal-wrap" data-act="closeModalBg"><div class="sheet" style="max-width:420px"><div class="grab"></div>
+      <div class="h-title">${esc(m.title)}</div><div class="soft" style="margin:6px 0 16px">${esc(m.message)}</div>
+      <div class="row"><button class="btn outline" style="flex:1" data-act="closeModal">取消</button><button class="btn" style="flex:1" data-act="${m.ok}" data-id="${esc(m.id || '')}">${esc(m.okLabel)}</button></div></div></div>`;
+  }
+  return '';
+}
+function parseQty(raw) {
+  const half = String(raw ?? '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[\s,，]/g, '');
+  return /^\d+$/.test(half) ? parseInt(half, 10) : null;
+}
+function stockIssue(m, n) {
+  if (n == null) return String(m.quantity ?? '').trim() ? '數量請輸入數字' : '請輸入數量';
+  if (n > 1000000) return '數量需介於 0～1,000,000';
+  if (m.mode === 'restock' && n === 0) return '補貨數量需大於 0';
+  if (!String(m.reason || '').trim()) return '請填寫原因';
+  return null;
+}
+function defaultReason(mode, stock) { return mode === 'restock' ? '補貨入庫' : stock == null ? '首次盤點' : '重新盤點'; }
+function loanMissing(f) {
+  const miss = [];
+  if (!f.borrower.trim()) miss.push('借用人姓名');
+  if (!f.contact.trim()) miss.push('聯絡方式');
+  if (f.dueDate < f.loanDate) miss.push('約定歸還日期不能早於借用日期');
+  if (!f.agreed) miss.push('同意注意事項');
+  return miss;
+}
+
+/* ---------- 主框架 ---------- */
+const TABS_COMPANY = [['home', '✨', '營運'], ['ledger', '🧾', '帳務'], ['inventory', '📦', '庫存'], ['more', '👤', '更多']];
+const TABS_COSER = [['home', '✨', '今日'], ['pos', '➕', '記帳'], ['inventory', '📦', '庫存'], ['costumes', '👕', '服裝借用'], ['more', '👤', '我的']];
+const SUB_TITLES = { pos: '新增記帳', members: '會員查詢', costumes: '服裝借用', settings: '設定', ledger: '我的交易紀錄', reconcile: '活動收銀對帳' };
+function page() {
+  if (U.sub) {
+    if (U.sub.startsWith('costume:')) return pageCostumeDetail(U.sub.slice(8));
+    return ({ pos: pagePOS, members: pageMembers, costumes: pageCostumes, settings: pageSettings, ledger: pageLedger, reconcile: pageReconcile })[U.sub]();
+  }
+  return ({ home: pageHome, pos: pagePOS, ledger: pageLedger, inventory: pageInventory, costumes: pageCostumes, more: pageMore })[U.tab]();
+}
+function shell() {
+  const tabs = isCompany() ? TABS_COMPANY : TABS_COSER;
+  const backTo = U.sub && U.sub.startsWith('costume:') ? '服裝借用' : '返回';
+  return `<header class="topbar">${U.sub ? `<button class="back-btn" data-act="back">‹ ${backTo}</button>` : '<span class="brand">Yumeverse</span>'}
+      <span class="grow"></span><span class="chip chip-demo">網頁展示版・示意資料</span>
+      <button class="icon-btn" data-act="sub" data-sub="settings" aria-label="設定">⚙︎</button></header>
+    <main class="page">${page()}</main>
+    <nav class="tabbar"><div class="inner">${tabs.map(([id, ico, label]) => `<button class="tab ${U.tab === id && !U.sub ? 'on' : ''}" data-act="tab" data-tab="${id}">
+      <span class="ico">${ico}</span>${label}</button>`).join('')}</div></nav>`;
+}
+function loginView() {
+  const L = U.login, wide = window.innerWidth >= 960;
+  const form = `<div class="login-form">
+      <div><div class="row" style="gap:6px;align-items:baseline"><span style="font-size:25px;font-weight:900;color:var(--pink)">Yumeverse</span>
+      <span class="tiny" style="font-weight:800;letter-spacing:1px;color:var(--ink-soft)">LEDGER APP</span></div>
+      <div style="font-size:26px;font-weight:800">登入夢次元</div></div>
+      <div class="notice">這是 <b>網頁展示版</b>，用來遠端查看 App 的畫面與操作流程。資料皆為示意，只存在這個瀏覽器，不會寫入 Notion。</div>
+      <div><label class="lbl">帳號</label><input class="field" id="loginAccount" data-bind="login.account" placeholder="輸入帳號" value="${esc(L.account)}" autocomplete="off" autocapitalize="off"></div>
+      <div><label class="lbl">密碼</label><input class="field" id="loginPassword" type="password" data-bind="login.password" placeholder="輸入密碼" value="${esc(L.password)}" data-enter="doLogin"></div>
+      ${L.error ? `<div class="err">${esc(L.error)}</div>` : ''}
+      <button class="btn full" data-act="doLogin">登入夢次元記帳站</button>
+      <div class="demo-box"><div class="eyebrow">快速填入示意帳號</div>
+        ${[['company', '公司管理員', '查看全公司營運與帳務'], ['momo', 'Coser 帳號・小桃', '個人庫存與活動記帳'], ['rin', 'Coser 帳號・小凜', '第二位 Coser，資料互相隔離']].map(([k, t, d]) =>
+          `<button class="demo-btn" data-act="fillDemo" data-id="${k}"><span><b class="small" style="color:var(--pink-mid)">${t}</b><br><span class="small">${d}</span></span>
+          <span class="small" style="text-align:right">${k}<br>demo</span></button>`).join('')}</div></div>`;
+  return `<div class="login-wrap"><div class="login-card ${wide ? 'wide' : ''}">
+    ${wide ? `<div class="login-visual"><span class="ribbon">✦ 活動記帳・庫存管理</span>
+      <div><div class="big">今天也把帳</div><div class="big outlined">記得可可愛愛</div></div>
+      <div class="small soft" style="max-width:280px;line-height:1.7">場次、商品、會員、收款與庫存放在同一個畫面，讓每位 Coser 都能快速結帳，公司也能分開查看。</div>
+      <div style="margin-top:auto;align-self:flex-end;font-size:96px;opacity:.9">🎀</div></div>`
+      : `<div class="login-head"><span class="av">✨</span>今天也把帳記得可可愛愛</div>`}
+    ${form}</div></div>`;
+}
+
+/* ---------- 繪製（保留輸入框焦點） ---------- */
+function render() {
+  const a = document.activeElement, focusId = a && a.id, selStart = a && a.selectionStart, selEnd = a && a.selectionEnd;
+  const scrollEl = document.querySelector('.sheet'), sheetScroll = scrollEl ? scrollEl.scrollTop : 0;
+  $app.innerHTML = (S.user ? shell() + modalHTML() : loginView()) + (U.toast ? `<div class="toast" role="status">${esc(U.toast)}</div>` : '');
+  const sheetEl = document.querySelector('.sheet'); if (sheetEl) sheetEl.scrollTop = sheetScroll;
+  if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selEnd); } catch (e) {} } }
+}
+function setPath(path, value) {
+  const keys = path.split('.'); let obj = U;
+  keys.slice(0, -1).forEach(k => { obj = obj[k]; });
+  obj[keys[keys.length - 1]] = value;
+}
+
+/* ---------- 事件 ---------- */
+const ACT = {
+  tab: d => { U.tab = d.tab; U.sub = null; U.modal = null; render(); window.scrollTo(0, 0); },
+  sub: d => { U.sub = d.sub; U.modal = null; render(); window.scrollTo(0, 0); },
+  // 服裝詳細頁返回服裝清單；其他子頁返回所在分頁
+  back: () => { U.sub = (U.sub && U.sub.startsWith('costume:') && U.tab !== 'costumes') ? 'costumes' : null; U.modal = null; render(); window.scrollTo(0, 0); },
+  doLogin: () => login(U.login.account, U.login.password),
+  fillDemo: d => { U.login.account = d.id; U.login.password = 'demo'; U.login.error = ''; render(); },
+  logout: () => logout(),
+  pendingBanner: () => { S.ledgerPending = true; save(); U.tab = 'ledger'; U.sub = null; render(); window.scrollTo(0, 0); },
+  togglePending: () => { S.ledgerPending = !S.ledgerPending; save(); render(); },
+  receive: d => markReceived(d.id),
+  lookup: () => lookupMember(U.fanInput),
+  removeMember: () => { S.memberId = null; U.fanInput = ''; save(); render(); },
+  useMember: d => { lookupMember(d.id); if (isCompany()) { U.sub = 'pos'; } else { U.tab = 'pos'; U.sub = null; } toast('會員已帶入本次結帳'); },
+  openTheme: d => { U.modal = { type: 'theme', id: d.id }; render(); },
+  add: d => addToCart(d.id),
+  qty: d => changeQty(d.id, +d.d),
+  removeLine: d => { S.cart = S.cart.filter(l => l.productId !== d.id); save(); render(); },
+  modal: d => { U.modal = { type: d.modal, pay: 'cash' }; render(); },
+  closeModal: () => { U.modal = null; render(); },
+  closeModalBg: (d, el, e) => { if (e.target === el) { U.modal = null; render(); } },
+  pay: d => { U.modal.pay = d.v; render(); },
+  confirmCheckout: () => { const tx = checkout(U.modal.pay || 'cash'); if (tx) { U.modal = { type: 'done', id: tx.id }; render(); } },
+  invFilter: d => { U.invFilter = d.v; render(); },
+  stockEdit: d => { const st = stockOf(d.id); U.modal = { type: 'stock', id: d.id, mode: 'count', quantity: st == null ? '' : String(st), reason: defaultReason('count', st) }; render(); },
+  stockMode: d => { const m = U.modal, st = stockOf(m.id); const cur = m.reason.trim();
+    if (!cur || cur === defaultReason(m.mode, st)) m.reason = defaultReason(d.v, st);
+    m.mode = d.v; m.quantity = d.v === 'restock' ? '' : (st == null ? '' : String(st)); render(); },
+  stockStep: d => { const m = U.modal; m.quantity = String(Math.max(0, (parseQty(m.quantity) || 0) + +d.d)); render(); },
+  saveStock: () => { const m = U.modal, n = parseQty(m.quantity); if (stockIssue(m, n)) return; adjustStock(m.id, m.mode, n, m.reason.trim()); U.modal = null; render(); },
+  setOpening: () => { const v = parseQty(document.getElementById('openingInput').value); if (v == null) return toast('請輸入有效起始現金'); S.cash[S.eventId] = v; save(); toast('已套用起始現金'); },
+  setActual: () => { const v = parseQty(document.getElementById('actualInput').value); if (v == null) return toast('請輸入有效現金數字'); S.actual[S.eventId] = v; save(); toast('已完成試算'); },
+  costumeFilter: d => { U.costumeFilter = d.v; render(); },
+  loanForm: d => { const t = todayStr(), due = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+    U.modal = { type: 'loan', id: d.id, form: { borrower: '', contact: '', purpose: '拍攝', eventName: '', loanDate: t, dueDate: due, returnMethod: '面交', agreed: false, note: '' } }; render(); },
+  loanReturn: d => { U.modal.form.returnMethod = d.v; render(); },
+  loanAgree: () => { U.modal.form.agreed = !U.modal.form.agreed; render(); },
+  submitLoan: () => { const m = U.modal, f = m.form, miss = loanMissing(f);
+    if (miss.length) { m.showMissing = true; render(); return; }
+    const c = S.costumes.find(x => x.id === m.id); if (c.status !== 'available') return toast('這件服裝剛剛已被登記');
+    const number = 'L' + nowLocal().replace(/[-:T]/g, '').slice(2) + '-' + Math.random().toString(36).slice(2, 5).toUpperCase();
+    S.loans.push({ number, costumeId: c.id, ...f, borrower: f.borrower.trim(), contact: f.contact.trim(), handler: me().name, status: '已登記' });
+    c.status = 'registered'; save(); U.modal = null; toast('借用單已送出：' + number); },
+  returnCostume: d => { U.modal = { type: 'confirm', title: '確認登記歸還？', message: '借用單會改為「已歸還」，服裝改回「可借用」。', ok: 'doReturn', okLabel: '登記歸還', id: d.id }; render(); },
+  doReturn: d => { const c = S.costumes.find(x => x.id === d.id); const loan = S.loans.find(l => l.costumeId === d.id && l.status === '已登記');
+    if (loan) { loan.status = '已歸還'; loan.returnedDate = todayStr(); } if (c) c.status = 'available'; save(); U.modal = null; toast('已登記歸還'); },
+  confirmReset: () => { U.modal = { type: 'confirm', title: '重設示意資料？', message: '這個瀏覽器裡的展示資料會回到初始狀態，並登出。', ok: 'doReset', okLabel: '重設' }; render(); },
+  doReset: () => { S = freshState(); save(); U.modal = null; U.sub = null; U.tab = 'home'; render(); toast('已重設示意資料'); }
+};
+const CHANGE = {
+  event: v => setEvent(v), coser: v => setCoser(v), period: v => { S.period = v; save(); render(); },
+  loanPurpose: v => { U.modal.form.purpose = v; },
+  loanDate: v => { const f = U.modal.form; f.loanDate = v; if (f.dueDate < v) f.dueDate = v; render(); },
+  dueDate: v => { U.modal.form.dueDate = v; render(); }
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
+  if (el.tagName === 'INPUT' && el.type === 'checkbox') { /* 由 change 處理 */ }
+  const fn = ACT[el.dataset.act]; if (fn) fn(el.dataset, el, e);
+});
+document.addEventListener('input', e => {
+  const el = e.target; if (!el.dataset || !el.dataset.bind) return;
+  setPath(el.dataset.bind, el.value);
+  if (el.dataset.live) render();
+});
+document.addEventListener('change', e => {
+  const el = e.target; if (el.dataset && el.dataset.change && CHANGE[el.dataset.change]) CHANGE[el.dataset.change](el.value);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const el = e.target;
+  if (el.dataset && el.dataset.enter && ACT[el.dataset.enter]) ACT[el.dataset.enter]({}, el, e);
+  if (el.id === 'fanInput') ACT.lookup();
+  if (el.id === 'loginAccount') ACT.doLogin();
+});
+let lastWide = window.innerWidth >= 960;
+window.addEventListener('resize', () => { const w = window.innerWidth >= 960; if (!S.user && w !== lastWide) { lastWide = w; render(); } });
+render();
+</script>
+</body>
+</html>
