@@ -192,12 +192,13 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .ptile{width:100%;height:96px;border-radius:12px;overflow:hidden;background:var(--pbg);display:flex;flex-direction:column;text-align:left;transition:transform .1s, opacity .1s}
 .shell.wide .ptile{height:124px}
 .ptile:active:not(:disabled){transform:scale(.95);opacity:.85}
-.ptile.has{outline:3px solid var(--ink);outline-offset:-3px}
-/* 格子底色鋪 30% 淡化的商品照；品名那一塊用作品顏色漸層蓋住，字才看得清楚；不能賣的轉灰階再淡一點 */
+/* 有加入的格子：深色外框畫在外層，才不會被商品照蓋住 */
+.ptile-wrap.has::after{content:'';position:absolute;inset:0;border-radius:12px;box-shadow:inset 0 0 0 3px var(--ink);pointer-events:none}
+/* 格子底色鋪 80% 的商品照；品名那一塊用作品顏色漸層蓋住，字才看得清楚；不能賣的轉灰階再淡一點 */
 .ptile{position:relative}
-.ptile.ph::before{content:'';position:absolute;inset:0;background:var(--photo) center/cover no-repeat;opacity:.3;pointer-events:none}
+.ptile.ph::before{content:'';position:absolute;inset:0;background:var(--photo) center/cover no-repeat;opacity:.8;pointer-events:none}
 .ptile.ph::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,color-mix(in srgb,var(--pbg) 85%,transparent) 0%,color-mix(in srgb,var(--pbg) 50%,transparent) 35%,transparent 70%)}
-.ptile.ph:disabled::before{filter:grayscale(1);opacity:.18}
+.ptile.ph:disabled::before{filter:grayscale(1);opacity:.25}
 .ptile .pn,.ptile .pb{position:relative;z-index:1}
 .ptile .pn{flex:1;padding:10px 10px 0;font-weight:900;font-size:15px;line-height:1.25;color:var(--pink-on);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .shell.wide .ptile .pn{font-size:20px}
@@ -2895,10 +2896,10 @@ function salesMock() {
   const P = (id, themeID, kind, name, note, priceTWD, priceHKD = null, stock = null, digital = false) =>
     ({ id, themeID, kind, name, note, priceTWD, priceHKD, stock, digital, discontinued: false });
   const products = [
-    P('hanabi-set', 'hanabi', 'photobook', '花火套組', 'Cosforce04 有售出 1 組；售價未建', null),
-    P('hanabi-book', 'hanabi', 'photobook', '花火寫真書・單書', '香港現場價 HK$200；台幣價未建', null, 200),
+    P('hanabi-set', 'hanabi', 'photobook', '花火套組', '測試用售價（Notion 台幣價未建）', 1500),
+    P('hanabi-book', 'hanabi', 'photobook', '花火寫真書・單書', '測試用售價（香港現場價 HK$200；Notion 台幣價未建）', 800, 200),
     P('hanabi-cheki', 'hanabi', 'photobook', '花火拍本 Cheki Album', '營運總表台幣價', 500, 130),
-    P('hanabi-digital', 'hanabi', 'photobook', '花火電子檔', '香港自訂品項紀錄；台幣價未建', null, 150, null, true),
+    P('hanabi-digital', 'hanabi', 'photobook', '花火電子檔', '測試用售價（香港自訂品項；Notion 台幣價未建）', 600, 150, null, true),
     P('frieren-book', 'frieren', 'photobook', '芙莉蓮寫真書・單書', '營運總表台幣價', 1000, 250),
     P('frieren-book-digital', 'frieren', 'photobook', '芙莉蓮單書＋電子檔', '營運總表正式台幣價', 1800),
     P('frieren-folder', 'frieren', 'goods', '芙莉蓮 L 夾', '營運總表台幣價', 250, 70),
@@ -2908,13 +2909,13 @@ function salesMock() {
     P('original-digital', 'original', 'photobook', '電子檔', '營運總表正式台幣價', 1000, null, null, true),
     P('soda-book', 'soda', 'photobook', '索達寫真書・單書', '營運總表台幣價', 800, 200),
     P('soda-slide', 'soda', 'goods', '索達拍立卡 Slide Card', '營運總表台幣價', 350, 90),
-    P('soda-digital', 'soda', 'photobook', '索達電子檔', 'Cosforce04 有數量紀錄；售價未建', null, null, null, true),
+    P('soda-digital', 'soda', 'photobook', '索達電子檔', '測試用售價（Notion 台幣價未建）', 1000, null, null, true),
     P('liveparty-book', 'liveparty', 'photobook', 'Live Party 寫真書', '營運總表台幣價', 600, 200),
-    P('phoebe-postcard', 'onsite', 'goods', '菲比明信片', '香港現場價 HK$75；台幣價未建', null, 75),
+    P('phoebe-postcard', 'onsite', 'goods', '菲比明信片', '測試用售價（香港現場價 HK$75；Notion 台幣價未建）', 200, 75),
     P('june-postcard', 'onsite', 'goods', '六月雨明信片', '營運總表台幣價', 200, 75),
-    P('reze-postcard', 'onsite', 'goods', '蕾潔明信片', '香港現場價 HK$120；台幣價未建', null, 120),
-    P('old-cheki', 'onsite', 'goods', '舊拍', '香港現場價 HK$80；台幣價未建', null, 80),
-    P('scroll', 'onsite', 'goods', '掛軸海報', '香港現場價 HK$270；台幣價未建', null, 270),
+    P('reze-postcard', 'onsite', 'goods', '蕾潔明信片', '測試用售價（香港現場價 HK$120；Notion 台幣價未建）', 300, 120),
+    P('old-cheki', 'onsite', 'goods', '舊拍', '測試用售價（香港現場價 HK$80；Notion 台幣價未建）', 250, 80),
+    P('scroll', 'onsite', 'goods', '掛軸海報', '測試用售價（香港現場價 HK$270；Notion 台幣價未建）', 900, 270),
     P('momo-jk-book', 'momo-jk', 'photobook', 'JK 寫真書・單書', '測試商品', 600),
     P('momo-jk-set', 'momo-jk', 'photobook', 'JK 套組（書＋拍立得）', '測試商品', 900),
     P('momo-jk-digital', 'momo-jk', 'photobook', 'JK 電子寫真集', '測試商品', 400, null, null, true),
@@ -3623,7 +3624,7 @@ function productTile(p, t) {
   const hex = locked ? 'CFC7BF' : t.tintHex, bar = shadeHex(hex);
   const status = sold ? '已售完' : (isLowStock(p) && p.stock != null ? `剩 ${p.stock}` : '');
   const price = p.priceTWD != null ? money(p.priceTWD) : '未填售價';
-  return `<div class="ptile-wrap" id="tile-${esc(p.id)}" data-flip="${esc(p.id)}"><button class="ptile${qty ? ' has' : ''}${Object.hasOwn(PHOTOS, p.id) ? ` ph ph-${esc(p.id)}` : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('addCart', p.id)}${locked ? ' disabled' : ''} aria-label="${esc([p.name, price, status].filter(Boolean).join('，'))}"><span class="pn">${esc(p.name)}</span><span class="pb">${status ? `<i>${status}</i>` : ''}<b>${price}</b></span></button>${qty ? `<button class="pbadge"${act('qty', p.id, -1)} aria-label="減少 1 件 ${esc(p.name)}，目前 ${qty} 件">${qty}</button>` : ''}</div>`;
+  return `<div class="ptile-wrap${qty ? ' has' : ''}" id="tile-${esc(p.id)}" data-flip="${esc(p.id)}"><button class="ptile${qty ? ' has' : ''}${Object.hasOwn(PHOTOS, p.id) ? ` ph ph-${esc(p.id)}` : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('addCart', p.id)}${locked ? ' disabled' : ''} aria-label="${esc([p.name, price, status].filter(Boolean).join('，'))}"><span class="pn">${esc(p.name)}</span><span class="pb">${status ? `<i>${status}</i>` : ''}<b>${price}</b></span></button>${qty ? `<button class="pbadge"${act('qty', p.id, -1)} aria-label="減少 1 件 ${esc(p.name)}，目前 ${qty} 件">${qty}</button>` : ''}</div>`;
 }
 function shadeHex(hex, f = 0.78) {
   const v = parseInt(hex, 16); const c = x => Math.round(x * f).toString(16).padStart(2, '0');
@@ -4409,7 +4410,7 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 1;
+const STATE_VERSION = 2; // 10/22 補測試售價後 +1，舊的暫存狀態不再沿用
 const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
 function snapshotState() {
