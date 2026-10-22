@@ -176,8 +176,38 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .schip.on{background:var(--tint);color:var(--tink)}
 .schip.on i{border-color:transparent}
 
-.checkout-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+.checkout-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start;position:relative}
+.checkout-grid.nocart{grid-template-columns:minmax(0,1fr)}
+@keyframes cartIn{from{transform:translateX(60px);opacity:0}}
+@keyframes barUp{from{transform:translateY(24px);opacity:0}}
+.checkout-grid .cart-panel{animation:cartIn .36s cubic-bezier(.2,.8,.2,1)}
+.cart-panel.leaving{position:absolute;right:0;pointer-events:none}
+.cartbar{animation:barUp .28s cubic-bezier(.2,.8,.2,1)}
 .cart-panel{position:sticky;top:72px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 96px);overflow:auto}
+.page.fullw{max-width:none}
+.shell.wide .topbar-in{max-width:none}
+.tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px}
+.shell.wide .tile-grid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
+.ptile-wrap{position:relative;min-width:0}
+.ptile{width:100%;height:96px;border-radius:12px;overflow:hidden;background:var(--pbg);display:flex;flex-direction:column;text-align:left;transition:transform .1s, opacity .1s}
+.shell.wide .ptile{height:124px}
+.ptile:active:not(:disabled){transform:scale(.95);opacity:.85}
+.ptile.has{outline:3px solid var(--ink);outline-offset:-3px}
+.ptile .pn{flex:1;padding:10px 10px 0;font-weight:900;font-size:15px;line-height:1.25;color:var(--pink-on);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.shell.wide .ptile .pn{font-size:20px}
+.ptile.has .pn{padding-right:40px}
+.ptile .pb{height:30px;flex:none;background:var(--pbar);color:var(--pbar-on);display:flex;align-items:center;gap:4px;padding:0 10px;font-size:14px;min-width:0}
+.shell.wide .ptile .pb{height:36px;font-size:17px}
+.ptile .pb i{font-style:normal;font-size:.8em;font-weight:900;white-space:nowrap}
+.ptile .pb b{margin-left:auto;font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+.pbadge{position:absolute;top:5px;right:5px;min-width:34px;height:34px;border-radius:17px;background:var(--ink);color:#fff;font-weight:900;font-size:17px;border:2px solid #fff;display:grid;place-items:center;padding:0 6px;font-variant-numeric:tabular-nums}
+.cday{display:flex;align-items:center;gap:6px;min-width:0}
+.carrow{width:40px;height:40px;border-radius:50%;background:var(--pink-pale);color:var(--pink-deep);display:grid;place-items:center;flex:none}
+.carrow:disabled{opacity:.4}
+.cmid{display:flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:999px;background:#fff;border:1.5px solid var(--line);font-size:14px;min-width:0;white-space:nowrap;overflow:hidden}
+.cmid b{font-weight:900;overflow:hidden;text-overflow:ellipsis}
+.cmid .lbl{color:var(--pink-deep);font-weight:800;overflow:hidden;text-overflow:ellipsis}
+.cmid.past{background:var(--orange-pale);border-color:var(--orange);color:var(--orange-deep)}
 .cartbar{position:fixed;left:0;right:0;bottom:calc(54px + env(safe-area-inset-bottom,0px));z-index:25;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));background:color-mix(in srgb,var(--cream) 85%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .cartbar .btn{justify-content:space-between;max-width:740px;margin:0 auto}
 .cartbar .n{padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.25)}
@@ -221,6 +251,11 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .cal-g button.today{color:var(--pink);font-weight:900}
 .cal-g button.on{background:var(--pink);color:#fff}
 .cal-g button:disabled{color:rgba(122,111,102,.35)}
+.cal-g button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.cal-g button.blocked{background:var(--gray-pale);text-decoration:line-through}
+.cal-g button.inrange{background:var(--pink-light);color:var(--ink)}
+.cal-g button .dot{display:block;width:5px;height:5px;border-radius:50%;background:var(--blue)}
+.cal-g button.on .dot{background:#fff}
 .daypick{display:flex;gap:8px;align-items:stretch}
 .daypick .arrow{width:44px;min-height:56px;border-radius:14px;background:var(--pink-pale);color:var(--pink-deep);display:grid;place-items:center;flex:none}
 .daypick .arrow:disabled{opacity:.4}
@@ -236,6 +271,33 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .demo:hover{background:var(--pink-pale)}
 .proto{border:1.5px dashed var(--pink-light);background:var(--pink-pale);border-radius:16px;padding:12px 14px;font-size:13px;color:var(--ink)}
 
+/* ===== 模擬裝置外框 ===== */
+body.host{background:#E9DFD0}
+.host-wrap{max-width:1400px;margin:0 auto;padding-block:16px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.host-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.host-title{display:flex;flex-direction:column;gap:2px;margin-right:auto}
+.host-title b{font-size:22px;font-weight:900;color:var(--pink)}
+.host-title span{font-size:13px;font-weight:700;color:var(--ink-soft)}
+.host-seg{background:#fff;min-width:min(100%,360px)}
+.host-seg button.on{background:var(--pink);color:#fff;box-shadow:none}
+.host-reset{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:var(--ink-soft);min-height:40px}
+.host-full{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:var(--pink-deep);text-decoration:none;min-height:40px}
+.host-stage{display:flex;justify-content:center;min-width:0}
+.device-box{position:relative;flex:none}
+.device{position:absolute;top:0;left:0;transform-origin:top left;background:#1E1B19;box-shadow:0 20px 50px rgba(59,50,44,.35),inset 0 0 0 2px #3a3532}
+.screen{width:100%;height:100%;overflow:hidden;background:var(--cream);display:flex;flex-direction:column}
+.sbar{flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font-size:15px;font-weight:800;color:var(--ink);background:var(--cream)}
+.device.is-ipad .sbar{font-size:12px;padding:0 20px}
+.device.is-iphone .sbar{padding-top:6px}
+.sbar .island{width:120px;height:32px;border-radius:16px;background:#1E1B19}
+.device.is-ipad .sbar .island{visibility:hidden}
+.sbar .sbar-r{font-size:12px;letter-spacing:.02em}
+.screen iframe{display:block;width:100%;border:0;background:var(--cream);flex:none}
+.homebar{flex:none;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.94)}
+.homebar i{width:134px;height:5px;border-radius:3px;background:var(--ink)}
+.device.is-ipad .homebar i{width:200px}
+.host-note{margin:0;text-align:center;font-size:13px;font-weight:700;color:var(--ink-soft)}
+
 /* ===== Sheets / dialogs / toast ===== */
 .backdrop{position:fixed;inset:0;z-index:50;background:var(--scrim);display:flex;align-items:flex-end;justify-content:center;animation:fade .18s ease-out}
 .sheet{background:var(--cream);width:100%;max-width:660px;height:calc(100% - 28px - env(safe-area-inset-top,0px));border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -10px 30px rgba(0,0,0,.15);animation:up .24s cubic-bezier(.2,.8,.2,1)}
@@ -248,7 +310,7 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .sheet-b{flex:1;overflow:auto;padding:20px max(20px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:18px;overscroll-behavior:contain}
 .sheet-b>*{flex-shrink:0}
 .sheet-f{flex:none;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--cream) 90%,transparent);border-top:1px solid var(--line)}
-@media (min-width:900px){
+@media (min-width:768px){
   .backdrop{align-items:center}
   .sheet{border-radius:22px;height:auto;max-height:88vh}
   .sheet .sheet-b{min-height:200px}
@@ -263,7 +325,7 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .dialog .opt+.opt{border-top:1px solid var(--line)}
 .dialog .opt.danger{color:var(--danger)}
 .dialog .cancel{background:#fff;border-radius:16px;min-height:56px;font-size:17px;font-weight:900;color:var(--blue-deep);text-align:center;width:100%}
-@media (min-width:900px){.dialog-wrap{align-items:center}}
+@media (min-width:768px){.dialog-wrap{align-items:center}}
 .toast{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:10px;color:#fff;padding:14px 18px;border-radius:999px;font-weight:800;font-size:14px;box-shadow:0 6px 14px rgba(0,0,0,.18);width:max-content;max-width:min(520px,calc(100% - 32px));animation:drop .25s cubic-bezier(.2,.8,.2,1)}
 .toast.t-success{background:var(--green-deep)}.toast.t-failure{background:var(--danger);border-radius:20px}.toast.t-info{background:var(--ink)}
 @keyframes fade{from{opacity:0}}
@@ -2577,7 +2639,12 @@ var qrcode = function() {
 }));
 </script>
 <script>
-const ICONS={"house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />", "shopping-bag": "<path d=\"M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z\" /> <path d=\"M3 6h18\" /> <path d=\"M16 10a4 4 0 0 1-8 0\" />", "package": "<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /> <path d=\"M12 22V12\" /> <path d=\"m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7\" /> <path d=\"m7.5 4.27 9 5.15\" />", "calendar-clock": "<path d=\"M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5\" /> <path d=\"M16 2v4\" /> <path d=\"M8 2v4\" /> <path d=\"M3 10h5\" /> <path d=\"M17.5 17.5 16 16.3V14\" /> <circle cx=\"16\" cy=\"16\" r=\"6\" />", "shirt": "<path d=\"M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z\" />", "badge-check": "<path d=\"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z\" /> <path d=\"m9 12 2 2 4-4\" />", "circle-ellipsis": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M17 12h.01\" /> <path d=\"M12 12h.01\" /> <path d=\"M7 12h.01\" />", "chart-column": "<path d=\"M3 3v16a2 2 0 0 0 2 2h16\" /> <path d=\"M18 17V9\" /> <path d=\"M13 17V5\" /> <path d=\"M8 17v-3\" />", "heart": "<path d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\" />", "clipboard-list": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "chevron-up": "<path d=\"m18 15-6-6-6 6\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "minus": "<path d=\"M5 12h14\" />", "circle-plus": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M8 12h8\" /> <path d=\"M12 8v8\" />", "circle-minus": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M8 12h8\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "calendar": "<path d=\"M8 2v4\" /> <path d=\"M16 2v4\" /> <rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\" /> <path d=\"M3 10h18\" />", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M12 2v2\" /> <path d=\"M12 20v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"m17.66 17.66 1.41 1.41\" /> <path d=\"M2 12h2\" /> <path d=\"M20 12h2\" /> <path d=\"m6.34 17.66-1.41 1.41\" /> <path d=\"m19.07 4.93-1.41 1.41\" />", "building-2": "<path d=\"M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z\" /> <path d=\"M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2\" /> <path d=\"M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2\" /> <path d=\"M10 6h4\" /> <path d=\"M10 10h4\" /> <path d=\"M10 14h4\" /> <path d=\"M10 18h4\" />", "circle-user-round": "<path d=\"M18 20a6 6 0 0 0-12 0\" /> <circle cx=\"12\" cy=\"10\" r=\"4\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />", "phone": "<path d=\"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z\" />", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\" /> <path d=\"m14.5 12.5 2-2\" /> <path d=\"m11.5 9.5 2-2\" /> <path d=\"m8.5 6.5 2-2\" /> <path d=\"m17.5 15.5 2-2\" />", "archive": "<rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\" /> <path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8\" /> <path d=\"M10 12h4\" />", "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />", "palette": "<circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\" /> <path d=\"M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z\" />", "book": "<path d=\"M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20\" />", "sparkles": "<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\" /> <path d=\"M20 3v4\" /> <path d=\"M22 5h-4\" /> <path d=\"M4 17v2\" /> <path d=\"M5 18H3\" />", "banknote": "<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /> <circle cx=\"12\" cy=\"12\" r=\"2\" /> <path d=\"M6 12h.01M18 12h.01\" />", "arrow-left-right": "<path d=\"M8 3 4 7l4 4\" /> <path d=\"M4 7h16\" /> <path d=\"m16 21 4-4-4-4\" /> <path d=\"M20 17H4\" />", "qr-code": "<rect width=\"5\" height=\"5\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"5\" height=\"5\" x=\"16\" y=\"3\" rx=\"1\" /> <rect width=\"5\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" /> <path d=\"M21 16h-3a2 2 0 0 0-2 2v3\" /> <path d=\"M21 21v.01\" /> <path d=\"M12 7v3a2 2 0 0 1-2 2H7\" /> <path d=\"M3 12h.01\" /> <path d=\"M12 3h.01\" /> <path d=\"M12 16v.01\" /> <path d=\"M16 12h1\" /> <path d=\"M21 12v.01\" /> <path d=\"M12 21v-1\" />", "file-text": "<path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\" /> <path d=\"M14 2v4a2 2 0 0 0 2 2h4\" /> <path d=\"M10 9H8\" /> <path d=\"M16 13H8\" /> <path d=\"M16 17H8\" />", "clipboard": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" />", "aperture": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m14.31 8 5.74 9.94\" /> <path d=\"M9.69 8h11.48\" /> <path d=\"m7.38 12 5.74-9.94\" /> <path d=\"M9.69 16 3.95 6.06\" /> <path d=\"M14.31 16H2.83\" /> <path d=\"m16.62 12-5.74 9.94\" />", "sofa": "<path d=\"M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3\" /> <path d=\"M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z\" /> <path d=\"M4 18v2\" /> <path d=\"M20 18v2\" /> <path d=\"M12 4v9\" />", "trash-2": "<path d=\"M3 6h18\" /> <path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\" /> <path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2\" /> <line x1=\"10\" x2=\"10\" y1=\"11\" y2=\"17\" /> <line x1=\"14\" x2=\"14\" y1=\"11\" y2=\"17\" />", "circle-pause": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"10\" x2=\"10\" y1=\"15\" y2=\"9\" /> <line x1=\"14\" x2=\"14\" y1=\"15\" y2=\"9\" />", "circle-play": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <polygon points=\"10 8 16 12 10 16 10 8\" />", "rotate-ccw": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\" /> <path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m9 12 2 2 4-4\" />", "circle-x": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m15 9-6 6\" /> <path d=\"m9 9 6 6\" />", "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />", "search": "<circle cx=\"11\" cy=\"11\" r=\"8\" /> <path d=\"m21 21-4.3-4.3\" />", "log-out": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" /> <polyline points=\"16 17 21 12 16 7\" /> <line x1=\"21\" x2=\"9\" y1=\"12\" y2=\"12\" />", "message-square-text": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\" /> <path d=\"M13 8H7\" /> <path d=\"M17 12H7\" />", "credit-card": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /> <line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" />", "inbox": "<polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\" /> <path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" />", "heart-off": "<line x1=\"2\" y1=\"2\" x2=\"22\" y2=\"22\" /> <path d=\"M16.5 16.5 12 21l-7-7c-1.5-1.45-3-3.2-3-5.5a5.5 5.5 0 0 1 2.14-4.35\" /> <path d=\"M8.76 3.1c1.15.22 2.13.78 3.24 1.9 1.5-1.5 2.74-2 4.5-2A5.5 5.5 0 0 1 22 8.5c0 2.12-1.3 3.78-2.67 5.17\" />", "bandage": "<path d=\"M10 10.01h.01\" /> <path d=\"M10 14.01h.01\" /> <path d=\"M14 10.01h.01\" /> <path d=\"M14 14.01h.01\" /> <path d=\"M18 6v11.5\" /> <path d=\"M6 6v12\" /> <rect x=\"2\" y=\"6\" width=\"20\" height=\"12\" rx=\"2\" />", "puzzle": "<path d=\"M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z\" />", "square": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" />", "square-check": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"m9 12 2 2 4-4\" />", "arrow-right": "<path d=\"M5 12h14\" /> <path d=\"m12 5 7 7-7 7\" />", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />", "user-round": "<circle cx=\"12\" cy=\"8\" r=\"5\" /> <path d=\"M20 21a8 8 0 0 0-16 0\" />", "arrow-up-right": "<path d=\"M7 7h10v10\" /> <path d=\"M7 17 17 7\" />"};
+const ICONS={"house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />", "shopping-bag": "<path d=\"M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z\" /> <path d=\"M3 6h18\" /> <path d=\"M16 10a4 4 0 0 1-8 0\" />", "package": "<path d=\"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z\" /> <path d=\"M12 22V12\" /> <path d=\"m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7\" /> <path d=\"m7.5 4.27 9 5.15\" />", "calendar-clock": "<path d=\"M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5\" /> <path d=\"M16 2v4\" /> <path d=\"M8 2v4\" /> <path d=\"M3 10h5\" /> <path d=\"M17.5 17.5 16 16.3V14\" /> <circle cx=\"16\" cy=\"16\" r=\"6\" />", "shirt": "<path d=\"M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z\" />", "badge-check": "<path d=\"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z\" /> <path d=\"m9 12 2 2 4-4\" />", "circle-ellipsis": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M17 12h.01\" /> <path d=\"M12 12h.01\" /> <path d=\"M7 12h.01\" />", "chart-column": "<path d=\"M3 3v16a2 2 0 0 0 2 2h16\" /> <path d=\"M18 17V9\" /> <path d=\"M13 17V5\" /> <path d=\"M8 17v-3\" />", "heart": "<path d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\" />", "clipboard-list": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"M12 11h4\" /> <path d=\"M12 16h4\" /> <path d=\"M8 11h.01\" /> <path d=\"M8 16h.01\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "chevron-up": "<path d=\"m18 15-6-6-6 6\" />", "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />", "minus": "<path d=\"M5 12h14\" />", "circle-plus": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M8 12h8\" /> <path d=\"M12 8v8\" />", "circle-minus": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M8 12h8\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "calendar": "<path d=\"M8 2v4\" /> <path d=\"M16 2v4\" /> <rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\" /> <path d=\"M3 10h18\" />", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /> <path d=\"M12 2v2\" /> <path d=\"M12 20v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"m17.66 17.66 1.41 1.41\" /> <path d=\"M2 12h2\" /> <path d=\"M20 12h2\" /> <path d=\"m6.34 17.66-1.41 1.41\" /> <path d=\"m19.07 4.93-1.41 1.41\" />", "building-2": "<path d=\"M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z\" /> <path d=\"M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2\" /> <path d=\"M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2\" /> <path d=\"M10 6h4\" /> <path d=\"M10 10h4\" /> <path d=\"M10 14h4\" /> <path d=\"M10 18h4\" />", "circle-user-round": "<path d=\"M18 20a6 6 0 0 0-12 0\" /> <circle cx=\"12\" cy=\"10\" r=\"4\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />", "phone": "<path d=\"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z\" />", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\" /> <path d=\"m14.5 12.5 2-2\" /> <path d=\"m11.5 9.5 2-2\" /> <path d=\"m8.5 6.5 2-2\" /> <path d=\"m17.5 15.5 2-2\" />", "archive": "<rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\" /> <path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8\" /> <path d=\"M10 12h4\" />", "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />", "palette": "<circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\" /> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\" /> <path d=\"M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z\" />", "book": "<path d=\"M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20\" />", "sparkles": "<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\" /> <path d=\"M20 3v4\" /> <path d=\"M22 5h-4\" /> <path d=\"M4 17v2\" /> <path d=\"M5 18H3\" />", "banknote": "<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /> <circle cx=\"12\" cy=\"12\" r=\"2\" /> <path d=\"M6 12h.01M18 12h.01\" />", "arrow-left-right": "<path d=\"M8 3 4 7l4 4\" /> <path d=\"M4 7h16\" /> <path d=\"m16 21 4-4-4-4\" /> <path d=\"M20 17H4\" />", "qr-code": "<rect width=\"5\" height=\"5\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"5\" height=\"5\" x=\"16\" y=\"3\" rx=\"1\" /> <rect width=\"5\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" /> <path d=\"M21 16h-3a2 2 0 0 0-2 2v3\" /> <path d=\"M21 21v.01\" /> <path d=\"M12 7v3a2 2 0 0 1-2 2H7\" /> <path d=\"M3 12h.01\" /> <path d=\"M12 3h.01\" /> <path d=\"M12 16v.01\" /> <path d=\"M16 12h1\" /> <path d=\"M21 12v.01\" /> <path d=\"M12 21v-1\" />", "file-text": "<path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\" /> <path d=\"M14 2v4a2 2 0 0 0 2 2h4\" /> <path d=\"M10 9H8\" /> <path d=\"M16 13H8\" /> <path d=\"M16 17H8\" />", "clipboard": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" />", "aperture": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m14.31 8 5.74 9.94\" /> <path d=\"M9.69 8h11.48\" /> <path d=\"m7.38 12 5.74-9.94\" /> <path d=\"M9.69 16 3.95 6.06\" /> <path d=\"M14.31 16H2.83\" /> <path d=\"m16.62 12-5.74 9.94\" />", "sofa": "<path d=\"M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3\" /> <path d=\"M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z\" /> <path d=\"M4 18v2\" /> <path d=\"M20 18v2\" /> <path d=\"M12 4v9\" />", "trash-2": "<path d=\"M3 6h18\" /> <path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\" /> <path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2\" /> <line x1=\"10\" x2=\"10\" y1=\"11\" y2=\"17\" /> <line x1=\"14\" x2=\"14\" y1=\"11\" y2=\"17\" />", "circle-pause": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"10\" x2=\"10\" y1=\"15\" y2=\"9\" /> <line x1=\"14\" x2=\"14\" y1=\"15\" y2=\"9\" />", "circle-play": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <polygon points=\"10 8 16 12 10 16 10 8\" />", "rotate-ccw": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" />", "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\" /> <path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\" />", "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m9 12 2 2 4-4\" />", "circle-x": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m15 9-6 6\" /> <path d=\"m9 9 6 6\" />", "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />", "search": "<circle cx=\"11\" cy=\"11\" r=\"8\" /> <path d=\"m21 21-4.3-4.3\" />", "log-out": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" /> <polyline points=\"16 17 21 12 16 7\" /> <line x1=\"21\" x2=\"9\" y1=\"12\" y2=\"12\" />", "message-square-text": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\" /> <path d=\"M13 8H7\" /> <path d=\"M17 12H7\" />", "credit-card": "<rect width=\"20\" height=\"14\" x=\"2\" y=\"5\" rx=\"2\" /> <line x1=\"2\" x2=\"22\" y1=\"10\" y2=\"10\" />", "inbox": "<polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\" /> <path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\" />", "heart-off": "<line x1=\"2\" y1=\"2\" x2=\"22\" y2=\"22\" /> <path d=\"M16.5 16.5 12 21l-7-7c-1.5-1.45-3-3.2-3-5.5a5.5 5.5 0 0 1 2.14-4.35\" /> <path d=\"M8.76 3.1c1.15.22 2.13.78 3.24 1.9 1.5-1.5 2.74-2 4.5-2A5.5 5.5 0 0 1 22 8.5c0 2.12-1.3 3.78-2.67 5.17\" />", "bandage": "<path d=\"M10 10.01h.01\" /> <path d=\"M10 14.01h.01\" /> <path d=\"M14 10.01h.01\" /> <path d=\"M14 14.01h.01\" /> <path d=\"M18 6v11.5\" /> <path d=\"M6 6v12\" /> <rect x=\"2\" y=\"6\" width=\"20\" height=\"12\" rx=\"2\" />", "puzzle": "<path d=\"M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z\" />", "square": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" />", "square-check": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"m9 12 2 2 4-4\" />", "arrow-right": "<path d=\"M5 12h14\" /> <path d=\"m12 5 7 7-7 7\" />", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />", "user-round": "<circle cx=\"12\" cy=\"8\" r=\"5\" /> <path d=\"M20 21a8 8 0 0 0-16 0\" />", "arrow-up-right": "<path d=\"M7 7h10v10\" /> <path d=\"M7 17 17 7\" />", "panel-right": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M15 3v18\" />", "panel-right-close": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M15 3v18\" /> <path d=\"m8 9 3 3-3 3\" />", "panel-right-open": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M15 3v18\" /> <path d=\"m10 15-3-3 3-3\" />", "panel-left-close": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M9 3v18\" /> <path d=\"m16 15-3-3 3-3\" />", "panel-left-open": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M9 3v18\" /> <path d=\"m14 9 3 3-3 3\" />"};
+// ================= 模擬裝置 =================
+// 沒有 ?device= 時是「選裝置」的外框頁；有的話（iphone／ipad／ipad-portrait／full）才是 App 本體
+const DEVICE = new URLSearchParams(location.search).get('device');
+const HOST_MODE = !DEVICE;
+
 // ================= 共用小工具 =================
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = n => String(n).padStart(2, '0');
@@ -2916,6 +2983,7 @@ function lend(ids, renter, start, due, details, user) {
   if (!name) fail('請填寫借用人姓名。');
   if (start < today()) fail('借用日期不能早於今天。');
   if (due < start) fail('歸還日期不能早於借用日期。');
+  if (start > latestBookable()) fail(`只能預約 ${BOOKING_WINDOW_MONTHS} 個月內的日期。`);
   for (const id of ids) {
     const c = costumeByID(id); if (!c) fail('找不到這套服裝，請重新整理後再試。');
     if (c.suspended) fail(`${costumeDisplay(c)} 暫停借用，請先確認整理完成並恢復可借用。`);
@@ -2955,12 +3023,27 @@ function resumeLending(cid, user) {
   c.suspended = false; c.suspendReason = null;
 }
 
+// 可以預約多久以後：服裝、場地都只能預約今天起 3 個月內（2026-10-22）
+const BOOKING_WINDOW_MONTHS = 3;
+function latestBookable() { const d = dayDate(today()); d.setMonth(d.getMonth() + BOOKING_WINDOW_MONTHS); return dayKey(d); }
+/** 這幾套服裝已經被借走或預約的日子（任何一套沒空就算沒空），日曆用來反灰 */
+function occupiedDayKeys(ids) {
+  const out = new Set();
+  for (const l of S.loans) {
+    if (!ids.includes(l.costumeID)) continue;
+    const r = occupied(l); if (!r) continue;
+    for (let d = r[0]; d <= r[1]; d = addDays(d, 1)) out.add(d);
+  }
+  return out;
+}
+
 // ================= 場地規則（照 Venues.swift） =================
 const venueBooking = id => S.venues.find(b => b.id === id);
 const dayBookings = (day, venue) => S.venues.filter(b => vActive(b) && b.day === day && (!venue || b.venue === venue)).sort((a, b) => cmp(a.venue, b.venue) || a.startHour - b.startHour);
 const overlaps = (b, s, e) => b.startHour < e && s < b.endHour;
 const bookingAt = (hour, day, venue) => dayBookings(day, venue).find(b => overlaps(b, hour, hour + 1));
 function slotPast(hour, day) { const t = today(); if (day < t) return true; if (day > t) return false; return hour <= new Date().getHours(); }
+const bookedVenueDays = venue => new Set(S.venues.filter(b => vActive(b) && b.venue === venue).map(b => b.day));
 const venueFree = (venue, day, s, e) => !dayBookings(day, venue).some(b => overlaps(b, s, e));
 const visibleBookings = u => (u.role === 'company' ? S.venues : S.venues.filter(b => b.coserID === u.coserID)).slice().sort((a, b) => cmp(b.day, a.day) || b.startHour - a.startHour);
 function bookingEnded(b) { const t = today(); if (b.day !== t) return b.day < t; return new Date().getHours() >= b.endHour; }
@@ -2970,6 +3053,7 @@ function bookVenue(venue, day, s, e, note, user) {
   if (!(s < e)) fail('請選開始和結束的時間，結束要晚於開始。');
   if (s < OPEN_HOUR || e > CLOSE_HOUR) fail(`只能預約 ${clock(OPEN_HOUR)}–${clock(CLOSE_HOUR)} 之間。`);
   if (slotPast(s, day)) fail('這個時間已經過了，請選之後的時段。');
+  if (day > latestBookable()) fail(`只能預約 ${BOOKING_WINDOW_MONTHS} 個月內的日期。`);
   const clash = dayBookings(day, venue).find(b => overlaps(b, s, e));
   if (clash) fail(`${VENUES[venue].label} ${vTime(clash)} 已經有人預約了，請換時段或換場地。`);
   const n = S.venues.filter(b => b.day === day).length + 1;
@@ -3161,6 +3245,8 @@ const U = {
   cart: [], cartMember: '', cartDebtor: '', homeCoserID: null,
   costumeFilter: 'all', locationFilter: null, costumeSearch: '', recordsKind: 'costume', recordsTab: 'active', recordsSearch: '',
   venueDay: null, showPast: false, themeFilter: null, memberSearch: '',
+  // 寬螢幕：進記帳時左邊選單自動收起（2026-10-22）
+  sideCollapsed: false,
   login: { account: '', password: '', error: null }
 };
 const FB = { db: null, items: [] };
@@ -3171,7 +3257,7 @@ const isToday = () => selDay() === today();
 function selectDay(d) { const t = today(); const x = d > t ? t : d; U.pickedDay = x === t ? null : x; }
 const relDay = d => d === today() ? '今天' : d === addDays(today(), -1) ? '昨天' : dayText(d);
 const memberCardOn = () => !isCompany() && isMemberCardOn(U.user?.coserID);
-const isWide = () => window.matchMedia('(min-width: 900px)').matches;
+const isWide = () => window.matchMedia('(min-width: 768px)').matches;
 const cartCount = () => U.cart.reduce((n, i) => n + i.quantity, 0);
 const qtyInCart = id => U.cart.find(i => i.productID === id)?.quantity ?? 0;
 
@@ -3271,6 +3357,25 @@ function monthGrid(month, selected, min, max, pickAct, navAct) {
   return `<div class="cal card p10"><div class="cal-h"><button class="icon-btn"${act(navAct, -1)}${prevDis ? ' disabled' : ''} aria-label="上個月">${icon('chevron-left', 20, 3)}</button><span>${y}年${m}月</span><button class="icon-btn"${act(navAct, 1)}${nextDis ? ' disabled' : ''} aria-label="下個月">${icon('chevron-right', 20, 3)}</button></div><div class="cal-g">${cells}</div></div>`;
 }
 
+/** 預約用月曆：被借走的日子反灰加刪除線、選的區間標粉紅、有預約的日子加藍點 */
+function calGrid({ month, min, max, picked = [], range = null, blocked = null, dots = null, pick, nav, idPrefix = 'calday' }) {
+  const [y, m] = month.split('-').map(Number);
+  const startW = new Date(y, m - 1, 1).getDay(); const daysIn = new Date(y, m, 0).getDate(); const t = today();
+  let cells = WD_SHORT.map(w => `<span class="wd">${w}</span>`).join('') + '<span></span>'.repeat(startW);
+  for (let d = 1; d <= daysIn; d++) {
+    const k = `${y}-${pad(m)}-${pad(d)}`;
+    const out = (min && k < min) || (max && k > max);
+    const isBlocked = !out && blocked && blocked.has(k);
+    const on = picked.includes(k);
+    const inRange = !on && range && range[0] && range[1] && k > range[0] && k < range[1];
+    const cls = [on ? 'on' : '', k === t ? 'today' : '', isBlocked ? 'blocked' : '', inRange ? 'inrange' : ''].filter(Boolean).join(' ');
+    const label = `${dayText(k)}${isBlocked ? '，已經被借走' : ''}${dots && dots.has(k) ? '，有人預約' : ''}`;
+    cells += `<button id="${idPrefix}-${k}" class="${cls}"${act(pick, k)}${out || isBlocked ? ' disabled' : ''} aria-label="${esc(label)}" aria-pressed="${on}"><span>${d}</span>${dots && dots.has(k) ? '<i class="dot"></i>' : ''}</button>`;
+  }
+  const prevDis = min && month <= min.slice(0, 7), nextDis = max && month >= max.slice(0, 7);
+  return `<div class="cal card p10"><div class="cal-h"><button class="icon-btn"${act(nav, -1)}${prevDis ? ' disabled' : ''} aria-label="上個月">${icon('chevron-left', 20, 3)}</button><span>${y}年${m}月</span><button class="icon-btn"${act(nav, 1)}${nextDis ? ' disabled' : ''} aria-label="下個月">${icon('chevron-right', 20, 3)}</button></div><div class="cal-g">${cells}</div></div>`;
+}
+
 function saleRow(s, showDay = false) {
   const pm = PAY[s.payment]; const parts = [];
   if (showDay) { let t = dayText(s.day); const l = dayInfo(s.day)?.label; if (l) t += ' ' + l; parts.push(t); }
@@ -3347,9 +3452,6 @@ function sidebar() {
       h += `<button class="side-item${U.section === s ? ' on' : ''}"${act('tab', s)}><span style="color:var(--pink)">${icon(SEC_ICON[s], 22)}</span>${esc(secTitle(s))}${b ? `<span class="bdg">${b}</span>` : ''}</button>`;
     }
   }
-  if (!isCompany()) {
-    h += `<div class="side-group">快速動作</div><button class="side-item" style="color:var(--pink)"${act('openLend')}>${icon('shirt', 22)}預約服裝</button><button class="side-item" style="color:var(--blue-deep)"${act('openVenue')}>${icon('aperture', 22)}預約場地</button>`;
-  }
   const initial = isCompany() ? '公' : (coser(u.coserID)?.initial ?? 'C');
   h += `<div class="side-foot"><span class="avatar" style="width:38px;height:38px;border-radius:12px;background:var(--pink);color:#fff;font-size:17px">${esc(initial)}</span><div class="grow"><div class="heavy sub ellip">${esc(u.displayName)}</div><div class="cap soft">${isCompany() ? '公司' : 'Coser'}帳號</div></div></div></aside>`;
   return h;
@@ -3392,7 +3494,8 @@ function viewShell() {
   const wide = isWide(); const c = currentContent();
   const back = U.stack.length ? `<button class="back-btn"${act('back')}>${icon('chevron-left', 24, 3)}<span class="ellip" style="max-width:110px">${esc(c.backLabel)}</span></button>` : '';
   const fb = FB.db ? `<button class="icon-btn"${act('openFeedback')} aria-label="意見回饋" title="意見回饋">${icon('message-square-text', 22)}</button>` : '';
-  return `<div class="shell ${wide ? 'wide' : 'narrow'}">${wide ? sidebar() : ''}<div class="main"><header class="topbar"><div class="topbar-in">${back}<h1>${esc(c.title)}</h1>${c.right || ''}${fb}</div></header><main class="page ${c.cls || ''}" id="pg-${esc(c.key)}">${c.html}</main></div></div>${wide ? '' : tabbar()}${c.after || ''}`;
+  const sideBtn = wide ? `<button class="icon-btn"${act('toggleSide')} aria-label="${U.sideCollapsed ? '顯示側邊欄' : '收起側邊欄'}" title="${U.sideCollapsed ? '顯示側邊欄' : '收起側邊欄'}">${icon(U.sideCollapsed ? 'panel-left-open' : 'panel-left-close', 22)}</button>` : '';
+  return `<div class="shell ${wide ? 'wide' : 'narrow'}">${wide && !U.sideCollapsed ? sidebar() : ''}<div class="main"><header class="topbar"><div class="topbar-in">${sideBtn}${back}<h1>${esc(c.title)}</h1>${c.right || ''}${fb}</div></header><main class="page ${c.cls || ''}" id="pg-${esc(c.key)}">${c.html}</main></div></div>${wide ? '' : tabbar()}${c.after || ''}`;
 }
 
 // ================= 公司首頁 =================
@@ -3470,38 +3573,45 @@ const activeCheckoutCoser = () => (U.user && U.user.role !== 'company') ? U.user
 function viewCheckout() {
   const u = U.user, cid = activeCheckoutCoser();
   const themes = cid ? visibleThemes(u).filter(t => t.coserID === cid) : [];
-  let body;
-  if (!themes.length) {
-    body = card(`<div class="stack center" style="padding:20px 0;gap:10px"><span style="color:var(--pink-light)">${icon('shopping-bag', 44)}</span><b style="font-size:18px">還沒有商品</b><span class="sub soft">先到「商品」新增你的寫真集或周邊，就可以在這裡記帳。</span><button class="cbtn"${act('tab', 'inventory')}>去新增商品</button></div>`);
-  } else {
-    const chips = themes.length > 1 ? `<div class="hscroll">${chip('全部', U.themeFilter == null, 'themeFilter', '')}${themes.map(t => seriesChip(t, U.themeFilter === t.id, 'themeFilter', t.id)).join('')}</div>` : '';
-    body = chips + themes.filter(t => U.themeFilter == null || t.id === U.themeFilter).map(t => {
-      const all = sellableIn(t.id);
-      const inner = ['photobook', 'goods'].map(k => { const list = all.filter(p => p.kind === k); return list.length ? kindLabel(k) + list.map(checkoutRow).join('') : ''; }).join('');
-      return `<section class="series" style="${tintVars(t.tintHex)}">${seriesHeader(t)}<div class="series-b">${inner || '<div class="sub soft" style="padding:10px 0">這個系列還沒有商品</div>'}</div></section>`;
-    }).join('');
-  }
-  const left = `<div class="stack g16" style="min-width:0">${dayPicker('記帳日期')}${testNotice()}${body}</div>`;
-  if (isWide()) return { title: secTitle('checkout'), html: `<div class="checkout-grid">${left}${cartPanel()}</div>` };
+  // 同系列排在一起，系列裡先寫真集、再周邊；停售的不顯示
+  const items = themes.flatMap(t => ['photobook', 'goods'].flatMap(k => sellableIn(t.id, k).map(p => ({ p, t }))));
+  const body = items.length ? `<div class="tile-grid">${items.map(({ p, t }) => productTile(p, t)).join('')}</div>`
+    : card(`<div class="stack center" style="padding:20px 0;gap:10px"><span style="color:var(--pink-light)">${icon('shopping-bag', 44)}</span><b style="font-size:18px">還沒有商品</b><span class="sub soft">先到「商品」新增你的寫真集或周邊，就可以在這裡記帳。</span><button class="cbtn"${act('tab', 'inventory')}>去新增商品</button></div>`);
+  const left = `<div class="stack g8" style="min-width:0">${compactDay()}${testNotice()}${body}</div>`;
+  // 寬螢幕：購物車空的時候不顯示，加入商品後才出現
+  // 外層固定不變，購物車出現時才放進右欄；格子用 FLIP 動畫平順地從 6 欄變 4 欄
+  // 收款畫面開著時購物車先留著，關掉後才滑出去，看得到格子放大回 6 欄
+  const showCart = U.cart.length > 0 || U.sheet?.type === 'payment';
+  if (isWide()) return { title: '記帳', cls: 'fullw', html: `<div class="checkout-grid${showCart ? '' : ' nocart'}" id="checkout-grid">${left}${showCart ? cartPanel() : ''}</div>` };
   const after = cartCount() > 0 ? `<div class="cartbar"><button class="btn primary"${act('openPayment')}><span class="n num">${cartCount()} 件</span><span class="num grow" style="text-align:left">${money(cartTotal(U.cart))}</span><span>前往收款</span>${icon('chevron-right', 20, 3)}</button></div>` : '';
-  return { title: secTitle('checkout'), html: left, after, cls: 'narrowcol' };
+  return { title: '記帳', html: left, after };
 }
-function checkoutRow(p) {
-  const qty = qtyInCart(p.id), sold = !p.digital && p.stock === 0, low = isLowStock(p);
-  const st = p.digital ? '電子檔' : sold ? '已售完' : p.stock != null ? (low ? `剩 ${p.stock} 件` : `庫存 ${p.stock}`) : '未盤點';
-  return `<div class="prow"><div class="grow"><div class="heavy sub" style="color:${p.priceTWD == null ? 'var(--ink-soft)' : 'var(--ink)'}">${esc(p.name)}</div><div class="cap" style="color:${sold || low ? 'var(--orange-deep)' : 'var(--ink-soft)'}">${st}</div></div>
-    ${p.priceTWD != null ? `<b class="sub num" style="color:var(--pink-deep);flex:none">${money(p.priceTWD)}</b>` : `<span class="cap bold soft" style="flex:none">未填售價</span>`}
-    ${qty > 0 ? `<button class="qbtn minus"${act('qty', p.id, -1)} aria-label="減少 ${esc(p.name)}">${icon('minus', 18, 3)}</button><b class="num" style="min-width:20px;text-align:center">${qty}</b>` : ''}
-    <button class="qbtn"${act('addCart', p.id)}${p.priceTWD == null || sold ? ' disabled' : ''} aria-label="加入 ${esc(p.name)}">${icon('plus', 20, 3)}</button></div>`;
+/** 一格商品：上面品名、下面深色條寫價格；點格子 +1，右上角數量圓點 -1 */
+function productTile(p, t) {
+  const qty = qtyInCart(p.id), sold = !p.digital && p.stock === 0, locked = p.priceTWD == null || sold;
+  const hex = locked ? 'CFC7BF' : t.tintHex, bar = shadeHex(hex);
+  const status = sold ? '已售完' : (isLowStock(p) && p.stock != null ? `剩 ${p.stock}` : '');
+  const price = p.priceTWD != null ? money(p.priceTWD) : '未填售價';
+  return `<div class="ptile-wrap" id="tile-${esc(p.id)}" data-flip="${esc(p.id)}"><button class="ptile${qty ? ' has' : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('addCart', p.id)}${locked ? ' disabled' : ''} aria-label="${esc([p.name, price, status].filter(Boolean).join('，'))}"><span class="pn">${esc(p.name)}</span><span class="pb">${status ? `<i>${status}</i>` : ''}<b>${price}</b></span></button>${qty ? `<button class="pbadge"${act('qty', p.id, -1)} aria-label="減少 1 件 ${esc(p.name)}，目前 ${qty} 件">${qty}</button>` : ''}</div>`;
+}
+function shadeHex(hex, f = 0.78) {
+  const v = parseInt(hex, 16); const c = x => Math.round(x * f).toString(16).padStart(2, '0');
+  return (c((v >> 16) & 255) + c((v >> 8) & 255) + c(v & 255)).toUpperCase();
+}
+/** 記帳畫面用的小日期列：只佔一行 */
+function compactDay() {
+  const d = selDay(), t = isToday(), label = dayInfo(d)?.label;
+  return `<div class="cday"><button class="carrow"${act('dayShift', -1)} aria-label="前一天">${icon('chevron-left', 18, 3)}</button><button class="cmid${t ? '' : ' past'}"${act('openCalendar')}><span style="color:var(--pink);display:flex">${icon('calendar', 18)}</span><b>${esc(t ? `今天・${dayText(d)}` : `補記 ${dayText(d)}`)}</b>${label ? `<span class="lbl">${esc(label)}</span>` : ''}<span class="soft" style="display:flex">${icon('chevron-down', 14, 3)}</span></button><button class="carrow"${act('dayShift', 1)} aria-label="後一天"${t ? ' disabled' : ''}>${icon('chevron-right', 18, 3)}</button>${t ? '' : `<button class="link" style="color:var(--orange-deep);flex:none"${act('dayToday')}>回到今天</button>`}</div>`;
 }
 function cartLines() {
   return U.cart.map(i => { const p = productByID(i.productID); if (!p) return ''; return `<div class="row" style="min-height:44px"><div class="grow"><div class="bold sub">${esc(p.name)}</div><div class="cap soft num">${money(p.priceTWD)}</div></div><button style="color:var(--ink-soft)"${act('qty', p.id, -1)} aria-label="減少 ${esc(p.name)}">${icon('circle-minus', 28)}</button><b class="num" style="min-width:24px;text-align:center">${i.quantity}</b><button style="color:var(--pink)"${act('addCart', p.id)} aria-label="增加 ${esc(p.name)}">${icon('circle-plus', 28)}</button></div>`; }).join('');
 }
 function cartPanel() {
-  return `<aside class="cart-panel"><div class="row"><b class="grow t-title">本次結帳</b>${U.cart.length ? `<button class="bold soft sub" style="min-height:36px"${act('askClearCart')}>清空</button>` : ''}</div>
+  return `<aside class="cart-panel" id="cart-panel"><div class="row g8"><b class="grow t-title">本次結帳</b>${U.cart.length ? `<button class="bold soft sub" style="min-height:36px"${act('askClearCart')}>清空</button>` : ''}</div>
     ${U.cart.length ? `<div class="stack g8">${cartLines()}</div>${HR}<div class="row"><span class="grow bold">合計</span><b class="num" style="font-size:24px;color:var(--pink-deep)">${money(cartTotal(U.cart))}</b></div>${btn('前往收款', 'openPayment', null, { ic: 'credit-card' })}`
-      : `<div class="stack center" style="padding:40px 0;gap:8px"><span style="color:var(--pink-light)">${icon('shopping-bag', 40)}</span><span class="sub soft">點商品右邊的「＋」加入</span></div>`}</aside>`;
+      : `<div class="stack center" style="padding:40px 0;gap:8px"><span style="color:var(--pink-light)">${icon('shopping-bag', 40)}</span><span class="sub soft">點商品格子加入</span></div>`}</aside>`;
 }
+
 
 // ================= 收銀對帳（公司） =================
 function viewReconcile() {
@@ -3785,53 +3895,67 @@ function sheetCash(sh) {
   return sheetFrame({ title, left: tb('取消', 'closeSheet'), body, cls: 'short' });
 }
 
-// ----- 預約服裝（3 步驟） -----
-function lendDates(sh) {
-  const t = today();
-  const start = sh.startOpt === 'today' ? t : sh.startOpt === 'tomorrow' ? addDays(t, 1) : maxS(t, sh.customStart);
-  const n = { threeDays: 3, oneWeek: 7, twoWeeks: 14 }[sh.lenOpt];
-  const due = n != null ? addDays(start, n) : maxS(start, sh.customDue);
-  return { start, due };
-}
+// ----- 預約服裝（3 步驟：先選服裝 → 日曆選日期 → 借用單，2026-10-22） -----
 function periodSummary(start, due) {
+  if (!start) return `<div class="sub soft">先在日曆上點借用日。</div>`;
+  if (!due) return `<div class="stack g8"><div class="row"><span class="grow sub soft">借用</span><b style="font-size:17px">${esc(dayText(start))}</b></div><div class="row"><span class="grow sub soft">歸還</span><b class="soft">再點歸還日（只借一天就再點同一天）</b></div></div>`;
   const res = diffDays(today(), start) > 0; const n = diffDays(start, due) + 1;
   return `<div class="stack g8"><div class="row"><span class="grow sub soft">借用</span><b style="font-size:17px">${esc(dayText(start))}</b></div><div class="row"><span class="grow sub soft">歸還</span><b style="font-size:17px;color:var(--pink-deep)">${esc(dayText(due))}</b></div><div class="cap bold" style="color:${res ? 'var(--blue-deep)' : 'var(--green-deep)'}">${res ? `共 ${n} 天・這是預約，到借用日才算借出` : `共 ${n} 天・今天就借出`}</div></div>`;
 }
 const md = k => { const d = dayDate(k); return `${d.getMonth() + 1}/${d.getDate()}`; };
+const LEND_FILTERS = [['all', '全部'], ['now', '現在可借'], ['later', '之後可借']];
+function lendFilterMatch(k, c) { const busy = !!activeLoan(c.id); return k === 'all' || (k === 'now' ? !busy && !c.suspended : busy); }
+/** 卡片第二行：現在的狀況，讓人知道什麼時候有空 */
+function availabilityText(c) {
+  const st = costumeStatus(c);
+  if (st === 'suspended') return '暫停借用・整理中';
+  if (st === 'onLoan' || st === 'overdue') { const l = activeLoan(c.id); return st === 'overdue' ? '逾期未還' : `借用中・${md(l.dueDay)} 還`; }
+  if (st === 'reserved') return `${md(upcomingLoans(c.id)[0].lentDay)} 起已預約`;
+  return infoLine(c);
+}
+/** 這段日子中間有沒有被借走：有的話說明是哪一套、哪幾天 */
+function lendClash(ids, start, due) {
+  for (const id of ids) {
+    const l = conflicting(id, start, due);
+    if (l) return `${costumeDisplay(costumeByID(id))} 在 ${md(l.lentDay)}～${md(l.dueDay)} 已經借給 ${l.renter.name}，請改選日期。`;
+  }
+  return null;
+}
 function sheetLend(sh) {
-  const { start, due } = lendDates(sh);
   const left = sh.step > 1 ? tb('上一步', 'lendBack') : tb('取消', 'closeSheet');
   const right = sh.step > 1 ? tb('取消', 'closeSheet') : '';
   if (sh.step === 1) {
-    const body = stepHeader(1, 3, '什麼時候借？', '借用日是今天就是直接借；選之後的日期就是預約。')
-      + `<div class="stack g8"><b style="font-size:17px">借用日</b><div class="row g8 wrap">${[['today', '今天'], ['tomorrow', '明天'], ['custom', '選日期']].map(([k, t]) => chip(t, sh.startOpt === k, 'lendStart', k)).join('')}</div>${sh.startOpt === 'custom' ? monthGrid(sh.startMonth, start, today(), null, 'lendStartPick', 'lendStartMonth') : ''}</div>`
-      + `<div class="stack g8"><b style="font-size:17px">借多久</b><div class="row g8 wrap">${[['threeDays', '借 3 天'], ['oneWeek', '借 1 週'], ['twoWeeks', '借 2 週'], ['custom', '選歸還日']].map(([k, t]) => chip(t, sh.lenOpt === k, 'lendLen', k)).join('')}</div>${sh.lenOpt === 'custom' ? monthGrid(sh.dueMonth, due, start, null, 'lendDuePick', 'lendDueMonth') : ''}</div>`
-      + card(periodSummary(start, due));
-    return sheetFrame({ title: '預約服裝', left, right, body, footer: btn('下一步：選服裝', 'lendNext'), cls: 'tall' });
-  }
-  if (sh.step === 2) {
     const kw = sh.search.trim().toLowerCase();
-    const all = availableCostumes(start, due);
-    const list = all.filter(c => !kw || [c.code, c.name, c.series, c.location || ''].some(x => x.toLowerCase().includes(kw)));
-    const unavailable = S.costumes.length - all.length;
-    const grid = list.length ? `<div class="costume-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">${list.map(c => { const on = sh.selected.includes(c.id); return `<button class="ccard${on ? ' on' : ''}"${act('lendToggle', c.id)} aria-pressed="${on}">${photo(c, { overlay: `<span class="corner-r" style="color:${on ? 'var(--pink)' : '#fff'};filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))">${icon(on ? 'circle-check' : 'circle-plus', 30, 2.4)}</span>` })}<span class="nm">${esc(costumeDisplay(c))}</span><span class="sb">${esc(infoLine(c))}</span></button>`; }).join('')}</div>`
-      : `<div class="stack center" style="gap:8px;padding:20px 0"><span class="soft">${icon('shirt', 40)}</span><b>${kw ? '找不到符合的服裝' : '這段時間沒有可以借的服裝'}</b><span class="sub soft">${kw ? '換個關鍵字試試。' : '換個日期試試。'}</span></div>`;
-    const body = stepHeader(2, 3, '借哪幾套？', `點一下選取，可以選好幾套。只列出 ${md(start)}～${md(due)} 可以借的服裝。`)
-      + `<div class="search">${icon('search', 18)}${inp('sheet.search', { ph: '搜尋編號、角色、作品或位置' })}</div>` + grid
-      + (unavailable > 0 ? `<div class="cap soft">另有 ${unavailable} 套這段時間已經有人借、或暫停借用，所以不在清單裡。</div>` : '');
-    return sheetFrame({ title: '預約服裝', left, right, body, footer: btn(sh.selected.length ? `下一步（已選 ${sh.selected.length} 套）` : '請先選服裝', 'lendNext', null, { dis: !sh.selected.length }), cls: 'tall' });
+    const list = S.costumes.filter(c => lendFilterMatch(sh.avail, c) && (!kw || [c.code, c.name, c.series, c.location || ''].some(x => x.toLowerCase().includes(kw))));
+    const grid = list.length ? `<div class="costume-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${list.map(c => {
+      const st = costumeStatus(c), on = sh.selected.includes(c.id), sus = st === 'suspended';
+      return `<button class="ccard${on ? ' on' : ''}"${act('lendToggle', c.id)}${sus ? ' disabled style="opacity:.55"' : ''} aria-pressed="${on}">${photo(c, { overlay: `<span class="corner">${statusBadge(st)}</span>${sus ? '' : `<span class="corner-r" style="color:${on ? 'var(--pink)' : '#fff'};filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))">${icon(on ? 'circle-check' : 'circle-plus', 30, 2.4)}</span>`}` })}<span class="nm">${esc(costumeDisplay(c))}</span><span class="sb" style="${st === 'overdue' ? 'color:var(--danger)' : ''}">${esc(availabilityText(c))}</span></button>`;
+    }).join('')}</div>` : `<div class="stack center" style="gap:8px;padding:20px 0"><span class="soft">${icon('shirt', 40)}</span><b>找不到符合的服裝</b><span class="sub soft">換個關鍵字，或改選「全部」。</span></div>`;
+    const body = stepHeader(1, 3, '借哪幾套？', '點一下選取，可以選好幾套。借用中的也能選，下一步會顯示哪些日子還空著。')
+      + `<div class="search">${icon('search', 18)}${inp('sheet.search', { ph: '搜尋編號、角色、作品或位置' })}</div>`
+      + `<div class="hscroll">${LEND_FILTERS.map(([k, t]) => chip(t, sh.avail === k, 'lendAvail', k, S.costumes.filter(c => lendFilterMatch(k, c)).length)).join('')}</div>` + grid;
+    return sheetFrame({ title: '預約服裝', left, right, body, footer: btn(sh.selected.length ? `下一步：選日期（已選 ${sh.selected.length} 套）` : '請先選服裝', 'lendNext', null, { dis: !sh.selected.length }), cls: 'tall' });
+  }
+  const sel = sh.selected.map(costumeByID).filter(Boolean);
+  const selBar = `<div class="stack g8" style="padding:10px;border-radius:14px;background:var(--pink-pale)"><span class="cap bold soft">要借 ${sel.length} 套</span><div class="hscroll">${sel.map(c => `<span class="row g8" style="padding:6px 12px 6px 6px;border-radius:999px;background:#fff;flex:none">${photo(c, { w: 32, r: 8, code: false })}<b class="sub">${esc(costumeDisplay(c))}</b></span>`).join('')}</div></div>`;
+  if (sh.step === 2) {
+    const latest = latestBookable();
+    const body = stepHeader(2, 3, '什麼時候借？', '先點借用日，再點歸還日（只借一天就再點同一天）。灰色的日子已經被借走了。') + selBar
+      + calGrid({ month: sh.month, min: today(), max: latest, picked: [sh.start, sh.due].filter(Boolean), range: [sh.start, sh.due], blocked: occupiedDayKeys(sh.selected), pick: 'lendPick', nav: 'lendMonth' })
+      + (sh.start ? `<div class="row g8 wrap">${[[3, '借 3 天'], [7, '借 1 週'], [14, '借 2 週']].map(([n, t]) => chip(t, !!sh.due && addDays(sh.start, n) === sh.due, 'lendLen', n)).join('')}</div>` : '')
+      + (sh.warning ? `<div class="row g8 bold sub" style="color:var(--danger);align-items:flex-start">${icon('triangle-alert', 18)}<span>${esc(sh.warning)}</span></div>` : '')
+      + card(periodSummary(sh.start, sh.due)) + `<div class="cap soft">只能預約 ${BOOKING_WINDOW_MONTHS} 個月內（${esc(dayText(latest))} 以前）。</div>`;
+    return sheetFrame({ title: '預約服裝', left, right, body, footer: btn(sh.due ? '下一步：填借用單' : (sh.start ? '再點歸還日' : '請先點借用日'), 'lendNext', null, { dis: !sh.start || !sh.due }), cls: 'tall' });
   }
   const recent = recentRenters(U.user);
-  const sel = sh.selected.map(costumeByID).filter(Boolean);
-  const name = sh.renterName.trim(); const res = diffDays(today(), start) > 0;
-  const body = stepHeader(3, 3, '填借用單', '借過的人點一下就能帶入。')
-    + `<div class="stack g8" style="padding:10px;border-radius:14px;background:var(--pink-pale)"><span class="cap bold soft">要借 ${sel.length} 套</span><div class="hscroll">${sel.map(c => `<span class="row g8" style="padding:6px 12px 6px 6px;border-radius:999px;background:#fff;flex:none">${photo(c, { w: 32, r: 8, code: false })}<b class="sub">${esc(costumeDisplay(c))}</b></span>`).join('')}</div></div>`
+  const name = sh.renterName.trim(); const res = diffDays(today(), sh.start) > 0;
+  const body = stepHeader(3, 3, '填借用單', '借過的人點一下就能帶入。') + selBar
     + (recent.length ? `<div class="stack g8"><span class="cap bold soft">最近的借用人</span><div class="hscroll">${recent.map((r, i) => chip(r.name, sh.renterName === r.name, 'lendRenter', i)).join('')}</div></div>` : '')
     + `<div class="field"><label for="f-sheet-renterName">借用人姓名（必填）</label>${inp('sheet.renterName', { ph: '例如 王小姐', cls: name ? '' : 'bad' })}</div>`
     + `<div class="field"><label for="f-sheet-renterPhone">聯絡方式（選填）</label>${inp('sheet.renterPhone', { ph: '電話、LINE 或 IG' })}</div>`
     + `<div class="field"><span class="flabel">借用用途</span><div class="row g8 wrap">${PURPOSES.map(p => chip(p, sh.purpose === p, 'lendPurpose', p)).join('')}</div></div>`
     + `<div class="field"><label for="f-sheet-event">活動名稱（選填）</label>${inp('sheet.event', { ph: '例如 FF45' })}</div>`
-    + card(`<b style="font-size:17px">請確認</b>${periodSummary(start, due)}${HR}${info('借用人', [name, sh.renterPhone.trim()].filter(Boolean).join('・'))}${info('服裝', `${sel.length} 套`)}`)
+    + card(`<b style="font-size:17px">請確認</b>${periodSummary(sh.start, sh.due)}${HR}${info('借用人', [name, sh.renterPhone.trim()].filter(Boolean).join('・'))}${info('服裝', `${sel.length} 套`)}`)
     + btn(res ? `確認預約 ${sel.length} 套` : `確認借用 ${sel.length} 套`, 'doLend', null, { ic: 'check', dis: !name || !sel.length });
   return sheetFrame({ title: '預約服裝', left, right, body, cls: 'tall' });
 }
@@ -3869,9 +3993,9 @@ function sheetVenue(sh) {
     const body = `<div class="success" style="padding-bottom:0"><span class="mark">${icon('check', 40, 3)}</span><div class="t-big" style="font-size:28px">預約成功</div></div>` + venueInfo(b);
     return sheetFrame({ title: '預約成功', body, footer: btn('完成', 'closeSheet', null, { ic: 'check' }) });
   }
-  const t = today();
-  const days = Array.from({ length: 14 }, (_, i) => addDays(t, i));
-  const dayChips = days.map(d => { const dd = dayDate(d); const title = d === t ? '今天' : d === addDays(t, 1) ? '明天' : WEEK[dd.getDay()]; return `<button class="daychip${sh.day === d ? ' on' : ''}"${act('vDay', d)} aria-pressed="${sh.day === d}"><span>${title}</span><b>${dd.getMonth() + 1}/${dd.getDate()}</b></button>`; }).join('');
+  // 日期用月曆（3 個月內），藍點＝選的場地那天已經有人預約（2026-10-22）
+  const dayCal = calGrid({ month: sh.month, min: today(), max: latestBookable(), picked: [sh.day], dots: bookedVenueDays(sh.venue), pick: 'vDay', nav: 'vMonth', idPrefix: 'venueDay' })
+    + `<div class="row g8 cap bold soft">${icon('calendar', 14)}${esc(dayText(sh.day))}・藍點是${VENUES[sh.venue].label}那天已經有人預約</div>`;
   const slots = [];
   for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
     const sel = sh.start != null && h >= sh.start && h < sh.end;
@@ -3879,7 +4003,7 @@ function sheetVenue(sh) {
     const state = sel ? 'sel' : past ? 'past' : taken ? 'taken' : 'free';
     slots.push(`<button class="slot${sel ? ' sel' : ''}"${act('vSlot', h)}${state === 'past' || state === 'taken' ? ' disabled' : ''} aria-pressed="${sel}"><b>${clock(h)}</b><span>${state === 'taken' ? '已被預約' : state === 'past' ? '已過' : `到 ${clock(h + 1)}`}</span></button>`);
   }
-  let body = stepHead(1, '哪一天？') + `<div class="hscroll">${dayChips}</div>`
+  let body = stepHead(1, '哪一天？') + dayCal
     + stepHead(2, '哪個場地？') + `<div class="venue-pick">${VENUE_KEYS.map(v => `<button class="${sh.venue === v ? 'on' : ''}"${act('vVenue', v)} aria-pressed="${sh.venue === v}">${icon(VENUES[v].icon, 26)}${VENUES[v].label}</button>`).join('')}</div>${VENUES[sh.venue].qr ? `<div class="row g8 cap bold soft">${icon('qr-code', 14)}工作室預約成功會給你一個 QR code。</div>` : ''}`
     + stepHead(3, '幾點到幾點？') + `<div class="cap bold soft">${sh.start == null ? '點開始的時段；要超過 1 小時，再點結束的那一格。灰色是已經有人預約或已經過了。' : '再點一格可以延長；點前面的格子會重新選。'}</div><div class="slots">${slots.join('')}</div>`;
   if (sh.start != null) body += card(`<b style="font-size:17px">請確認</b>${info('場地', VENUES[sh.venue].label)}${info('日期', dayText(sh.day))}${info('時間', `${clock(sh.start)}–${clock(sh.end)}（${sh.end - sh.start} 小時）`)}${inp('sheet.note', { ph: '備註（選填），例如 拍攝主題', cls: 'cream' })}`);
@@ -3970,13 +4094,82 @@ function perform(fn, success) {
   try { const r = fn(); if (success) show('success', typeof success === 'function' ? success(r) : success); return r ?? true; }
   catch (e) { if (e instanceof AppError) { show('failure', e.message); return false; } throw e; }
 }
+// ================= 模擬裝置外框（選 iPhone／iPad，App 放在裡面的畫面） =================
+const DEVICES = {
+  iphone: { label: 'iPhone', w: 393, h: 852, bezel: 14, radius: 56, status: 50, home: 22, note: 'iPhone 16（6.1 吋，393×852）' },
+  ipad: { label: 'iPad 橫放', w: 1180, h: 820, bezel: 22, radius: 38, status: 26, home: 14, note: 'iPad Air 11 吋橫放（1180×820）' },
+  'ipad-portrait': { label: 'iPad 直放', w: 820, h: 1180, bezel: 22, radius: 38, status: 26, home: 14, note: 'iPad Air 11 吋直放（820×1180）' }
+};
+function deviceURL(device) { const u = new URL(location.href); u.search = `?device=${device}`; u.hash = ''; return u.href; }
+function bootHost() {
+  document.body.classList.add('host');
+  let cur = null;
+  try { cur = localStorage.getItem('yv-device'); } catch (e) { /* 不能存就用預設 */ }
+  if (!DEVICES[cur]) cur = window.innerWidth >= 900 ? 'ipad' : 'iphone';
+  const app = document.getElementById('app');
+  app.innerHTML = `<div class="host-wrap">
+    <header class="host-bar"><div class="host-title"><b>Yumeverse 夢次元記帳</b><span>測試版・選擇要模擬的裝置</span></div>
+      <div class="seg host-seg" role="tablist" aria-label="模擬裝置">${Object.entries(DEVICES).map(([k, d]) => `<button role="tab" id="dev-${k}" data-dev="${k}">${d.label}</button>`).join('')}</div>
+      <button class="host-reset" id="host-reset" type="button">${icon('rotate-ccw', 16, 2.6)}清除測試狀態</button>
+      <a class="host-full" id="host-full" target="_blank" rel="noopener">${icon('arrow-up-right', 16, 2.6)}不用外框，全螢幕開啟</a></header>
+    <div class="host-stage" id="host-stage"><div class="device-box" id="device-box"><div class="device" id="device"><div class="screen"><div class="sbar" id="sbar"><b id="sbar-time"></b><span class="island" aria-hidden="true"></span><span class="sbar-r">●●●● 100%</span></div><iframe id="frame" title="App 畫面"></iframe><div class="homebar" id="homebar"><i></i></div></div></div></div></div>
+    <p class="host-note" id="host-note"></p></div>`;
+  const frame = document.getElementById('frame');
+  // 目前的登入、購物車與記帳資料：切換裝置時交給新的畫面（這個分頁關掉才清掉）
+  let hostState = null;
+  try { hostState = sessionStorage.getItem('yv-state'); } catch (e) { /* 不能存就只放記憶體 */ }
+  window.addEventListener('message', e => {
+    if (e.source !== frame.contentWindow || !e.data) return;
+    if (e.data.type === 'yv-hello') frame.contentWindow.postMessage({ type: 'yv-restore', state: hostState }, '*');
+    else if (e.data.type === 'yv-state' && typeof e.data.state === 'string') {
+      hostState = e.data.state;
+      try { sessionStorage.setItem('yv-state', hostState); } catch (err) { /* 只放記憶體 */ }
+    }
+  });
+  document.getElementById('host-reset').addEventListener('click', () => {
+    hostState = null;
+    try { sessionStorage.removeItem('yv-state'); } catch (e) { /* 沒存過 */ }
+    frame.src = deviceURL(cur);
+  });
+  function tick() { const d = new Date(); document.getElementById('sbar-time').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+  function fit() {
+    const d = DEVICES[cur]; const W = d.w + d.bezel * 2, H = d.h + d.bezel * 2;
+    const stage = document.getElementById('host-stage');
+    const availW = stage.clientWidth - 8;
+    const availH = Math.max(320, window.innerHeight - stage.getBoundingClientRect().top - 56);
+    const s = Math.min(1, availW / W, availH / H);
+    const box = document.getElementById('device-box');
+    box.style.width = `${W * s}px`; box.style.height = `${H * s}px`;
+    document.getElementById('device').style.transform = `scale(${s})`;
+    document.getElementById('host-note').textContent = `${d.note}・目前縮放 ${Math.round(s * 100)}%・切換裝置會保留目前的登入、購物車與記帳資料。`;
+  }
+  function select(k) {
+    cur = k; const d = DEVICES[k];
+    try { localStorage.setItem('yv-device', k); } catch (e) { /* 不能存就算了 */ }
+    for (const b of document.querySelectorAll('[data-dev]')) { const on = b.dataset.dev === k; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); }
+    const dev = document.getElementById('device');
+    dev.className = `device ${k.startsWith('ipad') ? 'is-ipad' : 'is-iphone'}`;
+    Object.assign(dev.style, { width: `${d.w + d.bezel * 2}px`, height: `${d.h + d.bezel * 2}px`, padding: `${d.bezel}px`, borderRadius: `${d.radius}px` });
+    dev.querySelector('.screen').style.borderRadius = `${d.radius - d.bezel}px`;
+    document.getElementById('sbar').style.height = `${d.status}px`;
+    document.getElementById('homebar').style.height = `${d.home}px`;
+    frame.style.height = `${d.h - d.status - d.home}px`;
+    frame.src = deviceURL(k);
+    document.getElementById('host-full').href = deviceURL('full');
+    fit();
+  }
+  document.querySelector('.host-seg').addEventListener('click', e => { const b = e.target.closest('[data-dev]'); if (b && b.dataset.dev !== cur) select(b.dataset.dev); });
+  window.addEventListener('resize', fit);
+  tick(); setInterval(tick, 30000);
+  select(cur);
+}
 // ================= 動作 =================
-function goSection(s) { U.section = s; U.stack = []; scrollTop(); }
+function goSection(s) { U.section = s; U.stack = []; U.sideCollapsed = s === 'checkout'; scrollTop(); }
 function push(entry) { U.stack.push(entry); scrollTop(); }
 let wantScrollTop = false;
 function scrollTop() { wantScrollTop = true; }
 function signIn(acc) {
-  U.user = { ...acc }; U.section = 'home'; U.stack = []; U.costumeFilter = 'all'; U.pickedDay = null;
+  U.user = { ...acc }; U.section = 'home'; U.stack = []; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
   U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null };
   resetData(U.dataset); scrollTop();
 }
@@ -4048,6 +4241,7 @@ const A = {
   // 首頁、結帳
   homeCoser(id) { U.homeCoserID = id || null; },
   themeFilter(id) { U.themeFilter = !id || U.themeFilter === id ? null : id; },
+  toggleSide() { U.sideCollapsed = !U.sideCollapsed; },
   addCart(id) { const p = productByID(id); if (p) addToCart(p); },
   qty(id, d) { changeQty(id, +d); },
   askClearCart() { ask('要清空購物車嗎？', null, [{ label: '清空', danger: true, run: resetCart }], '不要'); },
@@ -4078,26 +4272,37 @@ const A = {
 
   // 預約服裝
   openLend() {
-    const t = today();
-    U.sheet = { type: 'lend', step: 1, selected: [], search: '', startOpt: 'today', customStart: t, startMonth: t.slice(0, 7), lenOpt: 'oneWeek', customDue: addDays(t, 7), dueMonth: addDays(t, 7).slice(0, 7), renterName: U.user.displayName, renterPhone: '', purpose: '拍攝', event: '' };
+    U.sheet = { type: 'lend', step: 1, selected: [], search: '', avail: 'all', start: null, due: null, month: today().slice(0, 7), warning: null, renterName: U.user.displayName, renterPhone: '', purpose: '拍攝', event: '' };
   },
-  lendStart(o) { U.sheet.startOpt = o; },
-  lendStartPick(d) { U.sheet.customStart = d; },
-  lendStartMonth(n) { U.sheet.startMonth = shiftMonth(U.sheet.startMonth, +n); },
-  lendLen(o) { const sh = U.sheet; sh.lenOpt = o; if (o === 'custom') { const { start } = lendDates({ ...sh, lenOpt: 'oneWeek' }); if (sh.customDue < start) sh.customDue = addDays(start, 7); sh.dueMonth = sh.customDue.slice(0, 7); } },
-  lendDuePick(d) { U.sheet.customDue = d; },
-  lendDueMonth(n) { U.sheet.dueMonth = shiftMonth(U.sheet.dueMonth, +n); },
+  lendAvail(k) { U.sheet.avail = k; },
+  lendMonth(n) { U.sheet.month = shiftMonth(U.sheet.month, +n); },
+  // 點日曆：還沒選借用日、或兩個都選好了 → 重選借用日；只選了借用日 → 這次是歸還日
+  lendPick(d) {
+    const sh = U.sheet; sh.warning = null;
+    if (sh.start && !sh.due && d >= sh.start) { const clash = lendClash(sh.selected, sh.start, d); if (clash) sh.warning = clash; else sh.due = d; }
+    else { sh.start = d; sh.due = null; }
+  },
+  lendLen(n) {
+    const sh = U.sheet; if (!sh.start) return;
+    const due = addDays(sh.start, +n);
+    if (due > latestBookable()) { sh.warning = `歸還日超過可以預約的範圍（${dayText(latestBookable())} 以前），請直接在日曆上點歸還日。`; return; }
+    const clash = lendClash(sh.selected, sh.start, due);
+    if (clash) sh.warning = clash; else { sh.warning = null; sh.due = due; }
+  },
   lendNext() {
     const sh = U.sheet;
-    if (sh.step === 1) { const { start, due } = lendDates(sh); const ok = new Set(availableCostumes(start, due).map(c => c.id)); sh.selected = sh.selected.filter(id => ok.has(id)); sh.step = 2; }
-    else if (sh.step === 2 && sh.selected.length) sh.step = 3;
+    if (sh.step === 1 && sh.selected.length) {
+      // 換了服裝後，原本選的日子不能借了就清掉
+      if (sh.start) { const clash = lendClash(sh.selected, sh.start, sh.due || sh.start); if (clash) { sh.start = null; sh.due = null; sh.warning = '換了服裝之後，原本的日子不能借了，請重新選。' + clash; } }
+      sh.step = 2;
+    } else if (sh.step === 2 && sh.start && sh.due) sh.step = 3;
   },
   lendBack() { U.sheet.step = Math.max(1, U.sheet.step - 1); },
   lendToggle(id) { const s = U.sheet.selected; const i = s.indexOf(id); if (i >= 0) s.splice(i, 1); else s.push(id); },
   lendRenter(i) { const r = recentRenters(U.user)[+i]; if (r) { U.sheet.renterName = r.name; U.sheet.renterPhone = r.phone || ''; } },
   lendPurpose(p) { U.sheet.purpose = p; },
   doLend() {
-    const sh = U.sheet; const { start, due } = lendDates(sh);
+    const sh = U.sheet; const start = sh.start, due = sh.due; if (!start || !due) return;
     const what = sh.selected.length === 1 ? costumeDisplay(costumeByID(sh.selected[0])) : `${sh.selected.length} 套服裝`;
     const msg = diffDays(today(), start) > 0 ? `已預約 ${what}（${dayText(start)} 開始）` : `已登記借用 ${what}`;
     if (perform(() => lend(sh.selected, { name: sh.renterName, phone: sh.renterPhone }, start, due, { purpose: sh.purpose, event: sh.event }, U.user), msg)) U.sheet = null;
@@ -4116,8 +4321,9 @@ const A = {
   askResume(cid) { ask('確定這套服裝已整理好、可以再借用了嗎？', null, [{ label: '確定，恢復可借用', run: () => perform(() => resumeLending(cid, U.user), '已恢復可借用') }], '還沒有'); },
 
   // 預約場地
-  openVenue() { U.sheet = { type: 'venue', day: today(), venue: 'studioA', start: null, end: null, note: '', done: null }; },
+  openVenue() { U.sheet = { type: 'venue', day: today(), month: today().slice(0, 7), venue: 'studioA', start: null, end: null, note: '', done: null }; },
   vDay(d) { Object.assign(U.sheet, { day: d, start: null, end: null }); },
+  vMonth(n) { U.sheet.month = shiftMonth(U.sheet.month, +n); },
   vVenue(v) { Object.assign(U.sheet, { venue: v, start: null, end: null }); },
   vSlot(h) {
     const sh = U.sheet; h = +h;
@@ -4169,7 +4375,74 @@ const A = {
 // ================= 畫面更新 =================
 const APP = document.getElementById('app');
 let composing = false, focusAfter = null;
+// ================= 切換裝置時保留狀態 =================
+// 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
+const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
+const STATE_VERSION = 1;
+const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID',
+  'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
+function snapshotState() {
+  const ui = {}; for (const k of KEEP_UI) ui[k] = U[k];
+  if (ui.sheet?.type === 'feedback') ui.sheet = null;
+  return JSON.stringify({ v: STATE_VERSION, S: { ...S, sales: { ...S.sales, memberCard: [...S.sales.memberCard] } }, U: ui });
+}
+function restoreState(json) {
+  try {
+    const o = JSON.parse(json);
+    if (!o || o.v !== STATE_VERSION) return false;
+    Object.assign(S, o.S);
+    S.sales.memberCard = new Set(o.S.sales.memberCard || []);
+    for (const k of KEEP_UI) if (k in o.U) U[k] = o.U[k];
+    U.sideCollapsed = U.section === 'checkout' && !U.stack.length;
+    U.confirm = null; U.toast = null;
+    return true;
+  } catch (e) { return false; }
+}
+let snapTimer = null;
+function queueSnapshot() {
+  if (!IN_FRAME) return;
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(() => { try { window.parent.postMessage({ type: 'yv-state', state: snapshotState() }, '*'); } catch (e) { /* 外框收不到就算了 */ } }, 150);
+}
+
+// ================= 動畫：格子位置改變時平順移動（FLIP） =================
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function captureTiles() {
+  if (REDUCED_MOTION) return null;
+  const tiles = document.querySelectorAll('[data-flip]');
+  if (!tiles.length) return null;
+  const map = new Map();
+  tiles.forEach(el => map.set(el.dataset.flip, el.getBoundingClientRect()));
+  return map;
+}
+function playFlip(before) {
+  if (!before) return;
+  document.querySelectorAll('[data-flip]').forEach(el => {
+    const a = before.get(el.dataset.flip); if (!a) return;
+    const b = el.getBoundingClientRect();
+    // 只移動位置、不拉伸，字不會變形；格子大小直接換成新的
+    const dx = a.left - b.left, dy = a.top - b.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    el.animate([
+      { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.6 },
+      { transform: 'none', opacity: 1 }
+    ], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  });
+}
+/** 購物車收回時先滑出去再移除，不會一下子消失 */
+function slideOutCartPanel(node) {
+  if (REDUCED_MOTION || !node.isConnected) return true;
+  const grid = node.parentNode; const rect = node.getBoundingClientRect(); const gridRect = grid.getBoundingClientRect();
+  node.classList.add('leaving');
+  Object.assign(node.style, { top: `${rect.top - gridRect.top}px`, width: `${rect.width}px` });
+  node.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateX(60px)', opacity: 0 }], { duration: 260, easing: 'ease-in' })
+    .finished.then(() => node.remove(), () => node.remove());
+  return false;
+}
+
 function render() {
+  if (HOST_MODE) return;
+  const flip = captureTiles();
   const html = (U.user ? viewShell() : viewLogin()) + (U.sheet ? viewSheet() : '') + (U.confirm ? viewConfirm() : '')
     + (U.toast ? `<div class="toast t-${U.toast.kind}" id="toast-${U.toast.id}" role="status"${act('toastClose')}>${icon(U.toast.kind === 'success' ? 'circle-check' : U.toast.kind === 'failure' ? 'circle-x' : 'info', 22, 2.4)}<span>${esc(U.toast.text)}</span></div>` : '');
   if (window.morphdom) {
@@ -4177,9 +4450,15 @@ function render() {
       onBeforeElUpdated(from, to) {
         if (from === document.activeElement && (from.tagName === 'INPUT' || from.tagName === 'TEXTAREA')) { from.className = to.className; return false; }
         return !from.isEqualNode(to);
+      },
+      onBeforeNodeDiscarded(node) {
+        if (node.id === 'cart-panel' && node.parentNode?.id === 'checkout-grid') return slideOutCartPanel(node);
+        return true;
       }
     });
   } else APP.innerHTML = html;
+  playFlip(flip);
+  queueSnapshot();
   document.body.classList.toggle('lock', !!(U.sheet || U.confirm));
   if (wantScrollTop) { wantScrollTop = false; window.scrollTo(0, 0); }
   if (focusAfter) { const el = document.getElementById(focusAfter); focusAfter = null; if (el) el.focus(); }
@@ -4210,12 +4489,25 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (U.confirm) U.confirm = null; else if (U.sheet) U.sheet = null; else return; render(); return; }
   if (e.key === 'Enter' && !e.isComposing && e.target.dataset?.enter) { e.preventDefault(); A[e.target.dataset.enter](); render(); }
 });
-window.matchMedia('(min-width: 900px)').addEventListener('change', render);
+window.matchMedia('(min-width: 768px)').addEventListener('change', render);
 // 跨日、時段過期：每分鐘重畫一次（沒有開彈出畫面時）
 setInterval(() => { if (!U.sheet && !document.activeElement?.dataset?.bind) render(); }, 60000);
 
+if (HOST_MODE) bootHost();
+else {
 resetData(U.dataset);
-render();
+if (IN_FRAME) {
+  // 在裝置外框裡：先跟外框要上一個裝置的狀態，拿到就接著用；0.4 秒沒回應就從頭開始
+  let started = false;
+  const start = () => { if (!started) { started = true; render(); } };
+  window.addEventListener('message', e => {
+    if (e.source !== window.parent || !e.data || e.data.type !== 'yv-restore') return;
+    if (e.data.state) restoreState(e.data.state);
+    started = false; start();
+  });
+  window.parent.postMessage({ type: 'yv-hello' }, '*');
+  setTimeout(start, 400);
+} else render();
 
 // 意見回饋：有共用資料庫時才出現
 (async () => {
@@ -4227,6 +4519,7 @@ render();
     render();
   } catch (e) { /* 沒有回饋功能也可以正常使用 */ }
 })();
+}
 
 </script>
 </body>
