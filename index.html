@@ -215,6 +215,22 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .cmid b{font-weight:900;overflow:hidden;text-overflow:ellipsis}
 .cmid .lbl{color:var(--pink-deep);font-weight:800;overflow:hidden;text-overflow:ellipsis}
 .cmid.past{background:var(--orange-pale);border-color:var(--orange);color:var(--orange-deep)}
+.cmid.cur{background:var(--pink-pale);border-color:var(--pink);color:var(--pink-deep)}
+.cday > .cmid:first-child{flex:1 1 auto}
+.cmid.curbtn{flex:none}
+.pricegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.curopts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.curopts button{min-height:64px;border-radius:16px;border:1.5px solid var(--line);background:#fff;font-weight:900;font-size:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.curopts button.on{background:var(--pink);border-color:var(--pink);color:#fff}
+.curopts button span{font-size:13px;font-weight:800;opacity:.8}
+.pages{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.cpage{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
+.cpage img{width:96px;height:128px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--gray-pale)}
+.cpage .del{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;background:var(--danger);color:#fff;display:grid;place-items:center}
+.filebtn{position:relative;overflow:hidden;cursor:pointer}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.social{padding:12px;border-radius:14px;background:var(--cream);display:flex;flex-direction:column;gap:8px}
+.select{min-height:44px;border-radius:12px;border:1.5px solid var(--line);background:#fff;padding:0 12px;font-weight:800;font-size:15px;color:var(--ink)}
 .cartbar{position:fixed;left:0;right:0;bottom:calc(54px + env(safe-area-inset-bottom,0px));z-index:25;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));background:color-mix(in srgb,var(--cream) 85%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .cartbar .btn{justify-content:space-between;max-width:740px;margin:0 auto}
 .cartbar .n{padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.25)}
@@ -2693,7 +2709,15 @@ const nowMs = () => Date.now();
 const today = () => dayKey(new Date());
 const maxS = (a, b) => (a > b ? a : b);
 const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-const money = (amount, cur = 'TWD') => amount == null ? '未填售價' : `${cur === 'HKD' ? 'HK$' : 'NT$'} ${Number(amount).toLocaleString('en-US')}`;
+// 幣別（2026-10-27 起支援台幣／港幣／日幣／美元，取代原本「只用台幣」）
+const CURRENCIES = ['TWD', 'HKD', 'JPY', 'USD'];
+const CUR = { TWD: { symbol: 'NT$', label: '台幣' }, HKD: { symbol: 'HK$', label: '港幣' }, JPY: { symbol: 'JP¥', label: '日幣' }, USD: { symbol: 'US$', label: '美元' } };
+const money = (amount, cur = 'TWD') => amount == null ? '未定價' : `${CUR[cur].symbol} ${Number(amount).toLocaleString('en-US')}`;
+// 商品某幣別的售價；null／undefined＝未定價（不是 0 元）
+const priceIn = (p, cur) => p?.['price' + cur] ?? null;
+const pricedCurrencies = p => CURRENCIES.filter(c => priceIn(p, c) != null);
+// 庫存：null＝未盤點（不是 0，也不是有庫存）
+const stockLabel = p => p.digital ? '電子檔' : p.stock == null ? '未盤點' : p.stock <= 0 ? '售完' : `${p.stock} 件`;
 const trimOrNull = s => { const t = (s ?? '').trim(); return t ? t : null; };
 const rid = () => Math.random().toString(16).slice(2, 5).toUpperCase();
 class AppError extends Error {}
@@ -2716,6 +2740,12 @@ const COSERS = [
   { id: 'momo', name: '小桃（測試）', shortName: '小桃', initial: '桃', colorHex: 'F3A23F' },
   { id: 'rin', name: '阿凜（測試）', shortName: '阿凜', initial: '凜', colorHex: '79B0DC' }
 ];
+const BASE_ACCOUNT_COUNT = ACCOUNTS.length, BASE_COSER_COUNT = COSERS.length;
+// 公司登記的新 Coser 與登入帳號存在測試資料裡（重設測試資料就清掉），這裡同步回帳號與 Coser 清單
+function syncPeople() {
+  ACCOUNTS.splice(BASE_ACCOUNT_COUNT, Infinity, ...(S.sales?.newAccounts || []));
+  COSERS.splice(BASE_COSER_COUNT, Infinity, ...(S.sales?.newCosers || []));
+}
 const coser = id => COSERS.find(c => c.id === id) || null;
 const accountName = id => ACCOUNTS.find(a => a.id === id)?.displayName ?? id;
 
@@ -2893,13 +2923,14 @@ function salesMock() {
     { id: 'onsite', coserID: 'cocoa', work: '現場加購', character: '', tintHex: 'F7E7A9' },
     { id: 'momo-jk', coserID: 'momo', work: '原創', character: 'JK 制服（測試）', tintHex: 'F3A23F' }
   ];
+  // 售價照 Notion「商品」（2026-10-27）：空白＝未定價；日幣、美元目前都還沒定價
   const P = (id, themeID, kind, name, note, priceTWD, priceHKD = null, stock = null, digital = false) =>
-    ({ id, themeID, kind, name, note, priceTWD, priceHKD, stock, digital, discontinued: false });
+    ({ id, themeID, kind, name, note, priceTWD, priceHKD, priceJPY: null, priceUSD: null, stock, digital, discontinued: false });
   const products = [
-    P('hanabi-set', 'hanabi', 'photobook', '花火套組', '測試用售價（Notion 台幣價未建）', 1500),
-    P('hanabi-book', 'hanabi', 'photobook', '花火寫真書・單書', '測試用售價（香港現場價 HK$200；Notion 台幣價未建）', 800, 200),
+    P('hanabi-set', 'hanabi', 'photobook', '花火套組', 'Cosforce04 有售出 1 組；Notion 台幣、港幣售價都未建', null),
+    P('hanabi-book', 'hanabi', 'photobook', '花火寫真書・單書', '香港現場價 HK$200；Notion 台幣價未建', null, 200),
     P('hanabi-cheki', 'hanabi', 'photobook', '花火拍本 Cheki Album', '營運總表台幣價', 500, 130),
-    P('hanabi-digital', 'hanabi', 'photobook', '花火電子檔', '測試用售價（香港自訂品項；Notion 台幣價未建）', 600, 150, null, true),
+    P('hanabi-digital', 'hanabi', 'photobook', '花火電子檔', '香港自訂品項 HK$150；Notion 台幣價未建', null, 150, null, true),
     P('frieren-book', 'frieren', 'photobook', '芙莉蓮寫真書・單書', '營運總表台幣價', 1000, 250),
     P('frieren-book-digital', 'frieren', 'photobook', '芙莉蓮單書＋電子檔', '營運總表正式台幣價', 1800),
     P('frieren-folder', 'frieren', 'goods', '芙莉蓮 L 夾', '營運總表台幣價', 250, 70),
@@ -2909,13 +2940,13 @@ function salesMock() {
     P('original-digital', 'original', 'photobook', '電子檔', '營運總表正式台幣價', 1000, null, null, true),
     P('soda-book', 'soda', 'photobook', '索達寫真書・單書', '營運總表台幣價', 800, 200),
     P('soda-slide', 'soda', 'goods', '索達拍立卡 Slide Card', '營運總表台幣價', 350, 90),
-    P('soda-digital', 'soda', 'photobook', '索達電子檔', '測試用售價（Notion 台幣價未建）', 1000, null, null, true),
+    P('soda-digital', 'soda', 'photobook', '索達電子檔', 'Cosforce04 有數量紀錄；Notion 台幣、港幣售價都未建', null, null, null, true),
     P('liveparty-book', 'liveparty', 'photobook', 'Live Party 寫真書', '營運總表台幣價', 600, 200),
-    P('phoebe-postcard', 'onsite', 'goods', '菲比明信片', '測試用售價（香港現場價 HK$75；Notion 台幣價未建）', 200, 75),
+    P('phoebe-postcard', 'onsite', 'goods', '菲比明信片', '香港現場價 HK$75；Notion 台幣價未建', null, 75),
     P('june-postcard', 'onsite', 'goods', '六月雨明信片', '營運總表台幣價', 200, 75),
-    P('reze-postcard', 'onsite', 'goods', '蕾潔明信片', '測試用售價（香港現場價 HK$120；Notion 台幣價未建）', 300, 120),
-    P('old-cheki', 'onsite', 'goods', '舊拍', '測試用售價（香港現場價 HK$80；Notion 台幣價未建）', 250, 80),
-    P('scroll', 'onsite', 'goods', '掛軸海報', '測試用售價（香港現場價 HK$270；Notion 台幣價未建）', 900, 270),
+    P('reze-postcard', 'onsite', 'goods', '蕾潔明信片', '香港現場價 HK$120；Notion 台幣價未建', null, 120),
+    P('old-cheki', 'onsite', 'goods', '舊拍', '香港現場價 HK$80；Notion 台幣價未建', null, 80),
+    P('scroll', 'onsite', 'goods', '掛軸海報', '香港現場價 HK$270；Notion 台幣價未建', null, 270),
     P('momo-jk-book', 'momo-jk', 'photobook', 'JK 寫真書・單書', '測試商品', 600),
     P('momo-jk-set', 'momo-jk', 'photobook', 'JK 套組（書＋拍立得）', '測試商品', 900),
     P('momo-jk-digital', 'momo-jk', 'photobook', 'JK 電子寫真集', '測試商品', 400, null, null, true),
@@ -2930,7 +2961,8 @@ function salesMock() {
     sales.push({ id: `HK-07${d}-PERSONAL`, day, coserID: 'cocoa', at: null, timeLabel: '現場表', lines: [], total: personal, currency: 'HKD', payment: 'recorded', status: 'paid', memberID: null, debtor: null, summary: '個人互動收入・不列公司損益', scope: 'personal', source: '正式帳務', byAccount: 'company', settledAt: null });
   }
   sales.push({ id: 'FF-REFUND-1700', day: '2026-08-23', coserID: 'cocoa', at: null, timeLabel: '待收', lines: [], total: 1700, currency: 'TWD', payment: 'credit', status: 'outstanding', memberID: null, debtor: 'FF 主辦（報名費退款）', summary: 'FF 未錄取報名費退款', scope: 'company', source: '正式帳務', byAccount: 'company', settledAt: null });
-  return { days, themes, products, sales, members: [], memberCard: new Set(), lowStock: 5 };
+  // menuCurrency：每位 Coser 每天的今日菜單幣別（key「cocoa|2026-10-27」）；roster：公司登記的 Coser 名冊
+  return { days, themes, products, sales, members: [], memberCard: new Set(), lowStock: 5, menuCurrency: {}, roster: [], newCosers: [], newAccounts: [] };
 }
 const PALETTE = ['E8477F', 'F3A23F', '7FA03F', '79B0DC', 'C65353', '9B7BD4', 'F9C8DB', 'C3D88E', 'F7E7A9', '5BB5A8', 'A0785A', '3B6FB6'];
 const themeName = t => !t.character ? t.work : (!t.work ? t.character : `${t.work}・${t.character}`);
@@ -2951,6 +2983,7 @@ function resetData(dataset) {
   S.loans = dataset === 'scenario' ? scenarioLoans(S.costumes) : notionLoans();
   S.venues = venueMock();
   S.sales = salesMock();
+  syncPeople();
 }
 
 // ================= 服裝借用規則（照 LoanBook.swift） =================
@@ -3126,10 +3159,26 @@ function activeDays(u) {
 }
 const isLowStock = p => !p.digital && (p.stock ?? Infinity) <= SB().lowStock;
 const lowStockProducts = u => visibleProducts(u).filter(p => !p.discontinued && isLowStock(p));
-const cartTotal = cart => cart.reduce((s, i) => s + (productByID(i.productID)?.priceTWD ?? 0) * i.quantity, 0);
-function currencyOnDay(day) { const l = SB().sales.filter(s => s.day === day); return l.length && l.every(s => s.currency === 'HKD') ? 'HKD' : 'TWD'; }
-function reconcile(day, u, cid = null) {
-  const currency = currencyOnDay(day);
+const cartTotal = (cart, cur = menuCurrency()) => cart.reduce((s, i) => s + (priceIn(productByID(i.productID), cur) ?? 0) * i.quantity, 0);
+const unpricedProducts = (cur, u) => visibleProducts(u).filter(p => !p.discontinued && priceIn(p, cur) == null);
+const uncountedProducts = u => visibleProducts(u).filter(p => !p.discontinued && !p.digital && p.stock == null);
+// 今日菜單幣別：每位 Coser 每天各自記住，沒選過＝台幣
+const menuKey = (cid, day) => `${cid}|${day}`;
+const menuCurrencyOf = (cid, day) => (cid && SB().menuCurrency[menuKey(cid, day)]) || 'TWD';
+function setMenuCurrency(cur, day, user) {
+  if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
+  if (!CURRENCIES.includes(cur)) fail('不支援這個幣別。');
+  if (day > today()) fail('不能記還沒到的日期，請改選今天或以前。');
+  SB().menuCurrency[menuKey(user.coserID, day)] = cur;
+}
+// 這天有交易的幣別；不同幣別各自合計，不換算、不相加
+function currenciesOnDay(day, u = null, cid = null) {
+  const used = new Set(SB().sales.filter(s => s.day === day && (cid == null || s.coserID === cid) && (!u || u.role === 'company' || s.coserID === u.coserID)).map(s => s.currency));
+  return CURRENCIES.filter(c => used.has(c));
+}
+function currencyOnDay(day, u = null, cid = null) { const l = currenciesOnDay(day, u, cid); return !l.length || l.includes('TWD') ? 'TWD' : l[0]; }
+function reconcile(day, u, cid = null, selected = null) {
+  const currency = selected ?? currencyOnDay(day, u, cid);
   const all = visibleSales(u, day, cid);
   const list = all.filter(s => s.currency === currency);
   const paid = list.filter(s => s.status === 'paid');
@@ -3152,8 +3201,8 @@ function reconcile(day, u, cid = null) {
     transactionCount: paidCompany.length, itemCount: items(paidCompany), otherCurrencyCount: all.length - list.length
   };
 }
-function coserSummaries(day, u) {
-  const cur = currencyOnDay(day);
+function coserSummaries(day, u, selected = null) {
+  const cur = selected ?? currencyOnDay(day, u);
   return sellerCosers(u).map(c => {
     const paid = visibleSales(u, day, c.id).filter(s => s.status === 'paid' && s.scope === 'company' && s.currency === cur);
     return { coser: c, companySales: paid.reduce((n, s) => n + s.total, 0), transactionCount: paid.length, itemCount: paid.reduce((n, s) => n + s.lines.reduce((m, x) => m + x.quantity, 0), 0) };
@@ -3161,7 +3210,8 @@ function coserSummaries(day, u) {
 }
 const isMemberCardOn = cid => !!cid && SB().memberCard.has(cid);
 const memberByFan = (fan, cid) => cid ? SB().members.find(m => m.id === `${cid}|${normalizeFan(fan)}`) || null : null;
-function checkout(cart, day, payment, rawMember, rawDebtor, user) {
+// 成交時把品名、單價、數量、幣別、折扣、金額存成快照：之後商品改價、改名、刪除都不影響這筆交易（2026-10-27）
+function checkout(cart, day, payment, rawMember, rawDebtor, user, currency = 'TWD', discount = 0) {
   // 記帳由各 Coser 負責，公司帳號不能記帳（2026-10-21）
   if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
   if (payment === 'recorded') fail('這個帳號不能做這個操作。');
@@ -3176,10 +3226,14 @@ function checkout(cart, day, payment, rawMember, rawDebtor, user) {
     if (o !== user.coserID) fail('這個帳號不能做這個操作。');
     if (owner && owner !== o) fail('一筆交易只能是同一位 Coser 的商品，請先結清目前的購物車。');
     owner = o;
-    if (p.priceTWD == null) fail(`「${p.name}」還沒有台幣售價，請先到「我的商品」填上售價。`);
+    const price = priceIn(p, currency);
+    if (price == null) fail(`「${p.name}」還沒有${CUR[currency].label}售價（未定價），請先到「我的商品」補上，或換今日菜單幣別。`);
     if (!p.digital && p.stock != null && p.stock < it.quantity) fail(`「${p.name}」庫存只剩 ${p.stock} 件。`);
-    lines.push({ productID: p.id, name: p.name, unitPrice: p.priceTWD, quantity: it.quantity });
+    lines.push({ productID: p.id, name: p.name, unitPrice: price, quantity: it.quantity });
   }
+  const subtotal = lines.reduce((n, l) => n + l.unitPrice * l.quantity, 0);
+  if (!(discount >= 0)) fail('請輸入 0 以上的整數。');
+  if (discount > subtotal) fail('折扣不能大於品項合計。');
   const memberKey = isMemberCardOn(owner) ? (normalizeFan(rawMember) || null) : null;
   const debtor = trimOrNull(rawDebtor);
   if (payment === 'credit' && !memberKey && !debtor) fail('賒帳要填客人的名字或聯絡方式，之後才追得到。');
@@ -3187,7 +3241,7 @@ function checkout(cart, day, payment, rawMember, rawDebtor, user) {
   if (memberKey && !memberByFan(memberKey, owner)) SB().members.push({ id: `${owner}|${memberKey}`, coserID: owner, fanID: memberKey, nickname: '', note: null, createdAt: nowMs() });
   const sale = {
     id: 'S-' + nowMs().toString(36) + rid(), day, coserID: owner, at: nowMs(), timeLabel: '', lines,
-    total: lines.reduce((n, l) => n + l.unitPrice * l.quantity, 0), currency: 'TWD', payment, status: payment === 'credit' ? 'outstanding' : 'paid',
+    discount, total: subtotal - discount, currency, payment, status: payment === 'credit' ? 'outstanding' : 'paid',
     memberID: memberKey, debtor: payment === 'credit' ? debtor : null, summary: lines.map(l => `${l.name} ×${l.quantity}`).join('・'),
     scope: 'company', source: 'App 操作', byAccount: user.id, settledAt: null
   };
@@ -3222,7 +3276,7 @@ function makeTheme(work, character, tint, coserID, id) {
 function saveProduct(draft, editingID, user) {
   if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
   const name = draft.name.trim(); if (!name) fail('請填商品名稱。');
-  if (draft.price < 0 || (draft.stock ?? 0) < 0) fail('請輸入 0 以上的整數。');
+  if (CURRENCIES.some(c => draft.prices[c] != null && draft.prices[c] < 0) || (draft.stock ?? 0) < 0) fail('請輸入 0 以上的整數。');
   let editing = null;
   if (editingID) editing = ownProduct(editingID, user);
   let themeID;
@@ -3236,10 +3290,13 @@ function saveProduct(draft, editingID, user) {
   }
   const digital = draft.kind === 'photobook' && draft.digital;
   if (editing) {
-    Object.assign(editing, { themeID, kind: draft.kind, name, priceTWD: draft.price, digital, stock: digital ? null : draft.stock });
+    // 改價只改商品本身；已經成交的交易存的是當時的單價，不會跟著變
+    Object.assign(editing, { themeID, kind: draft.kind, name, digital, stock: digital ? null : draft.stock });
+    for (const c of CURRENCIES) editing['price' + c] = draft.prices[c] ?? null;
     return editing;
   }
-  const p = { id: 'P-' + nowMs().toString(36) + rid(), themeID, kind: draft.kind, name, note: 'Coser 自行建立', priceTWD: draft.price, priceHKD: null, stock: digital ? null : draft.stock, digital, discontinued: false };
+  const p = { id: 'P-' + nowMs().toString(36) + rid(), themeID, kind: draft.kind, name, note: 'Coser 自行建立', stock: digital ? null : draft.stock, digital, discontinued: false };
+  for (const c of CURRENCIES) p['price' + c] = draft.prices[c] ?? null;
   SB().products.push(p);
   return p;
 }
@@ -3269,14 +3326,86 @@ function updateMember(id, nickname, note, user) {
 const membersFor = u => u.role === 'company' ? [] : SB().members.filter(m => m.coserID === u.coserID);
 const memberSales = m => SB().sales.filter(s => s.coserID === m.coserID && s.memberID === m.fanID).reverse();
 function memberSpend(m) { const r = {}; for (const s of memberSales(m)) if (s.status === 'paid') r[s.currency] = (r[s.currency] || 0) + s.total; return r; }
-function spendText(sp) { const p = ['TWD', 'HKD'].filter(c => sp[c] != null).map(c => money(sp[c], c)); return p.length ? '累積 ' + p.join('＋') : '尚無消費'; }
+function spendText(sp) { const p = CURRENCIES.filter(c => sp[c] != null).map(c => money(sp[c], c)); return p.length ? '累積 ' + p.join('＋') : '尚無消費'; }
 const memberName = m => m.nickname ? `${m.nickname}（${m.fanID}）` : m.fanID;
+// ================= Coser 名冊（公司登記新 Coser，2026-10-27；照 CoserRoster.swift） =================
+const PLANS = [['10%方案', '10% 方案'], ['40%方案', '40% 方案'], ['女僕方案', '女僕方案'], ['特殊方案', '特殊方案']];
+const planLabel = v => PLANS.find(p => p[0] === v)?.[1] ?? v;
+const SOCIAL_PLATFORMS = ['Threads', 'Facebook', 'TikTok', 'X', 'YouTube', '小紅書', '其他'];
+const MIN_PASSWORD = 6;
+const isValidAccount = a => /^[a-z][a-z0-9_-]{2,19}$/.test(a);
+const rosterProfile = id => SB().roster.find(r => r.id === id) || null;
+const rosterFor = u => u.role === 'company' ? SB().roster : [];
+// CoserID 一律＝登入帳號；已經用掉的：登入帳號、App 裡的 Coser、商品系列、名冊
+const takenIDs = () => new Set([...ACCOUNTS.map(a => a.id), ...COSERS.map(c => c.id), ...SB().themes.map(t => t.coserID), ...SB().roster.map(r => r.id)]);
+function validateRegistration(f, user) {
+  if (user.role !== 'company') fail('只有公司帳號可以登記 Coser。');
+  const cosName = (f.cosName || '').trim(), realName = (f.realName || '').trim(), planNote = (f.planNote || '').trim();
+  const account = (f.account || '').trim().toLowerCase();
+  if (!cosName) fail('請填 Cos 名。');
+  if (!realName) fail('請填本名。');
+  if (!f.plan) fail('請選方案。');
+  if (f.plan === '特殊方案' && !planNote) fail('特殊方案請寫方案內容。');
+  if (!f.contractDate || !dayDate(f.contractDate)) fail('請選簽約日期。');
+  const nonNeg = v => v === '' || v == null || /^\d+$/.test(String(v));
+  if (!nonNeg(f.igFollowers)) fail('粉絲數請填 0 以上的整數。');
+  const socials = [];
+  for (const so of f.socials || []) {
+    const handle = (so.handle || '').trim();
+    if (!handle) fail('社群帳號沒填，請填上帳號或刪掉這一列。');
+    if (!nonNeg(so.followers)) fail('粉絲數請填 0 以上的整數。');
+    const name = so.platform === '其他' ? (trimOrNull(so.custom) || '其他') : so.platform;
+    socials.push({ platform: name, handle, followers: so.followers === '' || so.followers == null ? null : Number(so.followers) });
+  }
+  if (!isValidAccount(account)) fail('登入帳號請用 3–20 個英文小寫、數字、底線或減號，英文開頭（例如 momo_cos）。');
+  if (takenIDs().has(account)) fail(`「${account}」已經有人用了，請換一個帳號。`);
+  if ((f.password || '').length < MIN_PASSWORD) fail(`密碼至少 ${MIN_PASSWORD} 個字。`);
+  return { cosName, realName, plan: f.plan, planNote: planNote || null, contractDate: f.contractDate, igAccount: trimOrNull(f.igAccount),
+    igFollowers: f.igFollowers === '' || f.igFollowers == null ? null : Number(f.igFollowers), socials, account, password: f.password };
+}
+// ①先建名冊資料與 App 用的 Coser（CoserID＝帳號）②再建登入帳號；帳號沒建成功資料會留著，可以重試
+function registerCoser(f, user) {
+  const v = validateRegistration(f, user);
+  const used = new Set(COSERS.map(c => c.colorHex));
+  SB().newCosers.push({ id: v.account, name: v.cosName, shortName: v.cosName, initial: [...v.cosName][0] || 'C', colorHex: PALETTE.find(h => !used.has(h)) || PALETTE[COSERS.length % PALETTE.length] });
+  syncPeople();
+  const profile = { id: v.account, cosName: v.cosName, realName: v.realName, plan: v.plan, planNote: v.planNote, contractDate: v.contractDate,
+    igAccount: v.igAccount, igFollowers: v.igFollowers, socials: v.socials,
+    photos: (f.photos || []).map((src, i) => ({ id: `${v.account}-${nowMs().toString(36)}-${i + 1}`, page: i + 1, src })),
+    hasLogin: false, createdAt: nowMs(), createdBy: user.id };
+  SB().roster.push(profile);
+  createLogin(profile.id, v.password, user);
+  return profile;
+}
+function createLogin(id, password, user) {
+  if (user.role !== 'company') fail('只有公司帳號可以建立登入帳號。');
+  const r = rosterProfile(id); if (!r) fail('名冊裡找不到這位 Coser。');
+  if ((password || '').length < MIN_PASSWORD) fail(`密碼至少 ${MIN_PASSWORD} 個字。`);
+  if (ACCOUNTS.some(a => a.id === id)) fail(`Coser 資料已建立，但登入帳號沒建成功：「${id}」已經有人用了。`);
+  SB().newAccounts.push({ id, displayName: r.cosName, role: 'coser', coserID: id, password, hint: '公司登記的新 Coser（這次測試新建）' });
+  syncPeople();
+  r.hasLogin = true;
+}
+function addContractPhotos(id, srcs, user) {
+  if (user.role !== 'company') fail('只有公司帳號可以登記 Coser。');
+  const r = rosterProfile(id); if (!r) fail('名冊裡找不到這位 Coser。');
+  let last = r.photos.reduce((m, x) => Math.max(m, x.page), 0);
+  for (const src of srcs) r.photos.push({ id: `${id}-${nowMs().toString(36)}-${++last}`, page: last, src });
+}
+function removeContractPhoto(id, photoID, user) {
+  if (user.role !== 'company') fail('只有公司帳號可以登記 Coser。');
+  const r = rosterProfile(id); if (!r) fail('名冊裡找不到這位 Coser。');
+  r.photos = r.photos.filter(x => x.id !== photoID).sort((a, b) => a.page - b.page).map((x, i) => ({ ...x, page: i + 1 }));
+}
+
 // ================= 畫面狀態 =================
 const U = {
   user: null, dataset: 'notion', section: 'home', stack: [], sheet: null, confirm: null, toast: null, pickedDay: null,
   cart: [], cartMember: '', cartDebtor: '', homeCoserID: null,
   costumeFilter: 'all', locationFilter: null, costumeSearch: '', recordsKind: 'costume', recordsTab: 'active', recordsSearch: '',
   venueDay: null, showPast: false, themeFilter: null, memberSearch: '',
+  // 首頁、對帳要看哪個幣別（一天有好幾種幣別時）；null＝這天的預設幣別
+  reportCur: null,
   // 寬螢幕：進記帳時左邊選單自動收起（2026-10-22）
   sideCollapsed: false,
   login: { account: '', password: '', error: null }
@@ -3294,23 +3423,31 @@ const cartCount = () => U.cart.reduce((n, i) => n + i.quantity, 0);
 const qtyInCart = id => U.cart.find(i => i.productID === id)?.quantity ?? 0;
 
 function sectionsFor() {
-  return isCompany() ? ['home', 'reconcile', 'costumes', 'records', 'more']
+  return isCompany() ? ['home', 'reconcile', 'costumes', 'records', 'cosers', 'more']
     : ['home', 'checkout', 'inventory', 'bookings', 'mySales', ...(memberCardOn() ? ['members'] : []), 'more'];
 }
 const tabsFor = () => isCompany() ? ['home', 'reconcile', 'costumes', 'records', 'more'] : ['home', 'checkout', 'inventory', 'bookings', 'more'];
 const moreSectionsFor = () => sectionsFor().filter(s => !tabsFor().includes(s) && s !== 'more');
-const SEC_ICON = { home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
-const SEC_GROUP = { home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
+const SEC_ICON = { cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
+const SEC_GROUP = { cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
 function secTitle(s) {
   const c = role() === 'coser';
-  return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', more: '更多' }[s];
+  return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', cosers: 'Coser 名冊', more: '更多' }[s];
 }
 function secShort(s) {
   const c = role() === 'coser';
-  return { checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
+  return { cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
 }
 
 // ================= 小元件 =================
+Object.assign(ICONS, {
+  coins: '<circle cx="8" cy="8" r="6" /> <path d="M18.09 10.37A6 6 0 1 1 10.34 18" /> <path d="M7 6h1v4" /> <path d="m16.71 13.88.7.71-2.82 2.82" />',
+  'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="19" x2="19" y1="8" y2="14" /> <line x1="22" x2="16" y1="11" y2="11" />',
+  'id-card': '<path d="M16 10h2" /> <path d="M16 14h2" /> <path d="M6.17 15a3 3 0 0 1 5.66 0" /> <circle cx="9" cy="11" r="2" /> <rect x="2" y="5" width="20" height="14" rx="2" />',
+  camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" />',
+  image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" />'
+});
 const icon = (n, s = 20, sw = 2.2) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 const act = (a, p, q) => ` data-a="${a}"${p != null ? ` data-p="${esc(p)}"` : ''}${q != null ? ` data-q="${esc(q)}"` : ''}`;
 const card = (inner, cls = '') => `<section class="card ${cls}">${inner}</section>`;
@@ -3519,6 +3656,7 @@ function sectionView(s) {
     case 'inventory': return viewProducts();
     case 'mySales': return viewSalesHistory();
     case 'members': return viewMembers();
+    case 'cosers': return viewRoster();
     default: return viewMore();
   }
 }
@@ -3533,7 +3671,7 @@ function viewShell() {
 // ================= 公司首頁 =================
 function viewCompanyHome() {
   const u = U.user, cid = U.homeCoserID, day = selDay();
-  const s = reconcile(day, u, cid), daySales = visibleSales(u, day, cid), outstanding = outstandingSales(u, cid);
+  const s = reconcile(day, u, cid, reportCurrency(cid)), daySales = visibleSales(u, day, cid), outstanding = outstandingSales(u, cid);
   const sc = coser(cid); const dn = isToday() ? '今天' : '當天';
   const cosers = sellerCosers(u);
   const filter = cosers.length > 1 ? `<div class="hscroll">${[null, ...cosers].map(c => { const on = U.homeCoserID === (c?.id ?? null); return `<button class="coser-chip${on ? ' on' : ''}"${act('homeCoser', c?.id ?? '')} aria-pressed="${on}">${c ? avatar(c, 28) : `<span style="width:28px;height:28px;display:grid;place-items:center">${icon('package', 18)}</span>`}${esc(c ? c.shortName : '全部')}</button>`; }).join('')}</div>` : '';
@@ -3550,7 +3688,7 @@ function viewCompanyHome() {
   ].join('');
   let ranking = '';
   if (cid == null) {
-    const rows = coserSummaries(day, u); const cur = currencyOnDay(day);
+    const cur = reportCurrency(); const rows = coserSummaries(day, u, cur);
     if (rows.length > 1) ranking = card(stitle(isToday() ? '各 Coser 今天收入' : '各 Coser 當天收入') + rows.map(r => `<button class="todo"${act('homeCoser', r.coser.id)}>${avatar(r.coser, 40)}<span class="grow"><b>${esc(r.coser.shortName)}</b><span class="cap soft">${r.transactionCount} 筆・${r.itemCount} 件</span></span><b class="num" style="color:var(--pink-deep);font-size:16px">${money(r.companySales, cur)}</b><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`).join(''));
   }
   const todos = [];
@@ -3562,7 +3700,7 @@ function viewCompanyHome() {
   const todoHtml = todos.length ? todos.map(x => jump(x.sec, todoRow(x.ic, x.t, x.d, x.fg), x.before)).join('') : empty('circle-check', '目前沒有待處理的事');
   const recent = daySales.slice(0, 5);
   const html = [
-    card(dayPicker() + filter + `<div class="notice">${icon('info', 14)}<span>記帳由各 Coser 在自己的帳號操作，這裡依日期看帳與對帳。</span></div>`),
+    card(dayPicker() + filter + currencySwitch(cid) + `<div class="notice">${icon('info', 14)}<span>記帳由各 Coser 在自己的帳號操作，這裡依日期看帳與對帳。</span></div>`),
     `<div class="tiles">${tiles}</div>`, ranking,
     card(paymentBreakdown(s)),
     card(stitle('待處理') + todoHtml),
@@ -3582,7 +3720,7 @@ function paymentBreakdown(s) {
 // ================= Coser 首頁 =================
 function viewCoserHome() {
   const u = U.user, c = coser(u.coserID), day = selDay();
-  const s = reconcile(day, u), sales = visibleSales(u, day), recent = sales.slice(0, 5);
+  const s = reconcile(day, u, null, reportCurrency()), sales = visibleSales(u, day), recent = sales.slice(0, 5);
   const hasProducts = visibleProducts(u).length > 0, low = lowStockProducts(u);
   const vn = upcomingBookings(u), cn = activeLoans(u); const dn = isToday() ? '今天' : '這天';
   const tiles = [mtile(`${dn}商品收入`, money(s.companySales, s.currency), 'var(--pink-deep)', 'var(--pink-pale)'), mtile(`${dn}售出`, `${s.itemCount} 件`, 'var(--ink)', '#fff')];
@@ -3590,7 +3728,7 @@ function viewCoserHome() {
   if (s.outstanding > 0) tiles.push(mtile('賒帳待收', money(s.outstanding, s.currency), 'var(--orange-deep)', 'var(--orange-pale)'));
   const html = [
     `<div class="row" style="gap:14px">${avatar(c, 54)}<div class="grow"><div class="t-big">嗨，${esc(c?.shortName ?? u.displayName)}</div><div class="sub bold soft">${hasProducts ? '今天也一起把帳記清楚' : '先新增商品，就可以開始記帳'}</div></div></div>`,
-    card(dayPicker('記帳日期') + (hasProducts ? jump('checkout', primaryLabel(cartCount() > 0 ? `繼續記帳（購物車 ${cartCount()} 件）` : '開始記帳', 'shopping-bag')) : jump('inventory', primaryLabel('新增第一個商品', 'plus'))) + testNotice()),
+    card(dayPicker('記帳日期') + currencySwitch() + (hasProducts ? jump('checkout', primaryLabel(cartCount() > 0 ? `繼續記帳（購物車 ${cartCount()} 件）` : '開始記帳', 'shopping-bag')) : jump('inventory', primaryLabel('新增第一個商品', 'plus'))) + testNotice()),
     `<div class="tiles">${tiles.join('')}</div>`,
     low.length ? card(jump('inventory', todoRow('package', `庫存偏低 ${low.length} 項，記得進貨`, low.slice(0, 3).map(p => p.name).join('、'), 'var(--orange-deep)')), 'p8') : '',
     (vn.length || cn.length) ? card(`<div class="row">${stitle('接下來的預約', vn.length + cn.length)}${link('看全部', 'jump', 'bookings')}</div>` + [...vn.slice(0, 2).map(b => `<button style="width:100%"${act('venueDetail', b.id)}>${venueRow(b)}</button>`), ...cn.slice(0, 2).map(l => `<button style="width:100%"${act('pushLoan', l.id)}>${loanRow(l)}</button>`)].join(HR)) : '',
@@ -3602,6 +3740,16 @@ function viewCoserHome() {
 // ================= 記帳（Coser） =================
 // 記帳由各 Coser 負責：記帳畫面就是登入的 Coser 自己的商品；公司沒有記帳（2026-10-21）
 const activeCheckoutCoser = () => (U.user && U.user.role !== 'company') ? U.user.coserID : null;
+// 今日菜單幣別（記帳的 Coser、選的日期）；公司沒有記帳，固定台幣
+const menuCurrency = () => menuCurrencyOf(activeCheckoutCoser(), selDay());
+const mmoney = a => money(a, menuCurrency());
+// 首頁、對帳、我的銷售：一天有好幾種幣別時可以切換（不換算、不相加）
+function reportCurrency(cid = null) { const l = currenciesOnDay(selDay(), U.user, cid); return U.reportCur && l.includes(U.reportCur) ? U.reportCur : currencyOnDay(selDay(), U.user, cid); }
+function currencySwitch(cid = null) {
+  const l = currenciesOnDay(selDay(), U.user, cid); if (l.length < 2) return '';
+  const cur = reportCurrency(cid);
+  return `<div class="stack g8"><div class="row g8 wrap">${l.map(c => chip(`${CUR[c].label} ${CUR[c].symbol}`, c === cur, 'reportCur', c)).join('')}</div><div class="cap bold soft">這天有 ${l.length} 種幣別，各自合計、不換算也不相加。</div></div>`;
+}
 function viewCheckout() {
   const u = U.user, cid = activeCheckoutCoser();
   const themes = cid ? visibleThemes(u).filter(t => t.coserID === cid) : [];
@@ -3615,15 +3763,18 @@ function viewCheckout() {
   // 收款畫面開著時購物車先留著，關掉後才滑出去，看得到格子放大回 6 欄
   const showCart = U.cart.length > 0 || U.sheet?.type === 'payment';
   if (isWide()) return { title: '記帳', cls: 'fullw', html: `<div class="checkout-grid${showCart ? '' : ' nocart'}" id="checkout-grid">${left}${showCart ? cartPanel() : ''}</div>` };
-  const after = cartCount() > 0 ? `<div class="cartbar"><button class="btn primary"${act('openPayment')}><span class="n num">${cartCount()} 件</span><span class="num grow" style="text-align:left">${money(cartTotal(U.cart))}</span><span>前往收款</span>${icon('chevron-right', 20, 3)}</button></div>` : '';
+  const after = cartCount() > 0 ? `<div class="cartbar"><button class="btn primary"${act('openPayment')}><span class="n num">${cartCount()} 件</span><span class="num grow" style="text-align:left">${mmoney(cartTotal(U.cart))}</span><span>前往收款</span>${icon('chevron-right', 20, 3)}</button></div>` : '';
   return { title: '記帳', html: left, after };
 }
 /** 一格商品：上面品名、下面深色條寫價格；點格子 +1，右上角數量圓點 -1 */
 function productTile(p, t) {
-  const qty = qtyInCart(p.id), sold = !p.digital && p.stock === 0, locked = p.priceTWD == null || sold;
+  const cur = menuCurrency(), unit = priceIn(p, cur);
+  const qty = qtyInCart(p.id), sold = !p.digital && p.stock != null && p.stock <= 0, locked = unit == null || sold;
   const hex = locked ? 'CFC7BF' : t.tintHex, bar = shadeHex(hex);
+  // 未盤點（庫存空白）不當成 0，也不當成有庫存，照實寫「未盤點」
+  // 未盤點（庫存空白）不當成 0，也不顯示庫存數字；格子空間小，「未盤點」標在「我的商品」與提示裡
   const status = sold ? '已售完' : (isLowStock(p) && p.stock != null ? `剩 ${p.stock}` : '');
-  const price = p.priceTWD != null ? money(p.priceTWD) : '未填售價';
+  const price = money(unit, cur);
   return `<div class="ptile-wrap${qty ? ' has' : ''}" id="tile-${esc(p.id)}" data-flip="${esc(p.id)}"><button class="ptile${qty ? ' has' : ''}${Object.hasOwn(PHOTOS, p.id) ? ` ph ph-${esc(p.id)}` : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('addCart', p.id)}${locked ? ' disabled' : ''} aria-label="${esc([p.name, price, status].filter(Boolean).join('，'))}"><span class="pn">${esc(p.name)}</span><span class="pb">${status ? `<i>${status}</i>` : ''}<b>${price}</b></span></button>${qty ? `<button class="pbadge"${act('qty', p.id, -1)} aria-label="減少 1 件 ${esc(p.name)}，目前 ${qty} 件">${qty}</button>` : ''}</div>`;
 }
 function shadeHex(hex, f = 0.78) {
@@ -3631,23 +3782,24 @@ function shadeHex(hex, f = 0.78) {
   return (c((v >> 16) & 255) + c((v >> 8) & 255) + c(v & 255)).toUpperCase();
 }
 /** 記帳畫面用的小日期列：只佔一行 */
+/** 記帳畫面用的小日期列：只佔一行。2026-10-27 拿掉左右箭頭（點日期開月曆），旁邊是今日菜單幣別 */
 function compactDay() {
-  const d = selDay(), t = isToday(), label = dayInfo(d)?.label;
-  return `<div class="cday"><button class="carrow"${act('dayShift', -1)} aria-label="前一天">${icon('chevron-left', 18, 3)}</button><button class="cmid${t ? '' : ' past'}"${act('openCalendar')}><span style="color:var(--pink);display:flex">${icon('calendar', 18)}</span><b>${esc(t ? `今天・${dayText(d)}` : `補記 ${dayText(d)}`)}</b>${label ? `<span class="lbl">${esc(label)}</span>` : ''}<span class="soft" style="display:flex">${icon('chevron-down', 14, 3)}</span></button><button class="carrow"${act('dayShift', 1)} aria-label="後一天"${t ? ' disabled' : ''}>${icon('chevron-right', 18, 3)}</button>${t ? '' : `<button class="link" style="color:var(--orange-deep);flex:none"${act('dayToday')}>回到今天</button>`}</div>`;
+  const d = selDay(), t = isToday(), label = dayInfo(d)?.label, cur = menuCurrency();
+  return `<div class="cday"><button class="cmid${t ? '' : ' past'}"${act('openCalendar')}><span style="color:var(--pink);display:flex">${icon('calendar', 18)}</span><b>${esc(t ? `今天・${dayText(d)}` : `補記 ${dayText(d)}`)}</b>${label ? `<span class="lbl">${esc(label)}</span>` : ''}<span class="soft" style="display:flex">${icon('chevron-down', 14, 3)}</span></button><button class="cmid curbtn${cur === 'TWD' ? '' : ' cur'}" id="menu-currency"${act('openMenuCur')} aria-label="今日菜單幣別：${CUR[cur].label}" title="今日菜單幣別：${CUR[cur].label}"><span style="color:var(--pink);display:flex">${icon('coins', 18)}</span><b>${CUR[cur].symbol}</b><span class="soft" style="display:flex">${icon('chevron-down', 14, 3)}</span></button>${t ? '' : `<button class="link" style="color:var(--orange-deep);flex:none"${act('dayToday')}>回到今天</button>`}</div>`;
 }
 function cartLines() {
-  return U.cart.map(i => { const p = productByID(i.productID); if (!p) return ''; return `<div class="row" style="min-height:44px"><div class="grow"><div class="bold sub">${esc(p.name)}</div><div class="cap soft num">${money(p.priceTWD)}</div></div><button style="color:var(--ink-soft)"${act('qty', p.id, -1)} aria-label="減少 ${esc(p.name)}">${icon('circle-minus', 28)}</button><b class="num" style="min-width:24px;text-align:center">${i.quantity}</b><button style="color:var(--pink)"${act('addCart', p.id)} aria-label="增加 ${esc(p.name)}">${icon('circle-plus', 28)}</button></div>`; }).join('');
+  return U.cart.map(i => { const p = productByID(i.productID); if (!p) return ''; return `<div class="row" style="min-height:44px"><div class="grow"><div class="bold sub">${esc(p.name)}</div><div class="cap soft num">${mmoney(priceIn(p, menuCurrency()))}</div></div><button style="color:var(--ink-soft)"${act('qty', p.id, -1)} aria-label="減少 ${esc(p.name)}">${icon('circle-minus', 28)}</button><b class="num" style="min-width:24px;text-align:center">${i.quantity}</b><button style="color:var(--pink)"${act('addCart', p.id)} aria-label="增加 ${esc(p.name)}">${icon('circle-plus', 28)}</button></div>`; }).join('');
 }
 function cartPanel() {
   return `<aside class="cart-panel" id="cart-panel"><div class="row g8"><b class="grow t-title">本次結帳</b>${U.cart.length ? `<button class="bold soft sub" style="min-height:36px"${act('askClearCart')}>清空</button>` : ''}</div>
-    ${U.cart.length ? `<div class="stack g8">${cartLines()}</div>${HR}<div class="row"><span class="grow bold">合計</span><b class="num" style="font-size:24px;color:var(--pink-deep)">${money(cartTotal(U.cart))}</b></div>${btn('前往收款', 'openPayment', null, { ic: 'credit-card' })}`
+    ${U.cart.length ? `<div class="stack g8">${cartLines()}</div>${HR}<div class="row"><span class="grow bold">合計</span><b class="num" style="font-size:24px;color:var(--pink-deep)">${mmoney(cartTotal(U.cart))}</b></div>${btn('前往收款', 'openPayment', null, { ic: 'credit-card' })}`
       : `<div class="stack center" style="padding:40px 0;gap:8px"><span style="color:var(--pink-light)">${icon('shopping-bag', 40)}</span><span class="sub soft">點商品格子加入</span></div>`}</aside>`;
 }
 
 
 // ================= 收銀對帳（公司） =================
 function viewReconcile() {
-  const u = U.user, day = selDay(), s = reconcile(day, u), daySales = visibleSales(u, day), out = outstandingSales(u), inf = dayInfo(day);
+  const u = U.user, day = selDay(), s = reconcile(day, u, null, reportCurrency()), daySales = visibleSales(u, day), out = outstandingSales(u), inf = dayInfo(day);
   const m = a => money(a, s.currency);
   const cashRow = (t, v, kind) => `<button class="row" style="padding:12px;min-height:50px;border-radius:12px;background:var(--cream);width:100%"${act('openCash', kind)}><span class="grow bold sub">${t}</span><b style="color:${v == null ? 'var(--pink)' : 'var(--ink)'}" class="num">${v == null ? '點一下輸入' : m(v)}</b><span style="color:var(--pink)">${icon('pencil', 18)}</span></button>`;
   let vt, vfg, vbg;
@@ -3658,11 +3810,11 @@ function viewReconcile() {
   for (const k of ['cash', 'transfer', 'linePay', 'recorded']) if (k !== 'recorded' || (s.byMethod.recorded || 0) > 0) tiles.push(mtile(PAY[k].label, m(s.byMethod[k] || 0), PAY[k].fg));
   tiles.push(mtile('當天待收', m(s.outstanding), s.outstanding > 0 ? 'var(--orange-deep)' : 'var(--ink)', s.outstanding > 0 ? 'var(--orange-pale)' : 'var(--cream)'));
   const html = [
-    dayPicker('對帳日期'),
+    dayPicker('對帳日期') + currencySwitch(),
     card(stitle('現金箱') + `<div class="cap soft">只有明確記為「現金」的收款會算進錢箱；紙本沒記付款方式的不算。每天分開記。</div>` + cashRow('起始現金', s.openingCash, 'opening') + `<div class="row"><span class="grow sub">＋ 現金銷售</span><b class="num">${m(s.cashSales)}</b></div>${HR}<div class="row"><b class="grow">預估錢箱</b><b class="num" style="font-size:19px;color:${s.expectedCash == null ? 'var(--ink-soft)' : 'var(--green-deep)'}">${s.expectedCash == null ? '先輸入起始現金' : m(s.expectedCash)}</b></div>` + cashRow('收攤實點', s.actualCash, 'actual') + `<div style="min-height:48px;border-radius:12px;display:grid;place-items:center;font-weight:900;color:${vfg};background:${vbg};text-align:center;padding:8px">${esc(vt)}</div>`),
     card(stitle(isToday() ? '今天收入' : '當天收入') + `<div class="tiles" style="gap:10px">${tiles.join('')}</div>` +
-      (s.currency === 'HKD' ? `<div class="notice">${icon('info', 14)}這天是香港場的舊資料，金額是港幣。</div>` : '') +
-      (s.otherCurrencyCount > 0 ? `<div class="notice">${icon('info', 14)}另有 ${s.otherCurrencyCount} 筆港幣舊資料沒算進合計，明細在下面。</div>` : '') +
+      (s.currency !== 'TWD' ? `<div class="notice">${icon('info', 14)}目前合計的是${CUR[s.currency].label}（${CUR[s.currency].symbol}）。</div>` : '') +
+      (s.otherCurrencyCount > 0 ? `<div class="notice">${icon('info', 14)}另有 ${s.otherCurrencyCount} 筆其他幣別的交易沒算進這個合計，可以在上面切換幣別。</div>` : '') +
       (inf && (inf.label || inf.note) ? `<div class="cap soft">${esc([inf.label, inf.note].filter(Boolean).join('：'))}</div>` : '')),
     card(stitle('待收款項（所有日期）', out.length, 'var(--orange-deep)') + (out.length ? out.map(x => `<div class="stack g8">${saleRow(x, true)}<button class="cbtn green" style="align-self:flex-end"${act('openSettle', x.id)}>登記已收到</button></div>`).join(HR) : empty('circle-check', '沒有待收的款項'))),
     card(stitle('當天交易明細', daySales.length) + (daySales.length ? joinRows(daySales, x => saleRow(x)) : empty('inbox', '這天還沒有交易')))
@@ -3672,12 +3824,12 @@ function viewReconcile() {
 
 // ================= 我的銷售（Coser） =================
 function viewSalesHistory() {
-  const u = U.user, day = selDay(), s = reconcile(day, u), list = visibleSales(u, day);
+  const u = U.user, day = selDay(), s = reconcile(day, u, null, reportCurrency()), list = visibleSales(u, day);
   const others = activeDays(u).filter(d => d !== day).slice(0, 14);
   const tiles = [mtile('商品收入', money(s.companySales, s.currency), 'var(--pink-deep)', 'var(--pink-pale)'), mtile('App 售出件數', `${s.itemCount} 件`)];
   if (s.personalSales > 0) tiles.push(mtile('個人互動收入', money(s.personalSales, s.currency), 'var(--ink-soft)'));
   if (s.outstanding > 0) tiles.push(mtile('賒帳待收', money(s.outstanding, s.currency), 'var(--orange-deep)', 'var(--orange-pale)'));
-  const html = [dayPicker(), `<div class="tiles">${tiles.join('')}</div>`,
+  const html = [dayPicker() + currencySwitch(), `<div class="tiles">${tiles.join('')}</div>`,
     card(stitle('交易紀錄', list.length) + (list.length ? joinRows(list, x => saleRow(x)) : empty('inbox', '這天還沒有你的交易'))),
     others.length ? card(stitle('其他有記帳的日子') + others.map(d => { const r = reconcile(d, u); return `<button class="row" style="min-height:48px;width:100%"${act('pickDay', d)}><span class="grow"><b class="sub" style="display:block">${esc(relDay(d))}</b><span class="cap soft">${r.transactionCount} 筆・${r.itemCount} 件</span></span><b class="sub num" style="color:var(--pink-deep)">${money(r.companySales + r.personalSales, r.currency)}</b><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`; }).join(HR)) : ''
   ].join('');
@@ -3800,6 +3952,9 @@ function viewProducts() {
   let html = btn('新增商品', 'openProduct', '', { ic: 'plus' });
   if (!themes.length) html += card(`<div class="stack center" style="gap:10px"><span style="color:var(--pink-light)">${icon('book', 40)}</span><b style="font-size:17px">還沒有商品</b><span class="sub soft">按上面的「新增商品」，填作品、角色、品名、售價和數量就好。</span></div>`, 'p24');
   else {
+    const unpriced = unpricedProducts('TWD', u), uncounted = uncountedProducts(u);
+    if (unpriced.length || uncounted.length) html += card((unpriced.length ? `<div class="row g8 cap bold" id="unpriced-twd" style="color:var(--danger);align-items:flex-start">${icon('info', 16)}<span>待補台幣售價 ${unpriced.length} 項：${esc(unpriced.map(p => p.name).join('、'))}</span></div>` : '')
+      + (uncounted.length ? `<div class="row g8 cap bold soft" id="uncounted" style="align-items:flex-start">${icon('package', 16)}<span>未盤點 ${uncounted.length} 項：庫存空白不是 0，盤點後才知道實際數量。</span></div>` : ''), 'p12');
     html += `<div class="row g8 wrap"><span class="bold sub soft">共 ${themes.length} 個作品・角色、${total} 項商品</span>${low.length ? pill(`${low.length} 項庫存偏低`, 'var(--orange-deep)', 'var(--orange-pale)') : ''}</div>`;
     html += `<div class="series-grid">${themes.map(seriesCard).join('')}</div>`;
   }
@@ -3815,10 +3970,29 @@ function seriesCard(t) {
   body += `<button class="row g8" style="justify-content:center;width:100%;min-height:44px;font-weight:800;font-size:14px;color:var(--pink-deep)"${act('openProduct', '', t.id)}>${icon('circle-plus', 18)}在這裡加商品</button>`;
   return `<section class="series" style="${tintVars(t.tintHex)}">${seriesHeader(t, all.length, edit)}<div class="series-b">${body}</div></section>`;
 }
+// 商品的各幣別售價：台幣沒定價用紅字「台幣未定價」，其他幣別有定價才列（2026-10-27）
+function priceSummary(p) {
+  const parts = [];
+  if (priceIn(p, 'TWD') == null) parts.push(`<span style="color:var(--danger)">台幣未定價</span>`);
+  for (const c of pricedCurrencies(p)) parts.push(`<span style="color:${c === 'TWD' ? 'var(--pink-deep)' : 'var(--ink-soft)'}">${money(priceIn(p, c), c)}</span>`);
+  if (!pricedCurrencies(p).length) parts.push(`<span class="soft">點這裡補售價</span>`);
+  return `<span class="cap bold row g8 wrap" style="gap:2px 8px">${parts.join('')}</span>`;
+}
 function ownerRow(p) {
   const low = isLowStock(p);
-  return `<div class="prow"><button class="grow row g8" style="text-align:left"${act('openProduct', p.id)}><span class="grow"><span class="heavy sub" style="display:block">${esc(p.name)}</span><span class="cap bold" style="color:${p.priceTWD == null ? 'var(--danger)' : 'var(--pink-deep)'}">${p.priceTWD != null ? money(p.priceTWD) : '未填售價，點這裡補上'}</span></span><span class="soft">${icon('pencil', 14)}</span></button>
-    ${p.digital ? `<span class="cap bold soft" style="width:84px;text-align:center">電子檔</span>` : `<div style="width:84px;display:flex;flex-direction:column;align-items:center;gap:4px"><b class="sub num" style="color:${low ? 'var(--orange-deep)' : 'var(--ink)'}">${p.stock != null ? `${p.stock} 件` : '未盤點'}</b><button class="cbtn green"${act('openRestock', p.id)}>進貨</button></div>`}</div>`;
+  return `<div class="prow"><button class="grow row g8" style="text-align:left"${act('openProduct', p.id)}><span class="grow"><span class="heavy sub" style="display:block">${esc(p.name)}</span>${priceSummary(p)}</span><span class="soft">${icon('pencil', 14)}</span></button>
+    ${p.digital ? `<span class="cap bold soft" style="width:84px;text-align:center">電子檔</span>` : `<div style="width:84px;display:flex;flex-direction:column;align-items:center;gap:4px"><b class="sub num" style="color:${p.stock == null ? 'var(--ink-soft)' : low ? 'var(--orange-deep)' : 'var(--ink)'}">${stockLabel(p)}</b><button class="cbtn green"${act('openRestock', p.id)}>進貨</button></div>`}</div>`;
+}
+
+// ================= Coser 名冊（公司，2026-10-27） =================
+function viewRoster() {
+  const u = U.user, list = rosterFor(u), inRoster = new Set(list.map(r => r.id));
+  const missing = COSERS.filter(c => !inRoster.has(c.id) && SB().themes.some(t => t.coserID === c.id));
+  let html = btn('登記新 Coser', 'openRegister', null, { ic: 'user-plus' });
+  html += `<div class="row g8 cap bold soft" style="align-items:flex-start">${icon('lock', 14)}<span>名冊有本名與合約照片，只有公司帳號看得到。登記時會同時建立 Coser 的登入帳號，帳號也是 CoserID（商品、交易、會員都用它對應）。</span></div>`;
+  if (list.length) html += card(stitle('已登記', list.length) + list.map(r => `<button class="row" style="width:100%;min-height:64px;gap:12px"${act('openProfile', r.id)} id="roster-${esc(r.id)}">${avatar(coser(r.id), 44)}<span class="grow" style="text-align:left"><b style="display:block;font-size:16px">${esc(r.cosName)}</b><span class="cap soft">${esc(`${planLabel(r.plan)}・簽約 ${r.contractDate}・帳號 ${r.id}`)}</span>${r.hasLogin ? '' : `<br>${pill('登入帳號未建立', 'var(--orange-deep)', 'var(--orange-pale)')}`}</span><span class="cap bold soft">${r.photos.length} 頁</span><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`).join(HR), 'p10');
+  if (missing.length) html += card(stitle('名冊資料待補', missing.length) + missing.map(c => `<div class="row" style="min-height:52px;gap:12px">${avatar(c, 40)}<span class="grow"><b class="sub" style="display:block">${esc(c.name)}</b><span class="cap soft">CoserID ${esc(c.id)}・本名、方案、簽約日、合約照片還沒填</span></span></div>`).join(HR) + `<div class="cap soft">這些 Coser 已經有商品或交易，請到 Notion「Coser 名冊」補齊資料。</div>`);
+  return { title: 'Coser 名冊', html, cls: 'narrowcol' };
 }
 
 // ================= 會員（Coser） =================
@@ -3878,6 +4052,9 @@ function viewSheet() {
     case 'series': return sheetSeries(sh);
     case 'member': return sheetMember(sh);
     case 'feedback': return sheetFeedback(sh);
+    case 'menuCur': return sheetMenuCurrency(sh);
+    case 'register': return sheetRegister(sh);
+    case 'profile': return sheetProfile(sh);
   }
   return '';
 }
@@ -3899,20 +4076,20 @@ function sheetPayment(sh) {
     return sheetFrame({ title: '完成', body, footer: btn('下一位客人', 'closeSheet', null, { ic: 'arrow-right' }), cls: 'short' });
   }
   if (!U.cart.length) return sheetFrame({ title: '收款', left: tb('返回', 'closeSheet'), body: empty('shopping-bag', '購物車是空的，回到結帳畫面選商品。'), cls: 'short' });
-  const total = cartTotal(U.cart), owner = activeCheckoutCoser(), mc = isMemberCardOn(owner);
+  const total = cartTotal(U.cart), owner = activeCheckoutCoser(), mc = isMemberCardOn(owner), cur = menuCurrency();
   const needsName = sh.payment === 'credit' && !(mc && normalizeFan(U.cartMember)) && !U.cartDebtor.trim();
-  let body = card(`<div class="row g8 heavy sub" style="color:${isToday() ? 'var(--ink-soft)' : 'var(--orange-deep)'}">${icon('calendar', 16)}${esc(isToday() ? `記在今天・${dayText(selDay())}` : `補記在 ${dayText(selDay())}`)}</div>${cartLines()}${HR}<div class="row"><b class="grow">應收</b><b class="num" style="font-size:34px;font-weight:900;color:var(--pink-deep)">${money(total)}</b></div>`);
+  let body = card(`<div class="row g8 heavy sub" style="color:${isToday() ? 'var(--ink-soft)' : 'var(--orange-deep)'}">${icon('calendar', 16)}${esc(isToday() ? `記在今天・${dayText(selDay())}` : `補記在 ${dayText(selDay())}`)}</div><div class="row g8 heavy sub" id="pay-currency" style="color:${cur === 'TWD' ? 'var(--ink-soft)' : 'var(--pink-deep)'}">${icon('coins', 16)}幣別：${CUR[cur].label}（${CUR[cur].symbol}）</div>${cartLines()}${HR}<div class="row"><b class="grow">應收</b><b class="num" style="font-size:34px;font-weight:900;color:var(--pink-deep)">${mmoney(total)}</b></div>`);
   body += `<div class="stack g8"><b style="font-size:17px">收款方式</b><div class="paygrid">${['cash', 'transfer', 'linePay', 'credit'].map(k => `<button class="paybtn${sh.payment === k ? ' on' : ''}" style="--fg:${PAY[k].fg}"${act('payMethod', k)} aria-pressed="${sh.payment === k}">${icon(PAY[k].icon, 22)}${k === 'credit' ? '賒帳（記應收）' : PAY[k].label}</button>`).join('')}</div></div>`;
   if (sh.payment === 'cash') {
     const given = parseInt(sh.cashGiven || '0', 10); const change = given - total;
-    body += `<div class="field"><label for="f-sheet-cashGiven">客人給多少？（選填，幫你算找零）</label>${inp('sheet.cashGiven', { ph: '例如 2000', num: true, cls: 'big num' })}${given > 0 ? `<b style="font-size:20px;color:${change >= 0 ? 'var(--green-deep)' : 'var(--danger)'}">${change >= 0 ? `找零 ${money(change)}` : `還差 ${money(-change)}`}</b>` : ''}</div>`;
+    body += `<div class="field"><label for="f-sheet-cashGiven">客人給多少？（選填，幫你算找零）</label>${inp('sheet.cashGiven', { ph: `例如 2000（${CUR[cur].symbol}）`, num: true, cls: 'big num' })}${given > 0 ? `<b style="font-size:20px;color:${change >= 0 ? 'var(--green-deep)' : 'var(--danger)'}">${change >= 0 ? `找零 ${mmoney(change)}` : `還差 ${mmoney(-change)}`}</b>` : ''}</div>`;
   }
   if (sh.payment === 'credit') body += `<div class="field"><label for="f-cartDebtor">${mc ? '客人名字或聯絡方式（沒有會員 ID 時必填）' : '客人名字或聯絡方式（必填）'}</label>${inp('cartDebtor', { ph: '例如 小雪・IG @snow', cls: needsName ? 'bad' : '' })}</div>`;
   if (mc) {
     const m = U.cartMember ? memberByFan(U.cartMember, owner) : null;
     body += `<div class="field"><label for="f-cartMember">會員粉絲 ID（選填）</label>${inp('cartMember', { ph: '例如 FAN123', upper: true })}${m ? `<div class="row g8 cap bold" style="color:var(--green-deep)">${icon('heart', 14)}會員：${esc(memberName(m))}</div>` : normalizeFan(U.cartMember) ? `<div class="cap soft">新的粉絲 ID，記帳後會自動加入會員。</div>` : ''}</div>`;
   }
-  body += btn(sh.payment === 'credit' ? `記成應收 ${money(total)}` : `確認收款 ${money(total)}`, 'doCheckout', null, { ic: 'check', dis: needsName }) + testNotice();
+  body += btn(sh.payment === 'credit' ? `記成應收 ${mmoney(total)}` : `確認收款 ${mmoney(total)}`, 'doCheckout', null, { ic: 'check', dis: needsName }) + testNotice();
   return sheetFrame({ title: '收款', left: tb('返回', 'closeSheet'), body });
 }
 function sheetSettle(sh) {
@@ -4051,13 +4228,15 @@ function sheetVenueDetail(sh) {
 
 // ----- 商品 -----
 function productDraft(sh) {
-  const price = sh.price === '' ? null : parseInt(sh.price, 10);
-  if (sh.seriesID == null || price == null || !sh.name.trim()) return null;
+  // 售價可以先留空（＝未定價），之後再補
+  if (sh.seriesID == null || !sh.name.trim()) return null;
+  const prices = {};
+  for (const c of CURRENCIES) { const t = sh.prices[c]; if (t !== '') prices[c] = parseInt(t, 10); }
   let series;
   if (sh.seriesID === 'new') { if (!sh.newWork.trim() && !sh.newCharacter.trim()) return null; series = { work: sh.newWork, character: sh.newCharacter, tint: sh.newTint }; }
   else series = { existing: sh.seriesID };
   const digital = sh.kind === 'photobook' && sh.digital;
-  return { series, kind: sh.kind, name: sh.name, price, stock: digital || sh.stock === '' ? null : parseInt(sh.stock, 10), digital };
+  return { series, kind: sh.kind, name: sh.name, prices, stock: digital || sh.stock === '' ? null : parseInt(sh.stock, 10), digital };
 }
 const palette = (sel, a) => `<div class="palette">${PALETTE.map((h, i) => `<button class="${sel === h ? 'on' : ''}" style="background:#${h};color:${readableInk(h)}"${act(a, h)} aria-label="顏色 ${i + 1}" aria-pressed="${sel === h}">${sel === h ? icon('check', 20, 3.2) : ''}</button>`).join('')}</div>`;
 function sheetProduct(sh) {
@@ -4068,11 +4247,44 @@ function sheetProduct(sh) {
   body += stepHead(2, '寫真集還是周邊？') + `<div class="bigbtns" style="gap:10px">${['photobook', 'goods'].map(k => `<button class="row g8" style="justify-content:center;min-height:56px;border-radius:16px;font-weight:900;font-size:17px;${sh.kind === k ? 'background:var(--pink);color:#fff;border:1.5px solid var(--pink)' : 'background:#fff;border:1.5px solid var(--line)'}"${act('pfKind', k)} aria-pressed="${sh.kind === k}">${icon(KIND[k].icon, 20)}${KIND[k].label}</button>`).join('')}</div>`;
   if (sh.kind === 'photobook') body += `<button class="switch" role="switch" aria-checked="${sh.digital}"${act('pfDigital')}><b class="sub">電子檔（不計庫存）</b><span class="knob"></span></button>`;
   body += stepHead(3, '品名、售價、數量') + inp('sheet.name', { ph: sh.kind === 'photobook' ? '品名，例如 芙莉蓮寫真書・單書' : '品名，例如 芙莉蓮明信片' })
-    + `<div class="field"><label for="f-sheet-price">售價（台幣）</label>${inp('sheet.price', { ph: '例如 800', num: true, cls: 'big num' })}</div>`
+    + `<div class="field"><label>售價（不賣的幣別空著＝未定價，之後可以補）</label><div class="pricegrid">${CURRENCIES.map(c => `<div class="field" style="gap:4px"><label class="cap bold soft" for="f-sheet-prices-${c}">${CUR[c].label}（${CUR[c].symbol}）</label>${inp(`sheet.prices.${c}`, { ph: '未定價', num: true, cls: 'num' })}</div>`).join('')}</div>${sh.productID ? `<div class="cap soft">改價只影響之後的銷售；已經記好的交易照成交當時的價格，不會被改。</div>` : ''}</div>`
     + (sh.kind === 'photobook' && sh.digital ? '' : `<div class="field"><label for="f-sheet-stock">${sh.productID ? '目前庫存（點過的正確數量）' : '現在有幾件？（不知道可以先空著）'}</label>${inp('sheet.stock', { ph: '例如 30', num: true, cls: 'big num' })}</div>`)
     + btn(sh.productID ? '儲存' : '新增商品', 'pfSave', null, { ic: 'check', dis: !productDraft(sh) });
   if (p) body += `${HR}${btn(p.discontinued ? '恢復販售' : '停售（先不賣，之後可以恢復）', 'pfDiscontinue', null, { kind: 'secondary', ic: p.discontinued ? 'circle-play' : 'circle-pause' })}${btn('刪除商品', 'askDeleteProduct', null, { kind: 'secondary', ic: 'trash-2', style: '--b:var(--danger)' })}<div class="cap soft">刪除後找不回來；過去的交易紀錄不受影響。只是暫時不賣的話，用「停售」就好。</div>`;
   return sheetFrame({ title: sh.productID ? '修改商品' : '新增商品', left: tb('取消', 'closeSheet'), body, cls: 'tall' });
+}
+// ----- 今日菜單幣別（2026-10-27） -----
+function sheetMenuCurrency(sh) {
+  const cur = menuCurrency();
+  const body = `<div class="sub soft">選了之後，商品格子顯示這個幣別的售價，交易也用這個幣別記。每天各自記住，預設台幣；沒有這個幣別售價的商品會灰掉（未定價）。</div><div class="curopts">${CURRENCIES.map(c => `<button class="${c === cur ? 'on' : ''}" id="menucur-${c}"${act('setMenuCur', c)} aria-pressed="${c === cur}">${CUR[c].label}<span>${CUR[c].symbol}</span></button>`).join('')}</div>`;
+  return sheetFrame({ title: `今日菜單幣別・${dayText(selDay())}`, left: tb('關閉', 'closeSheet'), body, cls: 'short' });
+}
+
+// ----- 登記新 Coser（公司，2026-10-27） -----
+const photoPages = (srcs, delAct) => srcs.length ? `<div class="pages">${srcs.map((x, i) => `<div class="cpage"><img src="${x.src}" alt="合約第 ${i + 1} 頁">${delAct ? `<button class="del"${act(delAct, x.id)} aria-label="刪除第 ${i + 1} 頁">${icon('x', 16, 3)}</button>` : ''}<span class="cap bold soft">第 ${i + 1} 頁</span></div>`).join('')}</div>` : '';
+const photoButtons = target => `<div class="row g8 wrap"><label class="cbtn filebtn">${icon('camera', 16)}拍照<input type="file" accept="image/*" capture="environment" data-photos="${target}"></label><label class="cbtn ghost filebtn">${icon('image', 16)}從相簿選<input type="file" accept="image/*" multiple data-photos="${target}"></label></div>`;
+function sheetRegister(sh) {
+  const f = sh.form;
+  let body = `<b style="font-size:17px">基本資料</b>${inp('sheet.form.cosName', { ph: 'Cos 名（對外名稱）' })}${inp('sheet.form.realName', { ph: '本名（真實姓名，只有公司看得到）' })}`;
+  body += `<b style="font-size:17px">方案</b><div class="curopts">${PLANS.map(([v, l]) => `<button class="${f.plan === v ? 'on' : ''}"${act('regPlan', v)} aria-pressed="${f.plan === v}" id="plan-${esc(v)}">${esc(l)}</button>`).join('')}</div>`;
+  if (f.plan === '特殊方案') body += inp('sheet.form.planNote', { ph: '特殊方案內容（必填）' });
+  body += `<div class="field"><label for="f-sheet-form-contractDate">簽約日期</label>${inp('sheet.form.contractDate', { type: 'date' })}</div>`;
+  body += `<b style="font-size:17px">社群</b>${inp('sheet.form.igAccount', { ph: 'IG 帳號，例如 @snow_cos' })}${inp('sheet.form.igFollowers', { ph: '簽約時 IG 粉絲數', num: true })}`;
+  body += f.socials.map((so, i) => `<div class="social"><div class="row g8"><select class="select grow" data-bind="sheet.form.socials.${i}.platform" aria-label="平台">${SOCIAL_PLATFORMS.map(pl => `<option${pl === so.platform ? ' selected' : ''}>${pl}</option>`).join('')}</select><button class="icon-btn" style="color:var(--danger)"${act('regDelSocial', i)} aria-label="刪除這個社群帳號">${icon('trash-2', 20)}</button></div>${so.platform === '其他' ? inp(`sheet.form.socials.${i}.custom`, { ph: '平台名稱，例如 Plurk' }) : ''}${inp(`sheet.form.socials.${i}.handle`, { ph: '帳號' })}${inp(`sheet.form.socials.${i}.followers`, { ph: '粉絲數（選填）', num: true })}</div>`).join('');
+  body += `<button class="row g8" style="min-height:44px;font-weight:800;font-size:14px;color:var(--pink-deep)"${act('regAddSocial')} id="reg-add-social">${icon('circle-plus', 18)}新增其他社群帳號（Threads、Facebook、TikTok…）</button>`;
+  body += `<b style="font-size:17px">合約照片</b>${photoButtons('register')}${f.photos.length ? photoPages(f.photos, 'regDelPhoto') : `<div class="cap soft">還沒有照片。可以先登記，之後在名冊裡補拍。</div>`}`;
+  body += `<b style="font-size:17px">登入帳號</b>${inp('sheet.form.account', { ph: '帳號（英文小寫，也是 CoserID）' })}${inp('sheet.form.password', { ph: `第一次登入的密碼（至少 ${MIN_PASSWORD} 個字）`, type: 'password' })}<div class="cap soft">送出後會先建立 Coser 資料，再建立登入帳號。帳號沒建成功時資料會保留，可以在名冊裡重試。</div>`;
+  const filled = f.cosName.trim() && f.realName.trim() && f.plan && f.account.trim() && f.password;
+  body += btn('登記並建立帳號', 'regSubmit', null, { ic: 'check', dis: !filled });
+  return sheetFrame({ title: '登記新 Coser', left: tb('取消', 'closeSheet'), body, cls: 'tall' });
+}
+function sheetProfile(sh) {
+  const r = rosterProfile(sh.id); if (!r) return sheetFrame({ title: 'Coser 資料', left: tb('關閉', 'closeSheet'), body: empty('search', '找不到這位 Coser') });
+  let body = `<div class="row" style="gap:14px">${avatar(coser(r.id), 54)}<div class="grow"><div class="t-big">${esc(r.cosName)}</div><div class="cap soft">CoserID／登入帳號：${esc(r.id)}</div></div></div>`;
+  body += card(info('本名', r.realName) + info('方案', planLabel(r.plan) + (r.planNote ? `（${r.planNote}）` : '')) + info('簽約日期', dayText(r.contractDate)) + info('IG', r.igAccount || '—') + info('簽約時 IG 粉絲', r.igFollowers != null ? String(r.igFollowers) : '—') + r.socials.map(so => info(so.platform, so.handle + (so.followers != null ? `・粉絲 ${so.followers}` : ''))).join(''));
+  if (!r.hasLogin) body += card(`<b style="color:var(--orange-deep)">登入帳號還沒建立</b>${inp('sheet.password', { ph: '設定第一次登入的密碼', type: 'password' })}<button class="cbtn"${act('retryLogin')}${(sh.password || '').length < MIN_PASSWORD ? ' disabled' : ''}>重試建立帳號</button>`);
+  body += card(stitle('合約照片', r.photos.length) + (r.photos.length ? photoPages([...r.photos].sort((a, b) => a.page - b.page), 'profDelPhoto') : `<div class="cap soft">還沒有合約照片。</div>`) + photoButtons('profile'));
+  return sheetFrame({ title: 'Coser 資料', left: tb('關閉', 'closeSheet'), body, cls: 'tall' });
 }
 function sheetRestock(sh) {
   const p = productByID(sh.productID); if (!p) return sheetFrame({ title: '進貨', left: tb('取消', 'closeSheet'), body: empty('search', '找不到這個商品'), cls: 'short' });
@@ -4202,11 +4414,14 @@ let wantScrollTop = false;
 function scrollTop() { wantScrollTop = true; }
 function signIn(acc) {
   U.user = { ...acc }; U.section = 'home'; U.stack = []; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
-  U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null };
-  resetData(U.dataset); scrollTop();
+  U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null;
+  // 公司登記的 Coser 與登入帳號要留著（才能登出後用新帳號登入測試）；其他測試資料照舊每次登入重設
+  const keep = S.sales ? { roster: S.sales.roster, newCosers: S.sales.newCosers, newAccounts: S.sales.newAccounts } : null;
+  resetData(U.dataset); if (keep) { Object.assign(S.sales, keep); syncPeople(); } scrollTop();
 }
 function addToCart(p) {
-  if (p.priceTWD == null) return show('failure', `「${p.name}」還沒有台幣售價，請先到「我的商品」填上售價。`);
+  const cur = menuCurrency();
+  if (priceIn(p, cur) == null) return show('failure', `「${p.name}」還沒有${CUR[cur].label}售價（未定價），請先到「我的商品」補上，或換今日菜單幣別。`);
   const first = U.cart[0] && productByID(U.cart[0].productID);
   if (first && coserOfProduct(first) !== coserOfProduct(p)) return show('failure', '一筆交易只能是同一位 Coser 的商品，請先結清目前的購物車。');
   const inCart = qtyInCart(p.id);
@@ -4222,9 +4437,9 @@ const resetCart = () => { U.cart = []; U.cartMember = ''; U.cartDebtor = ''; };
 function openProductForm(pid, tid) {
   const themes = visibleThemes(U.user);
   const used = new Set(themes.map(t => t.tintHex));
-  const sh = { type: 'product', productID: pid || null, seriesID: null, newWork: '', newCharacter: '', newTint: PALETTE.find(h => !used.has(h)) || PALETTE[themes.length % PALETTE.length], kind: 'photobook', name: '', price: '', stock: '', digital: false };
+  const sh = { type: 'product', productID: pid || null, seriesID: null, newWork: '', newCharacter: '', newTint: PALETTE.find(h => !used.has(h)) || PALETTE[themes.length % PALETTE.length], kind: 'photobook', name: '', prices: { TWD: '', HKD: '', JPY: '', USD: '' }, stock: '', digital: false };
   const p = pid ? productByID(pid) : null;
-  if (p) Object.assign(sh, { seriesID: p.themeID, kind: p.kind, name: p.name, price: p.priceTWD != null ? String(p.priceTWD) : '', stock: p.stock != null ? String(p.stock) : '', digital: p.digital });
+  if (p) Object.assign(sh, { seriesID: p.themeID, kind: p.kind, name: p.name, prices: Object.fromEntries(CURRENCIES.map(c => [c, priceIn(p, c) != null ? String(priceIn(p, c)) : ''])), stock: p.stock != null ? String(p.stock) : '', digital: p.digital });
   else if (tid) sh.seriesID = tid;
   else if (!themes.length) sh.seriesID = 'new';
   U.sheet = sh;
@@ -4281,9 +4496,36 @@ const A = {
   payMethod(m) { U.sheet.payment = m; },
   doCheckout() {
     const sh = U.sheet; const owner = activeCheckoutCoser();
-    const sale = perform(() => checkout(U.cart, selDay(), sh.payment, isMemberCardOn(owner) ? U.cartMember : '', U.cartDebtor, U.user));
+    const sale = perform(() => checkout(U.cart, selDay(), sh.payment, isMemberCardOn(owner) ? U.cartMember : '', U.cartDebtor, U.user, menuCurrency(), 0));
     if (sale) { resetCart(); sh.finished = sale; }
   },
+
+  // 今日菜單幣別、報表幣別（2026-10-27）
+  openMenuCur() { U.sheet = { type: 'menuCur' }; },
+  setMenuCur(c) {
+    if (c === menuCurrency()) { U.sheet = null; return; }
+    if (!perform(() => setMenuCurrency(c, selDay(), U.user))) return;
+    U.sheet = null;
+    const removed = U.cart.map(i => productByID(i.productID)).filter(p => p && priceIn(p, c) == null);
+    U.cart = U.cart.filter(i => !removed.some(p => p.id === i.productID));
+    show('info', removed.length ? `改用${CUR[c].label}；${removed.map(p => p.name).join('、')}沒有${CUR[c].label}售價，已從購物車拿掉` : `今日菜單改用${CUR[c].label}（${CUR[c].symbol}）`);
+  },
+  reportCur(c) { U.reportCur = c; },
+
+  // Coser 名冊（公司）
+  openRegister() { U.sheet = { type: 'register', form: { cosName: '', realName: '', plan: null, planNote: '', contractDate: today(), igAccount: '', igFollowers: '', socials: [], photos: [], account: '', password: '' } }; },
+  regPlan(v) { U.sheet.form.plan = v; },
+  regAddSocial() { const used = new Set(U.sheet.form.socials.map(x => x.platform)); U.sheet.form.socials.push({ platform: SOCIAL_PLATFORMS.find(p => !used.has(p)) || '其他', custom: '', handle: '', followers: '' }); },
+  regDelSocial(i) { U.sheet.form.socials.splice(+i, 1); },
+  regDelPhoto(id) { U.sheet.form.photos = U.sheet.form.photos.filter(x => x.id !== id); },
+  regSubmit() {
+    const f = U.sheet.form;
+    const r = perform(() => registerCoser({ ...f, photos: f.photos.map(x => x.src) }, U.user));
+    if (r) { U.sheet = null; show('success', `已登記 ${r.cosName}，登入帳號 ${r.id} 已建立`); }
+  },
+  openProfile(id) { U.sheet = { type: 'profile', id, password: '' }; },
+  profDelPhoto(pid) { perform(() => removeContractPhoto(U.sheet.id, pid, U.user), '已刪除這頁合約照片'); },
+  retryLogin() { if (perform(() => createLogin(U.sheet.id, U.sheet.password, U.user), `登入帳號 ${U.sheet.id} 已建立`)) U.sheet.password = ''; },
 
   // 對帳
   openCash(kind) { const inf = dayInfo(selDay()); const v = kind === 'opening' ? inf?.openingCash : inf?.actualCash; U.sheet = { type: 'cash', kind, text: v != null ? String(v) : '' }; },
@@ -4410,8 +4652,8 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 2; // 10/22 補測試售價後 +1，舊的暫存狀態不再沿用
-const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID',
+const STATE_VERSION = 3; // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
+const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
 function snapshotState() {
   const ui = {}; for (const k of KEEP_UI) ui[k] = U[k];
@@ -4424,6 +4666,7 @@ function restoreState(json) {
     if (!o || o.v !== STATE_VERSION) return false;
     Object.assign(S, o.S);
     S.sales.memberCard = new Set(o.S.sales.memberCard || []);
+    syncPeople();
     for (const k of KEEP_UI) if (k in o.U) U[k] = o.U[k];
     U.sideCollapsed = U.section === 'checkout' && !U.stack.length;
     U.confirm = null; U.toast = null;
@@ -4517,6 +4760,34 @@ function onInput(e) {
   if (!composing) render();
 }
 document.addEventListener('input', onInput);
+// 合約照片：拍照或選相簿，縮到長邊 1600px 的 JPEG（只存在這個瀏覽器分頁）
+function shrinkImage(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => resolve(null);
+      img.src = reader.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+document.addEventListener('change', async e => {
+  const el = e.target; if (!el.dataset?.photos || !el.files?.length) return;
+  const target = el.dataset.photos, files = [...el.files]; el.value = '';
+  const srcs = (await Promise.all(files.map(shrinkImage))).filter(Boolean);
+  if (!srcs.length) { show('failure', '讀不到這張照片，請換一張再試。'); render(); return; }
+  if (target === 'register' && U.sheet?.type === 'register') U.sheet.form.photos.push(...srcs.map(src => ({ id: 'ph-' + rid() + nowMs().toString(36), src })));
+  else if (target === 'profile' && U.sheet?.type === 'profile') perform(() => addContractPhotos(U.sheet.id, srcs, U.user), `已加入 ${srcs.length} 頁合約照片`);
+  render();
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (U.confirm) U.confirm = null; else if (U.sheet) U.sheet = null; else return; render(); return; }
   if (e.key === 'Enter' && !e.isComposing && e.target.dataset?.enter) { e.preventDefault(); A[e.target.dataset.enter](); render(); }
