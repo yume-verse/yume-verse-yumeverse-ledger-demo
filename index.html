@@ -2717,75 +2717,213 @@ function readableInk(hex) {
 function atDay(k, hour) { const d = dayDate(k); d.setHours(hour); return d.getTime(); }
 function unique(list) { return [...new Set(list)]; }
 
-// ================= 帳號與 Coser =================
-const ACCOUNTS = [
-  { id: 'company', displayName: '公司管理員', role: 'company', coserID: null, password: 'yume2026', hint: '依日期對帳，查看服裝狀態與預約紀錄' },
-  { id: 'cocoa', displayName: 'ここあ COCOA', role: 'coser', coserID: 'cocoa', password: 'demo2026', hint: '記帳、管理自己的商品與庫存、預約服裝和場地' },
-  { id: 'momo', displayName: '小桃（測試）', role: 'coser', coserID: 'momo', password: 'demo2026', hint: '測試 Coser，有 6 項測試商品' }
-];
-const COSERS = [
-  { id: 'cocoa', name: 'ここあ／浣熊COCOA', shortName: 'ここあ', initial: 'こ', colorHex: 'E8477F' },
-  { id: 'momo', name: '小桃（測試）', shortName: '小桃', initial: '桃', colorHex: 'F3A23F' },
-  { id: 'rin', name: '阿凜（測試）', shortName: '阿凜', initial: '凜', colorHex: '79B0DC' }
-];
-const BASE_ACCOUNT_COUNT = ACCOUNTS.length, BASE_COSER_COUNT = COSERS.length;
-// 公司登記的新 Coser 與登入帳號存在測試資料裡（重設測試資料就清掉），這裡同步回帳號與 Coser 清單
-function syncPeople() {
-  ACCOUNTS.splice(BASE_ACCOUNT_COUNT, Infinity, ...(S.sales?.newAccounts || []));
-  COSERS.splice(BASE_COSER_COUNT, Infinity, ...(S.sales?.newCosers || []));
+// ================= Notion「App 資料（正式）」欄位表（2026-10-27，照 NotionSchema.swift） =================
+// 網頁版的測試資料一律照正式資料庫的格式寫成「一列一列」（欄位名稱、選項照 Notion），再轉成畫面用的資料；
+// 畫面上的操作也能轉回正式資料庫的格式（toNotion），測試會逐欄檢查。還沒連 Notion。
+// 欄位：[名稱, 型別, 選項, 存取]；存取 rw＝App 讀寫（預設）、r＝App 只讀、n＝App 不讀不寫
+const CUR_OPTS = ['TWD', 'HKD', 'JPY', 'USD'];
+const NOTION_SCHEMA = {
+  'Coser 名冊': { id: '82667053-3dda-402e-aebf-d5cc59a5167b', props: [['Cos名', 'title'], ['CoserID', 'text'], ['短名', 'text'], ['頭像字', 'text'], ['頭像色', 'text'], ['登入帳號', 'email'], ['狀態', 'select', ['合作中', '暫停', '已解約']], ['本名', 'text'], ['方案', 'select', ['10%方案', '40%方案', '女僕方案', '特殊方案']], ['方案說明', 'text'], ['簽約日期', 'date'], ['合約到期日', 'date'], ['IG帳號', 'text'], ['簽約時IG粉絲', 'number'], ['其他社群帳號', 'text'], ['其他社群粉絲', 'text'], ['合約照片', 'files'], ['會員卡', 'checkbox'], ['建立時間', 'createdTime', null, 'r']] },
+  'Coser 社群帳號': { id: 'd9ee7320-1696-4d5d-b04c-3151ce643bc1', props: [['帳號', 'title'], ['平台', 'select', ['Threads', 'Facebook', 'TikTok', 'X', 'YouTube', '小紅書', '其他']], ['平台名稱（其他）', 'text'], ['粉絲數', 'number'], ['記錄日期', 'date'], ['CoserID', 'text'], ['Coser', 'relation']] },
+  '作品・角色': { id: 'f0dfd4d8-0e2a-41b1-a1cf-f1442c79a094', props: [['名稱', 'title'], ['系列ID', 'text'], ['作品', 'text'], ['角色', 'text'], ['CoserID', 'text'], ['底色', 'text'], ['商品', 'relation', null, 'r']] },
+  '商品': { id: '0345d0d6-18a3-4033-b28f-8ce3750588e8', props: [['名稱', 'title'], ['商品ID', 'text'], ['作品・角色', 'relation'], ['類型', 'select', ['寫真集', '周邊']], ['台幣售價', 'number'], ['港幣售價', 'number'], ['日幣售價', 'number'], ['美元售價', 'number'], ['庫存', 'number'], ['電子檔', 'checkbox'], ['停售', 'checkbox'], ['CoserID', 'text'], ['價格說明', 'text']] },
+  '交易紀錄': { id: '9823b95e-6503-4539-b250-3e1802a2d9f8', props: [['交易編號', 'title'], ['記帳日期', 'date'], ['交易時間', 'date'], ['CoserID', 'text'], ['幣別', 'select', CUR_OPTS], ['匯率', 'number'], ['折扣', 'number'], ['收款方式', 'select', ['現金', '轉帳', 'LINE Pay', '賒帳']], ['狀態', 'select', ['已收', '待收']], ['歸屬', 'select', ['公司', '個人']], ['賒帳客人', 'text'], ['粉絲ID', 'text'], ['經手帳號', 'text'], ['收款登記時間', 'date'], ['備註', 'text'], ['明細', 'relation', null, 'r'], ['品項合計', 'rollup', null, 'r'], ['應收金額', 'formula', null, 'r'], ['台幣金額', 'formula', null, 'r']] },
+  '交易明細': { id: 'b3cd0cbe-37aa-4c78-8b39-9d31e98a33d9', props: [['品名', 'title'], ['交易', 'relation'], ['商品', 'relation'], ['商品ID', 'text'], ['成交單價', 'number'], ['數量', 'number'], ['小計', 'formula', null, 'r']] },
+  '每日錢箱': { id: '4f939a2a-bba7-49fd-9cef-b379723ebc7f', props: [['日期文字', 'title'], ['日期', 'date'], ['CoserID', 'text'], ['活動名稱', 'text'], ['今日幣別', 'select', CUR_OPTS], ['今日匯率', 'number'], ['起始現金', 'number'], ['收攤實點', 'number'], ['備註', 'text']] },
+  '會員': { id: 'a80f35f9-a683-4015-b2e9-4d0d0d183f26', props: [['粉絲ID', 'title'], ['CoserID', 'text'], ['暱稱', 'text'], ['等級', 'select', ['尚未分級']], ['折扣', 'number'], ['累積消費', 'number'], ['備註', 'text']] },
+  '庫存異動': { id: '3e119de1-296b-462c-b5fb-0e6e46704f6a', props: [['異動ID', 'title'], ['時間', 'date'], ['商品ID', 'text'], ['商品名稱', 'text'], ['類型', 'select', ['盤點', '補貨', '銷售']], ['數量', 'number'], ['原因', 'text'], ['CoserID', 'text'], ['操作帳號', 'text']] },
+  '場地預約': { id: 'abb6395a-c925-457b-8a9f-ad81b01899e8', props: [['預約編號', 'title'], ['場地', 'select', ['攝影棚A', '攝影棚B', '工作室']], ['日期', 'date'], ['開始', 'number'], ['結束', 'number'], ['CoserID', 'text'], ['預約帳號', 'text'], ['狀態', 'select', ['已預約', '已取消']], ['備註', 'text'], ['取消時間', 'date']] },
+  '服裝借用': { id: '07c8b086-54c9-499a-85bc-53458b6e9d20', props: [['借用單號', 'title'], ['服裝', 'relation'], ['服裝編號', 'text'], ['服裝名稱', 'text'], ['借用CoserID', 'text'], ['借用人姓名', 'text'], ['聯絡方式', 'text'], ['借用日期', 'date'], ['約定歸還日期', 'date'], ['實際歸還日期', 'date'], ['狀態', 'select', ['已登記', '借出中', '已歸還', '已取消']], ['借用用途', 'select', ['拍攝', '場次活動', '其他']], ['活動名稱', 'text'], ['經手人', 'text'], ['歸還狀況', 'select', ['正常', '有損壞', '缺件']], ['狀況說明', 'text'], ['借出時狀況', 'text', null, 'n'], ['同意注意事項', 'checkbox', null, 'n'], ['配件已確認', 'checkbox', null, 'n'], ['備註', 'text', null, 'n']] },
+  // 服裝基本資料在 Notion 維護，App 只讀；App 只改借用狀態、暫停借用、暫停原因（COS服編號用來找到那一列）
+  'Y-5 COS服拍賣': { id: 'ea662a59-d19d-49e9-8650-55b3dd05ccb7', props: [['COS服編號', 'title', null, 'r'], ['作品名稱', 'text', null, 'r'], ['角色名稱', 'text', null, 'r'], ['廠家尺寸', 'text', null, 'r'], ['細項', 'text', null, 'r'], ['保存位置', 'select', ['A', 'B', 'C', 'D', 'E', 'F', 'G', '巧巧', '待確認'], 'r'], ['借用狀態', 'select', ['可借用', '借出中', '已售出（不可借）']], ['暫停借用', 'checkbox'], ['暫停原因', 'text'], ['圖片', 'files', null, 'r'], ['備註', 'text', null, 'r'], ['販賣狀態', 'select', ['未賣出', '已賣出'], 'n'], ['購入金額', 'text', null, 'n'], ['售出金額', 'text', null, 'n'], ['淘寶圖片', 'text', null, 'n'], ['借用紀錄', 'relation', null, 'n']] }
+};
+const nprop = (db, name) => NOTION_SCHEMA[db].props.find(p => p[0] === name) || null;
+const nAccess = p => p[3] || (['formula', 'rollup', 'createdTime'].includes(p[1]) ? 'r' : 'rw');
+/** 含時區的時間文字，例如 2026-10-27T14:03:00+08:00（Notion 日期欄有時間時用） */
+function isoTime(ms) {
+  if (ms == null) return null;
+  const d = new Date(ms), off = -d.getTimezoneOffset(), sign = off >= 0 ? '+' : '-', a = Math.abs(off);
+  return `${dayKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${sign}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
 }
-const coser = id => COSERS.find(c => c.id === id) || null;
-const accountName = id => ACCOUNTS.find(a => a.id === id)?.displayName ?? id;
+const parseTime = s => s == null ? null : (s.length === 10 ? atDay(s, 12) : Date.parse(s));
+/** 檢查一列是否符合正式資料庫：欄位都在表上、型別對、選項在 Notion 裡（測試用） */
+function checkNotionRow(db, row) {
+  const errs = [];
+  for (const [k, v] of Object.entries(row)) {
+    const p = nprop(db, k);
+    if (!p) { errs.push(`${db} 沒有欄位「${k}」`); continue; }
+    if (nAccess(p) !== 'rw' && p[1] !== 'title') errs.push(`${db}「${k}」App 不寫`);
+    if (v == null) continue;
+    const t = p[1];
+    if (['title', 'text', 'email', 'date', 'select'].includes(t) && typeof v !== 'string') errs.push(`${db}「${k}」要是文字`);
+    if (['number', 'files'].includes(t) && typeof v !== 'number') errs.push(`${db}「${k}」要是數字`);
+    if (t === 'checkbox' && typeof v !== 'boolean') errs.push(`${db}「${k}」要是勾選`);
+    if (t === 'relation' && !Array.isArray(v)) errs.push(`${db}「${k}」要是關聯`);
+    if (t === 'select' && !p[2].includes(v)) errs.push(`${db}「${k}」選項「${v}」不在 Notion 裡`);
+    if (t === 'date' && !/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})?$/.test(v)) errs.push(`${db}「${k}」日期格式 ${v}`);
+    if (t === 'title' && !v.trim()) errs.push(`${db} 標題空白`);
+  }
+  for (const p of NOTION_SCHEMA[db].props) if (nAccess(p) === 'rw' && !(p[0] in row)) errs.push(`${db} 少了「${p[0]}」`);
+  return errs;
+}
 
-// ================= 服裝（Notion「夢次元 服裝」42 件，2026-10-20 快照） =================
-const COSTUME_ROWS = [
-  ['C-1', '文豪野犬', '與謝野晶子', 'M', 'uwowo', '白色上衣+黑裙+頭飾+領帶(無黑襪/手套)', 'A'],
-  ['C-2', '月刊少女', '佐倉千代', 'M', '', '外套+裙子+領結+頭飾(無襯衣)', 'A'],
-  ['C-3', '我的英雄學院', '高校制服(女)', '女M', '', '外套+襯衣(無領帶/裙子)', 'A'],
-  ['C-4', '我的英雄學院', '高校體育服(女)', 'M', '', '上衣+褲子', 'A'],
-  ['C-5', '偽物語', '阿良良木火憐', 'M', '', '上衣+褲子+背心+襪子', 'A'],
-  ['C-6', '食戟之靈', '薙切繪里奈', 'M', '', '裙子+外套+領結(無襯衣)', 'A'],
-  ['C-7', '疾走少年', '外套', 'M', '', '外套', 'A'],
-  ['C-8', 'Love Live!', '真姬 未覺醒 日常服', '', '', '', 'A'],
-  ['C-9', 'Love Live!', '真姬 約會服', '', '', '', 'A'],
-  ['C-10', '鏈鋸人', '蕾潔', 'M', '', '上衣+短褲+頸飾(缺蝴蝶結/過攜襪)', 'B'],
-  ['C-11', '貓娘學院', '巧克力 賽車服', 'XL', '', '大全套(含假髮+獸耳)', 'B'],
-  ['C-12', '獵魔女團', '佐依', 'M', '鞋碼37', '大全套(含假髮+道具+鞋子)', 'B'],
-  ['C-13', '魔法少女小圓', '小圓', 'S', '', 'COS服(不含裙撐、鞋、假髮)', 'B'],
-  ['C-14', '碧藍航線', '雅努斯 萬聖節', 'M', '', 'COS服+假髮 (缺頸部蝴蝶結)', 'B'],
-  ['C-15', '鳴潮', '琳奈', 'M', '38碼', '', '巧巧'],
-  ['C-16', 'Love Live!', '東條希 睡美人', 'M', '', 'COS服+襪子', 'B'],
-  ['C-17', '原創', '萬用女僕裝(1)', 'M', '', 'COS服', 'C'],
-  ['C-18', 'Love Live!', '小鳥警察', 'M', '', '服裝(缺帽子)', 'C'],
-  ['C-19', '式守同學不只可愛而已', '式守', 'M', '', '毛衣-+假髮', 'C'],
-  ['C-20', '初音旋律ICOS絕版', '初音', 'S-M', '', 'COS服+耳罩', 'C'],
-  ['C-21', '初音 湯咖哩', '初音', 'M', '', 'COS服+假髮', 'C'],
-  ['C-22', '小林家龍女僕', '托爾', 'M', '', 'COS服+假髮(缺手套+尾巴)', 'D'],
-  ['C-23', '刀劍亂舞', '螢丸', 'M', '', 'COS服', 'D'],
-  ['C-24', '陰陽師', '雪女', 'M', '', 'COS服(有雪女-1、雪女-2、雪女-3)', 'D'],
-  ['C-25', '文豪野犬', '泉鏡花', 'M', '', 'COS服', 'D'],
-  ['C-26', '食戟之靈', '幸平創真', 'M', '', 'COS服+假髮', 'D'],
-  ['C-27', '刀劍亂舞', '安定', 'M', '', 'COS服', 'E'],
-  ['C-28', '終結的熾天使', '克魯魯', 'S-M', '', 'COS服', 'E'],
-  ['C-29', '咒術迴戰', '真希', 'M', '', 'COS服', 'E'],
-  ['C-30', 'VOCALOID', '初音 青花瓷', 'M', '', 'COS服', 'E'],
-  ['C-31', '咒術迴戰', '狗卷', 'M', '', 'COS服+假髮', 'E'],
-  ['C-32', '工作細胞', '紅血球', 'M', '', 'COS服+假髮(缺黑色上衣)', 'E'],
-  ['C-33', '原創', '萬用女僕裝(2)', 'M', '偏小', '服裝', 'F'],
-  ['C-34', '原創', 'U家 戰鬥女僕04', 'M', '悠窩窩', '服裝+道具', 'F'],
-  ['C-35', 'FGO', '酒吞同人旗袍', 'M', '', '服裝+道具', 'F'],
-  ['C-36', '刀劍亂舞', '三佬切國廣', '男S', '', 'COS服(無襯衣+披風)', 'F'],
-  ['C-37', 'Love Live!', '東條希 輝葉城', 'M', '', 'COS服', 'F'],
-  ['C-38', '我們真的學不來', '桐須真冬', 'M', '', 'COS服', 'F'],
-  ['C-39', '我們真的學不來', '緒方理朱', 'M', '', 'COS服', 'F'],
-  ['C-40', '排球少年', '孤爪研磨', 'L', '', 'COS服+假髮', 'F'],
-  ['C-41', '陰陽師', '鬼女紅葉', 'M', '', 'COS服', 'G'],
-  ['C-42', '名偵探光之美少女', '森亞露露卡', 'L', '漫飆旗艦店；假髮 秀琴家均碼', 'COS服 + 造型假髮（不含法杖、鞋子）全新未拆', '待確認']
+// ================= 測試資料（照正式資料庫的格式） =================
+// 帳號密碼不在 Notion（正式版由後端處理）；email＝Notion「Coser 名冊 › 登入帳號」，登入時用帳號代號或 email 都可以
+const ACCOUNTS = [
+  { id: 'company', displayName: '公司管理員', role: 'company', coserID: null, email: null, password: 'yume2026', hint: '依日期對帳，查看服裝狀態與預約紀錄' },
+  { id: 'cocoa', displayName: 'ここあ COCOA', role: 'coser', coserID: 'cocoa', email: null, password: 'demo2026', hint: '記帳、管理自己的商品與庫存、預約服裝和場地' },
+  { id: 'momo', displayName: '小桃（測試）', role: 'coser', coserID: 'momo', email: null, password: 'demo2026', hint: '測試 Coser，有 6 項測試商品' }
 ];
+const NOTION_SEED = {
+  // ここあ照 Notion 名冊；小桃、阿凜是測試 Coser
+  'Coser 名冊': [
+    { 'Cos名': 'ここあ', 'CoserID': 'cocoa', '短名': 'ここあ', '頭像字': 'こ', '頭像色': 'E8477F', '狀態': '合作中', '會員卡': false },
+    { 'Cos名': '小桃（測試）', 'CoserID': 'momo', '短名': '小桃', '頭像字': '桃', '頭像色': 'F3A23F', '狀態': '合作中', '會員卡': false },
+    { 'Cos名': '阿凜（測試）', 'CoserID': 'rin', '短名': '阿凜', '頭像字': '凜', '頭像色': '79B0DC', '狀態': '合作中', '會員卡': false }
+  ],
+  // Y-5 COS服拍賣 42 件（2026-10-27 讀出）；已售出（不可借）的 15 件不會出現在 App 裡；已售出服裝的備註不抄
+  'Y-5 COS服拍賣': [
+    { 'COS服編號': "C-1", '作品名稱': "文豪野犬", '角色名稱': "與謝野晶子", '廠家尺寸': "uwowo M號", '細項': "白色上衣+黑裙+頭飾+領帶(無黑襪/手套)", '保存位置': "A", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-2", '作品名稱': "月刊少女", '角色名稱': "佐倉千代", '廠家尺寸': "M", '細項': "外套+裙子+領結+頭飾(無襯衣)", '保存位置': "A", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-3", '作品名稱': "我的英雄學院", '角色名稱': "高校制服(女)", '廠家尺寸': "女M", '細項': "外套+襯衣(無領帶/裙子)", '保存位置': "A", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-4", '作品名稱': "我的英雄學院", '角色名稱': "高校體育服(女)", '廠家尺寸': "M", '細項': "上衣+褲子", '保存位置': "A", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-5", '作品名稱': "偽物語", '角色名稱': "阿良良木火憐", '廠家尺寸': "M", '細項': "上衣+褲子+背心+襪子", '保存位置': "A", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-6", '作品名稱': "食戟之靈", '角色名稱': "薙切繪里奈", '廠家尺寸': "M", '細項': "裙子+外套+領結(無襯衣)", '保存位置': "A", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-7", '作品名稱': "疾走少年", '角色名稱': "外套", '廠家尺寸': "M", '細項': "外套", '保存位置': "A", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-8", '作品名稱': "Love Live!", '角色名稱': "真姬 未覺醒 日常服", '廠家尺寸': null, '細項': null, '保存位置': "A", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-9", '作品名稱': "Love Live!", '角色名稱': "真姬 約會服", '廠家尺寸': null, '細項': null, '保存位置': "A", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+    { 'COS服編號': "C-10", '作品名稱': "鏈鋸人", '角色名稱': "蕾潔", '廠家尺寸': "M", '細項': "上衣+短褲+頸飾(缺蝴蝶結/過攜襪)", '保存位置': "B", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-11", '作品名稱': "貓娘學院", '角色名稱': "巧克力 賽車服", '廠家尺寸': "XL", '細項': "大全套(含假髮+獸耳)", '保存位置': "B", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-12", '作品名稱': "獵魔女團", '角色名稱': "佐依", '廠家尺寸': "M", '細項': "鞋碼37\n大全套(含假髮+道具+鞋子)", '保存位置': "B", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-13", '作品名稱': "魔法少女小圓", '角色名稱': "小圓", '廠家尺寸': "S", '細項': "COS服(不含裙撐、鞋、假髮)", '保存位置': "B", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-14", '作品名稱': "碧藍航線", '角色名稱': "雅努斯 萬聖節", '廠家尺寸': "M", '細項': "COS服+假髮 (缺頸部蝴蝶結)", '保存位置': "B", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-15", '作品名稱': "鳴潮", '角色名稱': "琳奈", '廠家尺寸': "M\n38碼", '細項': null, '保存位置': "巧巧", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-16", '作品名稱': "Love Live!", '角色名稱': "東條希 睡美人", '廠家尺寸': "M", '細項': "COS服+襪子", '保存位置': "B", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-17", '作品名稱': null, '角色名稱': "萬用女僕裝", '廠家尺寸': "M", '細項': "COS服", '保存位置': "C", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+    { 'COS服編號': "C-18", '作品名稱': "Love Live!", '角色名稱': "小鳥警察", '廠家尺寸': "M", '細項': "服裝(缺帽子)", '保存位置': "C", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-19", '作品名稱': "式守同學不只可愛而已", '角色名稱': "式守", '廠家尺寸': "M", '細項': "毛衣-+假髮", '保存位置': "C", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-20", '作品名稱': "初音旋律ICOS絕版", '角色名稱': "初音", '廠家尺寸': "S-M", '細項': "COS服+耳罩", '保存位置': "C", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+    { 'COS服編號': "C-21", '作品名稱': "初音 湯咖哩", '角色名稱': "初音", '廠家尺寸': "M", '細項': "COS服+假髮", '保存位置': "C", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-22", '作品名稱': "小林家龍女僕", '角色名稱': "托爾", '廠家尺寸': "M", '細項': "COS服+假髮(缺手套+尾巴)", '保存位置': "D", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-23", '作品名稱': "刀劍亂舞", '角色名稱': "螢丸", '廠家尺寸': "M", '細項': "COS服", '保存位置': "D", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-24", '作品名稱': "陰陽師", '角色名稱': "雪女", '廠家尺寸': "M", '細項': "COS服(有雪女-1、雪女-2、雪女-3)", '保存位置': "D", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-25", '作品名稱': "文豪野犬", '角色名稱': "泉鏡花", '廠家尺寸': "M", '細項': "COS服", '保存位置': "D", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-26", '作品名稱': "食戟之靈", '角色名稱': "幸平創真", '廠家尺寸': "M", '細項': "COS服+假髮", '保存位置': "D", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-27", '作品名稱': "刀劍亂舞", '角色名稱': "安定", '廠家尺寸': "M", '細項': "COS服", '保存位置': "E", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-28", '作品名稱': "終結的熾天使", '角色名稱': "克魯魯", '廠家尺寸': "S-M", '細項': "COS服", '保存位置': "E", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-29", '作品名稱': "咒術迴戰", '角色名稱': "真希", '廠家尺寸': "M", '細項': "COS服", '保存位置': "E", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-30", '作品名稱': null, '角色名稱': "初音 青花瓷", '廠家尺寸': "M", '細項': "COS服", '保存位置': "E", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+    { 'COS服編號': "C-31", '作品名稱': "咒術迴戰", '角色名稱': "狗卷", '廠家尺寸': "M", '細項': "COS服+假髮", '保存位置': "E", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-32", '作品名稱': "工作細胞", '角色名稱': "紅血球", '廠家尺寸': "M", '細項': "COS服+假髮\n(缺黑色上衣)", '保存位置': "E", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-33", '作品名稱': null, '角色名稱': "萬用女僕裝", '廠家尺寸': "M(偏小)", '細項': "服裝", '保存位置': "F", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+    { 'COS服編號': "C-34", '作品名稱': null, '角色名稱': "U家 戰鬥女僕04", '廠家尺寸': "悠窩窩M", '細項': "服裝+道具", '保存位置': "F", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+    { 'COS服編號': "C-35", '作品名稱': "FGO", '角色名稱': "酒吞同人旗袍", '廠家尺寸': "M", '細項': "服裝+道具", '保存位置': "F", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+    { 'COS服編號': "C-36", '作品名稱': "刀劍亂舞", '角色名稱': "三佬切國廣", '廠家尺寸': "男S", '細項': "COS服(無襯衣+披風)", '保存位置': "F", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-37", '作品名稱': "Love Live!", '角色名稱': "東條希 輝葉城", '廠家尺寸': "M", '細項': "COS服", '保存位置': "F", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+    { 'COS服編號': "C-38", '作品名稱': "我們真的學不來", '角色名稱': "桐須真冬", '廠家尺寸': "M", '細項': "COS服", '保存位置': "F", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-39", '作品名稱': "我們真的學不來", '角色名稱': "緒方理朱", '廠家尺寸': "M", '細項': "COS服", '保存位置': "F", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-40", '作品名稱': "排球少年", '角色名稱': "孤爪研磨", '廠家尺寸': "L", '細項': "COS服+假髮", '保存位置': "F", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-41", '作品名稱': "陰陽師", '角色名稱': "鬼女紅葉", '廠家尺寸': "M", '細項': "COS服", '保存位置': "G", '借用狀態': "已售出（不可借）", '暫停借用': false, '暫停原因': null, '圖片': 1 },
+    { 'COS服編號': "C-42", '作品名稱': "名偵探光之美少女", '角色名稱': "森亞露露卡", '廠家尺寸': "漫飆旗艦店 L碼／假髮 秀琴家均碼", '細項': "COS服 + 造型假髮（不含法杖、鞋子）全新未拆", '保存位置': "待確認", '借用狀態': "可借用", '暫停借用': false, '暫停原因': null, '圖片': 0 },
+  ],
+  '作品・角色': [
+    { '名稱': '崩壞：星穹鐵道・花火', '系列ID': 'hanabi', '作品': '崩壞：星穹鐵道', '角色': '花火', 'CoserID': 'cocoa', '底色': 'C65353' },
+    { '名稱': '葬送的芙莉蓮・芙莉蓮', '系列ID': 'frieren', '作品': '葬送的芙莉蓮', '角色': '芙莉蓮', 'CoserID': 'cocoa', '底色': '7FA03F' },
+    { '名稱': '原創・妹妹本', '系列ID': 'original', '作品': '原創', '角色': '妹妹本', 'CoserID': 'cocoa', '底色': 'F9C8DB' },
+    { '名稱': '原創・索達／蘇打', '系列ID': 'soda', '作品': '原創', '角色': '索達／蘇打', 'CoserID': 'cocoa', '底色': '79B0DC' },
+    { '名稱': '原創・Live Party', '系列ID': 'liveparty', '作品': '原創', '角色': 'Live Party', 'CoserID': 'cocoa', '底色': 'F3A23F' },
+    { '名稱': '現場加購', '系列ID': 'onsite', '作品': '現場加購', '角色': null, 'CoserID': 'cocoa', '底色': 'F7E7A9' },
+    { '名稱': '原創・JK 制服（測試）', '系列ID': 'momo-jk', '作品': '原創', '角色': 'JK 制服（測試）', 'CoserID': 'momo', '底色': 'F3A23F' }
+  ],
+  // 商品照 Notion「商品」（2026-10-27）；小桃的 6 項是測試商品
+  '商品': [
+    { '名稱': "花火套組", '商品ID': "hanabi-set", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': null, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "Cosforce04 有售出 1 組；Notion 台幣、港幣售價都未建" },
+    { '名稱': "花火寫真書・單書", '商品ID': "hanabi-book", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': null, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$200；Notion 台幣價未建" },
+    { '名稱': "花火拍本 Cheki Album", '商品ID': "hanabi-cheki", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': 500, '港幣售價': 130, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價" },
+    { '名稱': "花火電子檔", '商品ID': "hanabi-digital", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': null, '港幣售價': 150, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "香港自訂品項 HK$150；Notion 台幣價未建" },
+    { '名稱': "芙莉蓮寫真書・單書", '商品ID': "frieren-book", '作品・角色': ["frieren"], '類型': "寫真集", '台幣售價': 1000, '港幣售價': 250, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價" },
+    { '名稱': "芙莉蓮單書＋電子檔", '商品ID': "frieren-book-digital", '作品・角色': ["frieren"], '類型': "寫真集", '台幣售價': 1800, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價" },
+    { '名稱': "芙莉蓮 L 夾", '商品ID': "frieren-folder", '作品・角色': ["frieren"], '類型': "周邊", '台幣售價': 250, '港幣售價': 70, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價" },
+    { '名稱': "大套組", '商品ID': "original-big-set", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 2500, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價" },
+    { '名稱': "小套組", '商品ID': "original-small-set", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 1700, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價" },
+    { '名稱': "寫真書・單書", '商品ID': "original-book", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 800, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價" },
+    { '名稱': "電子檔", '商品ID': "original-digital", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 1000, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價" },
+    { '名稱': "索達寫真書・單書", '商品ID': "soda-book", '作品・角色': ["soda"], '類型': "寫真集", '台幣售價': 800, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價" },
+    { '名稱': "索達拍立卡 Slide Card", '商品ID': "soda-slide", '作品・角色': ["soda"], '類型': "周邊", '台幣售價': 350, '港幣售價': 90, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價" },
+    { '名稱': "索達電子檔", '商品ID': "soda-digital", '作品・角色': ["soda"], '類型': "寫真集", '台幣售價': null, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "Cosforce04 有數量紀錄；Notion 台幣、港幣售價都未建" },
+    { '名稱': "Live Party 寫真書", '商品ID': "liveparty-book", '作品・角色': ["liveparty"], '類型': "寫真集", '台幣售價': 600, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價" },
+    { '名稱': "菲比明信片", '商品ID': "phoebe-postcard", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 75, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$75；Notion 台幣價未建" },
+    { '名稱': "六月雨明信片", '商品ID': "june-postcard", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': 200, '港幣售價': 75, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價" },
+    { '名稱': "蕾潔明信片", '商品ID': "reze-postcard", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 120, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$120；Notion 台幣價未建" },
+    { '名稱': "舊拍", '商品ID': "old-cheki", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 80, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$80；Notion 台幣價未建" },
+    { '名稱': "掛軸海報", '商品ID': "scroll", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 270, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$270；Notion 台幣價未建" },
+    { '名稱': "JK 寫真書・單書", '商品ID': "momo-jk-book", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 600, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品" },
+    { '名稱': "JK 套組（書＋拍立得）", '商品ID': "momo-jk-set", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 900, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品" },
+    { '名稱': "JK 電子寫真集", '商品ID': "momo-jk-digital", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 400, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "momo", '價格說明': "測試商品" },
+    { '名稱': "簽名拍立得", '商品ID': "momo-cheki", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 150, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': 3, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品・測試庫存" },
+    { '名稱': "明信片 3 入", '商品ID': "momo-postcard", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 120, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': 20, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品・測試庫存" },
+    { '名稱': "壓克力徽章", '商品ID': "momo-badge", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 80, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品" },
+  ],
+  // 服裝借用：正式資料庫目前沒有紀錄，這 3 筆是測試資料（C-2 借出中、C-4 10/22 借、C-5 已歸還）
+  '服裝借用': [
+    { '借用單號': 'L261007-170747-158', '服裝': ['C-5'], '服裝編號': 'C-5', '服裝名稱': '偽物語 - 阿良良木火憐', '借用CoserID': null, '借用人姓名': '11', '聯絡方式': '123', '借用日期': '2026-10-08', '約定歸還日期': '2026-10-14', '實際歸還日期': '2026-10-08', '狀態': '已歸還', '借用用途': '場次活動', '活動名稱': null, '經手人': 'company', '歸還狀況': null, '狀況說明': null },
+    { '借用單號': 'L261019-132955-6EC', '服裝': ['C-2'], '服裝編號': 'C-2', '服裝名稱': '月刊少女 - 佐倉千代', '借用CoserID': 'cocoa', '借用人姓名': '111', '聯絡方式': '222', '借用日期': '2026-10-19', '約定歸還日期': '2026-10-26', '實際歸還日期': null, '狀態': '借出中', '借用用途': '拍攝', '活動名稱': null, '經手人': 'cocoa', '歸還狀況': null, '狀況說明': null },
+    { '借用單號': 'L261008-153601-983', '服裝': ['C-4'], '服裝編號': 'C-4', '服裝名稱': '我的英雄學院 - 高校體育服(女)', '借用CoserID': 'cocoa', '借用人姓名': 'Acoco', '聯絡方式': 'acoco54acoco', '借用日期': '2026-10-22', '約定歸還日期': '2026-10-25', '實際歸還日期': null, '狀態': '已登記', '借用用途': '拍攝', '活動名稱': 'Ff30', '經手人': 'cocoa', '歸還狀況': null, '狀況說明': null }
+  ],
+  '交易紀錄': [], '交易明細': [], '每日錢箱': [], '會員': [], '庫存異動': [], '場地預約': [], 'Coser 社群帳號': []
+};
+// 營運總表基線（更新至 2026-08-24）：每日錢箱與歷史交易，格式照正式資料庫
+(function () {
+  const seed = NOTION_SEED;
+  const box = (day, event, cur, note) => seed['每日錢箱'].push({ '日期文字': day, '日期': day, 'CoserID': 'cocoa', '活動名稱': event, '今日幣別': cur, '今日匯率': cur === 'TWD' ? 1 : null, '起始現金': null, '收攤實點': null, '備註': note });
+  // 香港五天：紙本只證明已收、沒記收款方式（收款方式留空）；紙本只有整天合計，明細用一列「彙總」（沒有商品ID）
+  const sale = (id, day, cur, payment, status, scope, debtor, note, lineName, amount) => {
+    seed['交易紀錄'].push({ '交易編號': id, '記帳日期': day, '交易時間': null, 'CoserID': 'cocoa', '幣別': cur, '匯率': cur === 'TWD' ? 1 : null, '折扣': 0, '收款方式': payment, '狀態': status, '歸屬': scope, '賒帳客人': debtor, '粉絲ID': null, '經手帳號': 'company', '收款登記時間': null, '備註': note });
+    seed['交易明細'].push({ '品名': lineName, '交易': [id], '商品': [], '商品ID': null, '成交單價': amount, '數量': 1 });
+  };
+  for (const [d, company, personal] of [[24, 1770, 900], [25, 2020, 1660], [26, 820, 1720], [27, 1540, 2460], [28, 2485, 1800]]) {
+    const day = `2026-07-${d}`;
+    box(day, '香港動漫節 CP2026', 'HKD', '香港會展 CK39・五張現場銷貨紀錄表（港幣）；全場另有 152 件只採數量');
+    sale(`HK-07${d}-COMPANY`, day, 'HKD', null, '已收', '公司', null, '公司商品收入・現場表', '公司商品收入（現場表彙總）', company);
+    sale(`HK-07${d}-PERSONAL`, day, 'HKD', null, '已收', '個人', null, '個人互動收入・不列公司損益', '個人互動收入（現場表彙總）', personal);
+  }
+  box('2026-08-08', 'Cosforce04', 'TWD', '8/11 POS 銷售量截圖・只採數量（截圖價格不得使用）');
+  box('2026-08-09', 'Cosforce04', 'TWD', '8/8–9 共 23 件只採數量、沒有金額');
+  box('2026-08-23', 'FF（未錄取）', 'TWD', 'Y-1／Y-4 報名費退款應收');
+  box('2026-09-05', 'KR07 閃耀寫真即售會', 'TWD', 'Y-1 已報名・攤位費 5,000 已繳');
+  sale('FF-REFUND-1700', '2026-08-23', 'TWD', '賒帳', '待收', '公司', 'FF 主辦（報名費退款）', 'FF 未錄取報名費退款', 'FF 未錄取報名費退款', 1700);
+})();
+/** 完整測試情境：依今天產生逾期、今天到期、暫停借用、未來預約（服裝借用列，格式照正式資料庫） */
+function scenarioLoanRows() {
+  const t = today(), d = n => addDays(t, n);
+  const wang = ['王小姐（測試）', '0900-000-001'], lin = ['林先生（測試）', '0900-000-002'], chen = ['陳同學（測試）', null];
+  const row = (order, code, [name, phone], lent, due, by = 'cocoa', extra = {}) => ({
+    '借用單號': order, '服裝': [code], '服裝編號': code, '服裝名稱': null, '借用CoserID': by, '借用人姓名': name, '聯絡方式': phone,
+    '借用日期': d(lent), '約定歸還日期': d(due), '實際歸還日期': null, '狀態': lent > 0 ? '已登記' : '借出中', '借用用途': '拍攝',
+    '活動名稱': null, '經手人': by, '歸還狀況': null, '狀況說明': null, ...extra });
+  const ret = (day, cond, note) => ({ '狀態': '已歸還', '實際歸還日期': isoTime(atDay(d(day), 16)), '歸還狀況': cond, '狀況說明': note });
+  return [
+    row('R-000', 'C-13', wang, -30, -20, 'cocoa', ret(-21, '正常', null)),
+    row('R-00A', 'C-7', lin, -18, -12, 'cocoa', ret(-12, '缺件', '外套左邊口袋扣子掉了')),
+    row('R-001', 'C-17', wang, -4, 3), row('R-001', 'C-9', wang, -4, 3),
+    row('R-002', 'C-38', lin, -10, -2),
+    row('R-003', 'C-34', chen, -7, 0),
+    row('R-004', 'C-20', ['小桃（測試）', null], 5, 7, 'momo')
+  ];
+}
+/** 場地預約測試資料（場地預約列） */
+function venueRows() {
+  const t = today();
+  return [
+    { '預約編號': 'V-TEST-001', '場地': '攝影棚A', '日期': addDays(t, 1), '開始': 13, '結束': 16, 'CoserID': 'momo', '預約帳號': 'momo', '狀態': '已預約', '備註': '測試預約', '取消時間': null },
+    { '預約編號': 'V-TEST-002', '場地': '工作室', '日期': addDays(t, 2), '開始': 10, '結束': 12, 'CoserID': 'cocoa', '預約帳號': 'cocoa', '狀態': '已預約', '備註': '測試預約', '取消時間': null }
+  ];
+}
+
+// ================= 服裝（照 Y-5） =================
 const LOCATION_ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', '巧巧', '待確認'];
 const LOCATION_TINT = { A: 'F9C8DB', B: '79B0DC', C: 'C3D88E', D: 'F3A23F', E: 'F7E7A9', F: 'E8477F', G: '7FA03F', '巧巧': 'FDEDF3' };
-
-/** 把 Notion「借用細項」拆成可以勾選的配件；括號裡「無／缺／不含」開頭的是本來就沒有的 */
+/** 把 Y-5「細項」拆成可以勾選的配件：用 + 或換行分開；括號裡「無／缺／不含」開頭的是本來就沒有的 */
 function parseItems(raw) {
   raw = (raw || '').trim();
   if (!raw) return { items: [], remarks: [] };
@@ -2793,7 +2931,7 @@ function parseItems(raw) {
   for (const ch of raw) {
     if (ch === '(' || ch === '（') depth++;
     if ((ch === ')' || ch === '）') && depth > 0) depth--;
-    if ((ch === '+' || ch === '＋') && depth === 0) { parts.push(cur); cur = ''; } else cur += ch;
+    if ((ch === '+' || ch === '＋' || ch === '\n') && depth === 0) { parts.push(cur); cur = ''; } else cur += ch;
   }
   parts.push(cur);
   const items = [], remarks = [];
@@ -2816,163 +2954,178 @@ function parseItems(raw) {
   }
   return { items, remarks };
 }
-function makeCostumes() {
-  return COSTUME_ROWS.map(([code, work, character, size, sizeNote, items, location]) => {
-    const p = parseItems(items);
-    return {
-      id: code, code, name: character, series: work, size: trimOrNull(size), sizeNote: trimOrNull(sizeNote),
-      location: trimOrNull(location), accessories: p.items, itemsText: trimOrNull(items), itemRemarks: p.remarks,
-      tintHex: LOCATION_TINT[trimOrNull(location)] || 'E8DCCB', suspended: false, suspendReason: null
-    };
-  });
-}
 const costumeDisplay = c => `${c.code} ${c.name}`;
 const locationText = c => c.location ? (c.location.length === 1 ? `位置 ${c.location}` : c.location) : null;
-const infoLine = c => [c.series, c.size, locationText(c)].filter(Boolean).join('・');
-const sizeText = c => c.size && c.sizeNote ? `${c.size}（${c.sizeNote}）` : (c.size || c.sizeNote || null);
+// Y-5「廠家尺寸」原文（尺寸和備註寫在同一欄），換行改成「／」
+const sizeText = c => c.makerSize ? c.makerSize.split('\n').map(x => x.trim()).filter(Boolean).join('／') || null : null;
+const infoLine = c => [c.series, sizeText(c), locationText(c)].filter(Boolean).join('・');
 
-// ================= 借用資料 =================
-function mkLoan(id, order, costumeID, renter, lentDay, dueDay, by, lentAt, details, note) {
-  return { id, orderID: order, costumeID, renter, lentDay, dueDay, status: 'borrowed', returnedAt: null, condition: null, conditionNote: null,
-    events: [{ id: id + '-1', kind: 'lent', at: lentAt, by, note: note || null }], details: details || {} };
-}
-/** App 一般開啟：照 Notion「夢次元 服裝借用」現況 */
-function notionLoans() {
-  const c5 = mkLoan('L261007-170747-158-1', 'L261007-170747-158', 'C-5', { name: '11', phone: '123' }, '2026-10-08', '2026-10-14', 'company', atDay('2026-10-08', 12), { purpose: '場次活動' }, 'Notion 匯入');
-  c5.status = 'returned'; c5.returnedAt = atDay('2026-10-08', 12);
-  c5.events.push({ id: c5.id + '-2', kind: 'returnConfirmed', at: c5.returnedAt, by: 'company', note: 'Notion 匯入：沒有記錄歸還狀況' });
-  const c2 = mkLoan('L261019-132955-6EC-1', 'L261019-132955-6EC', 'C-2', { name: '111', phone: '222' }, '2026-10-19', '2026-10-26', 'cocoa', atDay('2026-10-19', 12), { purpose: '拍攝' }, 'Notion 匯入');
-  const c4 = mkLoan('L261008-153601-983-1', 'L261008-153601-983', 'C-4', { name: 'Acoco', phone: 'acoco54acoco' }, '2026-10-22', '2026-10-25', 'cocoa', atDay('2026-10-22', 12), { purpose: '拍攝', event: 'Ff30' }, 'Notion 匯入');
-  return [c5, c2, c4];
-}
-/** 完整測試情境：依今天產生逾期、今天到期、暫停借用、未來預約 */
-function scenarioLoans(costumes) {
-  const t = today();
-  const d = n => addDays(t, n);
-  const wang = { name: '王小姐（測試）', phone: '0900-000-001' }, lin = { name: '林先生（測試）', phone: '0900-000-002' }, chen = { name: '陳同學（測試）', phone: null };
-  const rent = (order, i, cid, renter, lent, due, by = 'cocoa') => mkLoan(`${order}-${i}`, order, cid, renter, d(lent), d(due), by, atDay(d(Math.min(lent, 0)), 9), { purpose: '拍攝' });
-  const ret = (l, day, cond, note) => {
-    l.status = 'returned'; l.returnedAt = atDay(d(day), 16); l.condition = cond; l.conditionNote = note;
-    l.events.push({ id: l.id + '-2', kind: 'returnConfirmed', at: l.returnedAt, by: 'cocoa', note: [CONDITION[cond].label, note].filter(Boolean).join('：') });
-    return l;
-  };
-  const c7 = costumes.find(c => c.id === 'C-7'); c7.suspended = true; c7.suspendReason = '缺件：外套左邊口袋扣子掉了';
-  return [
-    ret(rent('R-000', 1, 'C-13', wang, -30, -20), -21, 'normal', null),
-    ret(rent('R-00A', 1, 'C-7', lin, -18, -12), -12, 'missingParts', '外套左邊口袋扣子掉了'),
-    rent('R-001', 1, 'C-17', wang, -4, 3), rent('R-001', 2, 'C-9', wang, -4, 3),
-    rent('R-002', 1, 'C-30', lin, -10, -2),
-    rent('R-003', 1, 'C-34', chen, -7, 0),
-    rent('R-004', 1, 'C-20', { name: '小桃（測試）', phone: null }, 5, 7, 'momo')
-  ];
-}
+// 系列底色（24 色）：前 12 色是原本的，順序不變（新系列預設挑還沒用過的第一個）；2026-10-27 加後 12 色
+const PALETTE = ['E8477F', 'F3A23F', '7FA03F', '79B0DC', 'C65353', '9B7BD4', 'F9C8DB', 'C3D88E', 'F7E7A9', '5BB5A8', 'A0785A', '3B6FB6',
+  'FF8A65', 'F4C542', 'B4A7E6', '9ED9CC', '3E8E63', '1F3A5F', '8E2C48', 'D9A066', 'E6B8A2', '6C7A89', 'BFD7EA', '2F2F38'];
+const themeName = t => !t.character ? t.work : (!t.work ? t.character : `${t.work}・${t.character}`);
+
+// ================= 正式資料庫的列 → 畫面用的資料 =================
 const CONDITION = {
   normal: { label: '正常', icon: 'circle-check', fg: 'var(--green-deep)' },
   damaged: { label: '有損壞', icon: 'bandage', fg: 'var(--danger)' },
   missingParts: { label: '缺件', icon: 'puzzle', fg: 'var(--orange-deep)' }
 };
+const conditionKey = label => Object.keys(CONDITION).find(k => CONDITION[k].label === label) || null;
 const PURPOSES = ['拍攝', '場次活動', '其他'];
 const LOAN_STATUS = { borrowed: '已登記', returned: '已歸還', cancelled: '已取消' };
 const EVENT_LABEL = { lent: '登記借用', returnConfirmed: '登記歸還', cancelled: '取消預約' };
-
-// ================= 場地 =================
 const VENUES = {
   studioA: { label: '攝影棚A', icon: 'aperture', qr: false },
   studioB: { label: '攝影棚B', icon: 'aperture', qr: false },
   workroom: { label: '工作室', icon: 'sofa', qr: true }
 };
 const VENUE_KEYS = ['studioA', 'studioB', 'workroom'];
+const venueKey = label => VENUE_KEYS.find(k => VENUES[k].label === label);
 const OPEN_HOUR = 10, CLOSE_HOUR = 22;
-function venueMock() {
-  const t = today();
-  return [
-    { id: 'V-TEST-001', venue: 'studioA', day: addDays(t, 1), startHour: 13, endHour: 16, coserID: 'momo', byAccount: 'momo', createdAt: nowMs(), note: '測試預約', status: 'booked', cancelledAt: null },
-    { id: 'V-TEST-002', venue: 'workroom', day: addDays(t, 2), startHour: 10, endHour: 12, coserID: 'cocoa', byAccount: 'cocoa', createdAt: nowMs(), note: '測試預約', status: 'booked', cancelledAt: null }
-  ];
-}
 const vTime = b => `${clock(b.startHour)}–${clock(b.endHour)}`;
 const vActive = b => b.status === 'booked';
 const vPayload = b => `YUMEVERSE|${b.id}|${VENUES[b.venue].label}|${b.day} ${vTime(b)}`;
-
-// ================= 銷售資料（營運總表基線，更新至 2026-08-24） =================
-function salesMock() {
-  const days = [];
-  for (let d = 24; d <= 28; d++) days.push({ day: `2026-07-${d}`, label: '香港動漫節 CP2026', note: '香港會展 CK39・五張現場銷貨紀錄表（港幣）；全場另有 152 件只採數量', openingCash: null, actualCash: null });
-  days.push({ day: '2026-08-08', label: 'Cosforce04', note: '8/11 POS 銷售量截圖・只採數量（截圖價格不得使用）', openingCash: null, actualCash: null });
-  days.push({ day: '2026-08-09', label: 'Cosforce04', note: '8/8–9 共 23 件只採數量、沒有金額', openingCash: null, actualCash: null });
-  days.push({ day: '2026-08-23', label: 'FF（未錄取）', note: 'Y-1／Y-4 報名費退款應收', openingCash: null, actualCash: null });
-  days.push({ day: '2026-09-05', label: 'KR07 閃耀寫真即售會', note: 'Y-1 已報名・攤位費 5,000 已繳', openingCash: null, actualCash: null });
-  const themes = [
-    { id: 'hanabi', coserID: 'cocoa', work: '崩壞：星穹鐵道', character: '花火', tintHex: 'C65353' },
-    { id: 'frieren', coserID: 'cocoa', work: '葬送的芙莉蓮', character: '芙莉蓮', tintHex: '7FA03F' },
-    { id: 'original', coserID: 'cocoa', work: '原創', character: '妹妹本', tintHex: 'F9C8DB' },
-    { id: 'soda', coserID: 'cocoa', work: '原創', character: '索達／蘇打', tintHex: '79B0DC' },
-    { id: 'liveparty', coserID: 'cocoa', work: '原創', character: 'Live Party', tintHex: 'F3A23F' },
-    { id: 'onsite', coserID: 'cocoa', work: '現場加購', character: '', tintHex: 'F7E7A9' },
-    { id: 'momo-jk', coserID: 'momo', work: '原創', character: 'JK 制服（測試）', tintHex: 'F3A23F' }
-  ];
-  // 售價照 Notion「商品」（2026-10-27）：空白＝未定價；日幣、美元目前都還沒定價
-  const P = (id, themeID, kind, name, note, priceTWD, priceHKD = null, stock = null, digital = false) =>
-    ({ id, themeID, kind, name, note, priceTWD, priceHKD, priceJPY: null, priceUSD: null, stock, digital, discontinued: false });
-  const products = [
-    P('hanabi-set', 'hanabi', 'photobook', '花火套組', 'Cosforce04 有售出 1 組；Notion 台幣、港幣售價都未建', null),
-    P('hanabi-book', 'hanabi', 'photobook', '花火寫真書・單書', '香港現場價 HK$200；Notion 台幣價未建', null, 200),
-    P('hanabi-cheki', 'hanabi', 'photobook', '花火拍本 Cheki Album', '營運總表台幣價', 500, 130),
-    P('hanabi-digital', 'hanabi', 'photobook', '花火電子檔', '香港自訂品項 HK$150；Notion 台幣價未建', null, 150, null, true),
-    P('frieren-book', 'frieren', 'photobook', '芙莉蓮寫真書・單書', '營運總表台幣價', 1000, 250),
-    P('frieren-book-digital', 'frieren', 'photobook', '芙莉蓮單書＋電子檔', '營運總表正式台幣價', 1800),
-    P('frieren-folder', 'frieren', 'goods', '芙莉蓮 L 夾', '營運總表台幣價', 250, 70),
-    P('original-big-set', 'original', 'photobook', '大套組', '營運總表正式台幣價', 2500),
-    P('original-small-set', 'original', 'photobook', '小套組', '營運總表正式台幣價', 1700),
-    P('original-book', 'original', 'photobook', '寫真書・單書', '營運總表台幣價', 800, 200),
-    P('original-digital', 'original', 'photobook', '電子檔', '營運總表正式台幣價', 1000, null, null, true),
-    P('soda-book', 'soda', 'photobook', '索達寫真書・單書', '營運總表台幣價', 800, 200),
-    P('soda-slide', 'soda', 'goods', '索達拍立卡 Slide Card', '營運總表台幣價', 350, 90),
-    P('soda-digital', 'soda', 'photobook', '索達電子檔', 'Cosforce04 有數量紀錄；Notion 台幣、港幣售價都未建', null, null, null, true),
-    P('liveparty-book', 'liveparty', 'photobook', 'Live Party 寫真書', '營運總表台幣價', 600, 200),
-    P('phoebe-postcard', 'onsite', 'goods', '菲比明信片', '香港現場價 HK$75；Notion 台幣價未建', null, 75),
-    P('june-postcard', 'onsite', 'goods', '六月雨明信片', '營運總表台幣價', 200, 75),
-    P('reze-postcard', 'onsite', 'goods', '蕾潔明信片', '香港現場價 HK$120；Notion 台幣價未建', null, 120),
-    P('old-cheki', 'onsite', 'goods', '舊拍', '香港現場價 HK$80；Notion 台幣價未建', null, 80),
-    P('scroll', 'onsite', 'goods', '掛軸海報', '香港現場價 HK$270；Notion 台幣價未建', null, 270),
-    P('momo-jk-book', 'momo-jk', 'photobook', 'JK 寫真書・單書', '測試商品', 600),
-    P('momo-jk-set', 'momo-jk', 'photobook', 'JK 套組（書＋拍立得）', '測試商品', 900),
-    P('momo-jk-digital', 'momo-jk', 'photobook', 'JK 電子寫真集', '測試商品', 400, null, null, true),
-    P('momo-cheki', 'momo-jk', 'goods', '簽名拍立得', '測試商品・測試庫存', 150, null, 3),
-    P('momo-postcard', 'momo-jk', 'goods', '明信片 3 入', '測試商品・測試庫存', 120, null, 20),
-    P('momo-badge', 'momo-jk', 'goods', '壓克力徽章', '測試商品', 80)
-  ];
-  const sales = [];
-  for (const [d, company, personal] of [[24, 1770, 900], [25, 2020, 1660], [26, 820, 1720], [27, 1540, 2460], [28, 2485, 1800]]) {
-    const day = `2026-07-${d}`;
-    sales.push({ id: `HK-07${d}-COMPANY`, day, coserID: 'cocoa', at: null, timeLabel: '現場表', lines: [], total: company, currency: 'HKD', payment: 'recorded', status: 'paid', memberID: null, debtor: null, summary: '公司商品收入・現場表', scope: 'company', source: '正式帳務', byAccount: 'company', settledAt: null });
-    sales.push({ id: `HK-07${d}-PERSONAL`, day, coserID: 'cocoa', at: null, timeLabel: '現場表', lines: [], total: personal, currency: 'HKD', payment: 'recorded', status: 'paid', memberID: null, debtor: null, summary: '個人互動收入・不列公司損益', scope: 'personal', source: '正式帳務', byAccount: 'company', settledAt: null });
-  }
-  sales.push({ id: 'FF-REFUND-1700', day: '2026-08-23', coserID: 'cocoa', at: null, timeLabel: '待收', lines: [], total: 1700, currency: 'TWD', payment: 'credit', status: 'outstanding', memberID: null, debtor: 'FF 主辦（報名費退款）', summary: 'FF 未錄取報名費退款', scope: 'company', source: '正式帳務', byAccount: 'company', settledAt: null });
-  // menuCurrency：每位 Coser 每天的今日菜單幣別（key「cocoa|2026-10-27」）；roster：公司登記的 Coser 名冊
-  return { days, themes, products, sales, members: [], memberCard: new Set(), lowStock: 5, menuCurrency: {}, roster: [], newCosers: [], newAccounts: [] };
-}
-// 系列底色（24 色）：前 12 色是原本的，順序不變（新系列預設挑還沒用過的第一個）；2026-10-27 加後 12 色
-const PALETTE = ['E8477F', 'F3A23F', '7FA03F', '79B0DC', 'C65353', '9B7BD4', 'F9C8DB', 'C3D88E', 'F7E7A9', '5BB5A8', 'A0785A', '3B6FB6',
-  'FF8A65', 'F4C542', 'B4A7E6', '9ED9CC', '3E8E63', '1F3A5F', '8E2C48', 'D9A066', 'E6B8A2', '6C7A89', 'BFD7EA', '2F2F38'];
-const themeName = t => !t.character ? t.work : (!t.work ? t.character : `${t.work}・${t.character}`);
-const KIND = { photobook: { label: '寫真集', icon: 'book' }, goods: { label: '周邊', icon: 'sparkles' } };
+// 收款方式只有正式資料庫的 4 種；歷史紙本沒記方式的，收款方式留空（payment＝null）
 const PAY = {
   cash: { label: '現金', icon: 'banknote', fg: 'var(--green-deep)' },
   transfer: { label: '轉帳', icon: 'arrow-left-right', fg: 'var(--blue-deep)' },
   linePay: { label: 'LINE Pay', icon: 'qr-code', fg: 'var(--line-pay)' },
-  credit: { label: '賒帳', icon: 'file-text', fg: 'var(--orange-deep)' },
-  recorded: { label: '現場表已收・方式未記', icon: 'clipboard', fg: 'var(--ink-soft)' }
+  credit: { label: '賒帳', icon: 'file-text', fg: 'var(--orange-deep)' }
 };
+const UNRECORDED = { label: '收款方式未記', icon: 'clipboard', fg: 'var(--ink-soft)' };
+const payOf = s => PAY[s.payment] || UNRECORDED;
+const payKey = label => Object.keys(PAY).find(k => PAY[k].label === label) || null;
+const KIND = { photobook: { label: '寫真集', icon: 'book' }, goods: { label: '周邊', icon: 'sparkles' } };
+const kindKey = label => label === '寫真集' ? 'photobook' : 'goods';
+const CUR_PRICE_COL = { TWD: '台幣售價', HKD: '港幣售價', JPY: '日幣售價', USD: '美元售價' };
 const normalizeFan = s => (s || '').trim().toUpperCase();
+const saleTotal = s => s.lines.reduce((n, l) => n + l.unitPrice * l.quantity, 0) - (s.discount || 0);
+const saleItems = s => s.lines.reduce((n, l) => n + (l.productID ? l.quantity : 0), 0);
+
+const fromNotion = {
+  coser: r => ({ id: r['CoserID'], name: r['Cos名'], shortName: r['短名'] || r['Cos名'], initial: r['頭像字'] || [...r['Cos名']][0] || 'C', colorHex: r['頭像色'] || PALETTE[0] }),
+  costume(r) {
+    const items = trimOrNull(r['細項']), p = parseItems(items), loc = trimOrNull(r['保存位置']);
+    return { id: r['COS服編號'], code: r['COS服編號'], name: r['角色名稱'] || '', series: r['作品名稱'] || '', makerSize: trimOrNull(r['廠家尺寸']),
+      location: loc, accessories: p.items, itemsText: items, itemRemarks: p.remarks, lendState: r['借用狀態'] || '可借用', photoCount: r['圖片'] || 0,
+      tintHex: LOCATION_TINT[loc] || 'E8DCCB', suspended: !!r['暫停借用'], suspendReason: trimOrNull(r['暫停原因']), note: trimOrNull(r['備註']) };
+  },
+  loan(r) {
+    const order = r['借用單號'], code = r['服裝編號'] || r['服裝'][0], id = `${order}-${code}`, by = r['經手人'] || 'company';
+    const st = r['狀態'], status = st === '已歸還' ? 'returned' : st === '已取消' ? 'cancelled' : 'borrowed';
+    const returnedAt = parseTime(r['實際歸還日期']), condition = conditionKey(r['歸還狀況']);
+    const events = [{ id: id + '-1', kind: 'lent', at: parseTime(r['借用日期']), by, note: null }];
+    if (status === 'returned' && returnedAt != null) events.push({ id: id + '-2', kind: 'returnConfirmed', at: returnedAt, by, note: [condition && CONDITION[condition].label, r['狀況說明']].filter(Boolean).join('：') || null });
+    return { id, orderID: order, costumeID: code, renter: { name: r['借用人姓名'] || '', phone: trimOrNull(r['聯絡方式']) }, lentDay: r['借用日期'].slice(0, 10),
+      dueDay: (r['約定歸還日期'] || r['借用日期']).slice(0, 10), status, returnedAt, condition, conditionNote: trimOrNull(r['狀況說明']), events,
+      details: { purpose: r['借用用途'] || null, event: trimOrNull(r['活動名稱']) }, coserID: r['借用CoserID'] || null };
+  },
+  venue: r => ({ id: r['預約編號'], venue: venueKey(r['場地']), day: r['日期'].slice(0, 10), startHour: r['開始'], endHour: r['結束'], coserID: r['CoserID'],
+    byAccount: r['預約帳號'], createdAt: nowMs(), note: trimOrNull(r['備註']), status: r['狀態'] === '已取消' ? 'cancelled' : 'booked', cancelledAt: parseTime(r['取消時間']) }),
+  series: r => ({ id: r['系列ID'], coserID: r['CoserID'], work: r['作品'] || '', character: r['角色'] || '', tintHex: r['底色'] || PALETTE[0] }),
+  product(r) {
+    const digital = !!r['電子檔'];
+    const p = { id: r['商品ID'], themeID: r['作品・角色'][0], kind: kindKey(r['類型']), name: r['名稱'], note: r['價格說明'] || '', stock: digital ? null : (r['庫存'] ?? null), digital, discontinued: !!r['停售'] };
+    for (const c of CURRENCIES) p['price' + c] = r[CUR_PRICE_COL[c]] ?? null;
+    return p;
+  },
+  sale(r, lineRows) {
+    const s = { id: r['交易編號'], day: r['記帳日期'].slice(0, 10), coserID: r['CoserID'], at: parseTime(r['交易時間']),
+      lines: lineRows.map(l => ({ productID: l['商品ID'] || l['商品'][0] || null, name: l['品名'], unitPrice: l['成交單價'] ?? 0, quantity: l['數量'] ?? 0 })),
+      discount: r['折扣'] || 0, currency: r['幣別'] || 'TWD', rate: r['匯率'] ?? null, payment: payKey(r['收款方式']), status: r['狀態'] === '待收' ? 'outstanding' : 'paid',
+      memberID: trimOrNull(r['粉絲ID']), debtor: trimOrNull(r['賒帳客人']), summary: r['備註'] || '', scope: r['歸屬'] === '個人' ? 'personal' : 'company',
+      byAccount: r['經手帳號'] || '', settledAt: parseTime(r['收款登記時間']) };
+    s.total = saleTotal(s);
+    return s;
+  },
+  cashBox: r => ({ day: (r['日期'] || r['日期文字']).slice(0, 10), coserID: r['CoserID'], eventName: trimOrNull(r['活動名稱']), currency: r['今日幣別'] || 'TWD',
+    rate: r['今日幣別'] === 'TWD' ? 1 : (r['今日匯率'] ?? null), openingCash: r['起始現金'] ?? null, actualCash: r['收攤實點'] ?? null, note: trimOrNull(r['備註']) }),
+  member: r => ({ id: `${r['CoserID']}|${normalizeFan(r['粉絲ID'])}`, coserID: r['CoserID'], fanID: normalizeFan(r['粉絲ID']), nickname: r['暱稱'] || '', note: trimOrNull(r['備註']),
+    level: r['等級'] || '尚未分級', discountRate: r['折扣'] ?? null, createdAt: nowMs() }),
+  movement: r => ({ id: r['異動ID'], at: parseTime(r['時間']), productID: r['商品ID'], productName: r['商品名稱'] || '', kind: r['類型'], quantity: r['數量'] ?? 0,
+    reason: r['原因'] || '', coserID: r['CoserID'] || '', byAccount: r['操作帳號'] || '' })
+};
+
+// ================= 畫面用的資料 → 正式資料庫的列（之後接 Notion 用；測試逐欄檢查） =================
+function toNotion() {
+  const out = {};
+  const coserNotion = c => {
+    const r = rosterProfile(c.id), so = r?.socials || [];
+    return { 'Cos名': r?.cosName || c.name, 'CoserID': c.id, '短名': c.shortName, '頭像字': c.initial, '頭像色': c.colorHex, '登入帳號': r?.loginEmail || null,
+      '狀態': r?.status || '合作中', '本名': r?.realName || null, '方案': r?.plan || null, '方案說明': r?.planNote || null, '簽約日期': r?.contractDate || null,
+      '合約到期日': r?.contractEndDate || null, 'IG帳號': r?.igAccount || null, '簽約時IG粉絲': r?.igFollowers ?? null,
+      '其他社群帳號': trimOrNull(so.map(x => `${socialName(x)} ${x.handle}`).join('、')),
+      '其他社群粉絲': trimOrNull(so.filter(x => x.followers != null).map(x => `${socialName(x)} ${x.followers}`).join('、')),
+      '合約照片': r ? r.photos.length : 0, '會員卡': isMemberCardOn(c.id) };
+  };
+  out['Coser 名冊'] = COSERS.map(coserNotion);
+  out['Coser 社群帳號'] = SB().roster.flatMap(r => r.socials.map(x => ({ '帳號': x.handle, '平台': x.platform, '平台名稱（其他）': x.platform === '其他' ? x.custom || null : null,
+    '粉絲數': x.followers ?? null, '記錄日期': dayKey(new Date(r.createdAt)), 'CoserID': r.id, 'Coser': [r.id] })));
+  out['作品・角色'] = SB().themes.map(t => ({ '名稱': themeName(t), '系列ID': t.id, '作品': trimOrNull(t.work), '角色': trimOrNull(t.character), 'CoserID': t.coserID, '底色': t.tintHex }));
+  out['商品'] = SB().products.map(p => {
+    const row = { '名稱': p.name, '商品ID': p.id, '作品・角色': [p.themeID], '類型': KIND[p.kind].label };
+    for (const c of CURRENCIES) row[CUR_PRICE_COL[c]] = priceIn(p, c);
+    return Object.assign(row, { '庫存': p.digital ? null : p.stock, '電子檔': !!p.digital, '停售': !!p.discontinued, 'CoserID': coserOfProduct(p), '價格說明': trimOrNull(p.note) });
+  });
+  out['交易紀錄'] = SB().sales.map(s => ({ '交易編號': s.id, '記帳日期': s.day, '交易時間': isoTime(s.at), 'CoserID': s.coserID, '幣別': s.currency, '匯率': s.rate,
+    '折扣': s.discount || 0, '收款方式': PAY[s.payment]?.label ?? null, '狀態': s.status === 'paid' ? '已收' : '待收', '歸屬': s.scope === 'personal' ? '個人' : '公司',
+    '賒帳客人': s.debtor, '粉絲ID': s.memberID, '經手帳號': s.byAccount, '收款登記時間': isoTime(s.settledAt), '備註': trimOrNull(s.summary) }));
+  out['交易明細'] = SB().sales.flatMap(s => s.lines.map(l => ({ '品名': l.name, '交易': [s.id], '商品': l.productID ? [l.productID] : [], '商品ID': l.productID, '成交單價': l.unitPrice, '數量': l.quantity })));
+  out['每日錢箱'] = SB().cashBoxes.map(b => ({ '日期文字': b.day, '日期': b.day, 'CoserID': b.coserID, '活動名稱': b.eventName, '今日幣別': b.currency, '今日匯率': b.rate,
+    '起始現金': b.openingCash, '收攤實點': b.actualCash, '備註': b.note }));
+  out['會員'] = SB().members.map(m => ({ '粉絲ID': m.fanID, 'CoserID': m.coserID, '暱稱': trimOrNull(m.nickname), '等級': m.level || '尚未分級', '折扣': m.discountRate ?? null,
+    '累積消費': memberSpendTWD(m), '備註': m.note }));
+  out['庫存異動'] = SB().movements.map(m => ({ '異動ID': m.id, '時間': isoTime(m.at), '商品ID': m.productID, '商品名稱': m.productName, '類型': m.kind, '數量': m.quantity,
+    '原因': trimOrNull(m.reason), 'CoserID': m.coserID, '操作帳號': m.byAccount }));
+  out['場地預約'] = S.venues.map(b => ({ '預約編號': b.id, '場地': VENUES[b.venue].label, '日期': b.day, '開始': b.startHour, '結束': b.endHour, 'CoserID': b.coserID,
+    '預約帳號': b.byAccount, '狀態': b.status === 'booked' ? '已預約' : '已取消', '備註': b.note, '取消時間': isoTime(b.cancelledAt) }));
+  out['服裝借用'] = S.loans.map(l => {
+    const c = S.costumes.find(x => x.id === l.costumeID), started = l.lentDay <= today();
+    return { '借用單號': l.orderID, '服裝': [l.costumeID], '服裝編號': c?.code || l.costumeID, '服裝名稱': c ? (c.series ? `${c.series} - ${c.name}` : c.name) : null,
+      '借用CoserID': l.coserID, '借用人姓名': l.renter.name, '聯絡方式': l.renter.phone, '借用日期': l.lentDay, '約定歸還日期': l.dueDay, '實際歸還日期': isoTime(l.returnedAt),
+      '狀態': l.status === 'returned' ? '已歸還' : l.status === 'cancelled' ? '已取消' : (started ? '借出中' : '已登記'), '借用用途': l.details.purpose || null,
+      '活動名稱': l.details.event || null, '經手人': l.events[0]?.by || null, '歸還狀況': l.condition ? CONDITION[l.condition].label : null, '狀況說明': l.conditionNote };
+  });
+  // Y-5：只寫借用狀態、暫停借用、暫停原因
+  out['Y-5 COS服拍賣'] = S.costumes.map(c => ({ 'COS服編號': c.code, '借用狀態': activeLoan(c.id) ? '借出中' : '可借用', '暫停借用': !!c.suspended, '暫停原因': c.suspendReason }));
+  return out;
+}
+
+// ================= Coser（照 Notion「Coser 名冊」） =================
+const COSERS = NOTION_SEED['Coser 名冊'].map(fromNotion.coser);
+const BASE_ACCOUNT_COUNT = ACCOUNTS.length, BASE_COSER_COUNT = COSERS.length;
+// 公司登記的新 Coser 與登入帳號存在測試資料裡（重設測試資料就清掉），這裡同步回帳號與 Coser 清單
+function syncPeople() {
+  ACCOUNTS.splice(BASE_ACCOUNT_COUNT, Infinity, ...(S.sales?.newAccounts || []));
+  COSERS.splice(BASE_COSER_COUNT, Infinity, ...(S.sales?.newCosers || []));
+}
+const coser = id => COSERS.find(c => c.id === id) || null;
+const accountName = id => ACCOUNTS.find(a => a.id === id)?.displayName ?? id;
 
 // ================= 資料（全部只在這個瀏覽器分頁的記憶體裡） =================
 const S = {};
+function salesFromSeed() {
+  const seed = NOTION_SEED;
+  const lines = id => seed['交易明細'].filter(l => l['交易'].includes(id));
+  return {
+    themes: seed['作品・角色'].map(fromNotion.series),
+    products: seed['商品'].map(fromNotion.product),
+    sales: seed['交易紀錄'].map(r => fromNotion.sale(r, lines(r['交易編號']))),
+    cashBoxes: seed['每日錢箱'].map(fromNotion.cashBox),
+    members: seed['會員'].map(fromNotion.member),
+    movements: seed['庫存異動'].map(fromNotion.movement),
+    memberCard: new Set(seed['Coser 名冊'].filter(r => r['會員卡']).map(r => r['CoserID'])),
+    lowStock: 5, roster: [], newCosers: [], newAccounts: []
+  };
+}
 function resetData(dataset) {
-  S.costumes = makeCostumes();
-  S.loans = dataset === 'scenario' ? scenarioLoans(S.costumes) : notionLoans();
-  S.venues = venueMock();
-  S.sales = salesMock();
+  // 服裝照 Y-5；已售出（不可借）的不出現在 App 裡
+  S.costumes = NOTION_SEED['Y-5 COS服拍賣'].map(fromNotion.costume).filter(c => c.lendState !== '已售出（不可借）');
+  S.loans = (dataset === 'scenario' ? scenarioLoanRows() : NOTION_SEED['服裝借用']).map(fromNotion.loan);
+  if (dataset === 'scenario') { const c7 = S.costumes.find(c => c.id === 'C-7'); c7.suspended = true; c7.suspendReason = '缺件：外套左邊口袋扣子掉了'; }
+  S.venues = venueRows().map(fromNotion.venue);
+  S.sales = salesFromSeed();
   syncPeople();
 }
 
@@ -3047,7 +3200,11 @@ function lend(ids, renter, start, due, details, user) {
   }
   const order = newOrderID(); const at = nowMs();
   const clean = { purpose: trimOrNull(details.purpose), event: trimOrNull(details.event) };
-  ids.forEach((id, i) => S.loans.push(mkLoan(`${order}-${i + 1}`, order, id, { name, phone: trimOrNull(renter.phone) }, start, due, user.id, at, clean)));
+  ids.forEach((id, i) => {
+    const lid = `${order}-${i + 1}`;
+    S.loans.push({ id: lid, orderID: order, costumeID: id, renter: { name, phone: trimOrNull(renter.phone) }, lentDay: start, dueDay: due, status: 'borrowed',
+      returnedAt: null, condition: null, conditionNote: null, events: [{ id: lid + '-1', kind: 'lent', at, by: user.id, note: null }], details: clean, coserID: user.coserID });
+  });
 }
 function ownedLoan(loanID, user) {
   if (user.role === 'company') fail('這個帳號不能做這個操作。');
@@ -3127,7 +3284,22 @@ function cancelVenue(id, user) {
 
 // ================= 銷售規則（照 SalesBook.swift） =================
 const SB = () => S.sales;
-const dayInfo = day => SB().days.find(d => d.day === day) || null;
+// 每日錢箱：每位 Coser 每天一筆（照 Notion「每日錢箱」）；活動名稱、今日幣別與匯率、起始現金、收攤實點都在這裡
+const cashBoxOf = (day, cid) => cid ? SB().cashBoxes.find(b => b.day === day && b.coserID === cid) || null : null;
+/** 某天的活動名稱與備註；指定 Coser 時帶出那位的起始現金、收攤實點 */
+function dayInfo(day, cid = null) {
+  const boxes = SB().cashBoxes.filter(b => b.day === day && (cid == null || b.coserID === cid));
+  if (!boxes.length) return null;
+  const box = cashBoxOf(day, cid);
+  return { day, label: boxes.find(b => b.eventName)?.eventName ?? null, note: boxes.find(b => b.note)?.note ?? null,
+    openingCash: box?.openingCash ?? null, actualCash: box?.actualCash ?? null };
+}
+function upsertCashBox(day, cid, change) {
+  let box = cashBoxOf(day, cid);
+  if (!box) { box = { day, coserID: cid, eventName: null, currency: 'TWD', rate: 1, openingCash: null, actualCash: null, note: null }; SB().cashBoxes.push(box); }
+  change(box);
+  return box;
+}
 const themeByID = id => SB().themes.find(t => t.id === id) || null;
 const productByID = id => SB().products.find(p => p.id === id) || null;
 const saleByID = id => SB().sales.find(s => s.id === id) || null;
@@ -3144,7 +3316,7 @@ function visibleSales(u, day = null, cid = null) {
 const outstandingSales = (u, cid = null) => visibleSales(u, null, cid).filter(s => s.status === 'outstanding');
 function activeDays(u) {
   const a = visibleSales(u).map(s => s.day);
-  const b = u.role === 'company' ? SB().days.filter(d => d.label).map(d => d.day) : [];
+  const b = SB().cashBoxes.filter(x => x.eventName && (u.role === 'company' || x.coserID === u.coserID)).map(x => x.day);
   return unique([...a, ...b]).sort((x, y) => cmp(y, x));
 }
 const isLowStock = p => !p.digital && (p.stock ?? Infinity) <= SB().lowStock;
@@ -3152,14 +3324,19 @@ const lowStockProducts = u => visibleProducts(u).filter(p => !p.discontinued && 
 const cartTotal = (cart, cur = menuCurrency()) => cart.reduce((s, i) => s + (priceIn(productByID(i.productID), cur) ?? 0) * i.quantity, 0);
 const unpricedProducts = (cur, u) => visibleProducts(u).filter(p => !p.discontinued && priceIn(p, cur) == null);
 const uncountedProducts = u => visibleProducts(u).filter(p => !p.discontinued && !p.digital && p.stock == null);
-// 今日菜單幣別：每位 Coser 每天各自記住，沒選過＝台幣
-const menuKey = (cid, day) => `${cid}|${day}`;
-const menuCurrencyOf = (cid, day) => (cid && SB().menuCurrency[menuKey(cid, day)]) || 'TWD';
+// 今日菜單幣別：存在每日錢箱的「今日幣別」，每位 Coser 每天各自記住，沒選過＝台幣
+const menuCurrencyOf = (cid, day) => cashBoxOf(day, cid)?.currency || 'TWD';
+// 匯率：1 單位＝多少台幣；台幣固定 1，其他幣別照每日錢箱的今日匯率，沒填是 null
+function rateOf(cur, cid, day) {
+  if (cur === 'TWD') return 1;
+  const b = cashBoxOf(day, cid);
+  return b && b.currency === cur ? b.rate ?? null : null;
+}
 function setMenuCurrency(cur, day, user) {
   if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
   if (!CURRENCIES.includes(cur)) fail('不支援這個幣別。');
   if (day > today()) fail('不能記還沒到的日期，請改選今天或以前。');
-  SB().menuCurrency[menuKey(user.coserID, day)] = cur;
+  upsertCashBox(day, user.coserID, b => { if (b.currency !== cur) b.rate = cur === 'TWD' ? 1 : null; b.currency = cur; });
 }
 // 這天有交易的幣別；不同幣別各自合計，不換算、不相加
 function currenciesOnDay(day, u = null, cid = null) {
@@ -3173,29 +3350,39 @@ function reconcile(day, u, cid = null, selected = null) {
   const list = all.filter(s => s.currency === currency);
   const paid = list.filter(s => s.status === 'paid');
   const paidCompany = paid.filter(s => s.scope === 'company');
-  const byMethod = {};
-  for (const s of paid) byMethod[s.payment] = (byMethod[s.payment] || 0) + s.total;
+  const byMethod = {}; let unrecorded = 0;
+  for (const s of paid) { if (s.payment) byMethod[s.payment] = (byMethod[s.payment] || 0) + s.total; else unrecorded += s.total; }
   const cash = byMethod.cash || 0;
-  const info = dayInfo(day);
-  const whole = cid == null && u.role === 'company';
-  const expected = info?.openingCash != null ? info.openingCash + cash : null;
-  const variance = expected != null && info?.actualCash != null ? info.actualCash - expected : null;
-  const items = l => l.reduce((n, s) => n + s.lines.reduce((m, x) => m + x.quantity, 0), 0);
+  // 錢箱每位 Coser 每天一個：只有指定 Coser、而且幣別跟那天錢箱的今日幣別相同時才有金額
+  const box = cashBoxOf(day, cid);
+  const hasBox = cid != null && u.role === 'company' && (box?.currency || 'TWD') === currency;
+  const opening = hasBox ? box?.openingCash ?? null : null, actual = hasBox ? box?.actualCash ?? null : null;
+  const expected = opening != null ? opening + cash : null;
+  const variance = expected != null && actual != null ? actual - expected : null;
+  const items = l => l.reduce((n, s) => n + saleItems(s), 0);
   return {
     day, currency,
     companySales: paidCompany.reduce((n, s) => n + s.total, 0),
     personalSales: paid.filter(s => s.scope === 'personal').reduce((n, s) => n + s.total, 0),
-    byMethod, outstanding: list.filter(s => s.status === 'outstanding').reduce((n, s) => n + s.total, 0),
-    openingCash: whole ? info?.openingCash ?? null : null, cashSales: cash,
-    expectedCash: whole ? expected : null, actualCash: whole ? info?.actualCash ?? null : null, variance: whole ? variance : null,
+    byMethod, unrecorded, outstanding: list.filter(s => s.status === 'outstanding').reduce((n, s) => n + s.total, 0),
+    openingCash: opening, cashSales: cash, expectedCash: expected, actualCash: actual, variance,
     transactionCount: paidCompany.length, itemCount: items(paidCompany), otherCurrencyCount: all.length - list.length
   };
+}
+/** 公司首頁「錢箱」格子（全部）：各 Coser 的錢箱合起來看狀況（幣別可能不同，金額不相加） */
+function cashBoxesStatus(day, u) {
+  const list = sellerCosers(u).map(c => reconcile(day, u, c.id, menuCurrencyOf(c.id, day)));
+  const started = list.filter(r => r.openingCash != null);
+  if (!started.length) return { label: '未設起始現金', fg: 'var(--ink-soft)' };
+  const off = started.filter(r => (r.variance ?? 0) !== 0).length;
+  if (off) return { label: `${off} 位有差額`, fg: 'var(--orange-deep)' };
+  return started.every(r => r.variance != null) ? { label: '相符 ✓', fg: 'var(--green-deep)' } : { label: '待點收', fg: 'var(--green-deep)' };
 }
 function coserSummaries(day, u, selected = null) {
   const cur = selected ?? currencyOnDay(day, u);
   return sellerCosers(u).map(c => {
     const paid = visibleSales(u, day, c.id).filter(s => s.status === 'paid' && s.scope === 'company' && s.currency === cur);
-    return { coser: c, companySales: paid.reduce((n, s) => n + s.total, 0), transactionCount: paid.length, itemCount: paid.reduce((n, s) => n + s.lines.reduce((m, x) => m + x.quantity, 0), 0) };
+    return { coser: c, companySales: paid.reduce((n, s) => n + s.total, 0), transactionCount: paid.length, itemCount: paid.reduce((n, s) => n + saleItems(s), 0) };
   }).sort((a, b) => b.companySales - a.companySales);
 }
 const isMemberCardOn = cid => !!cid && SB().memberCard.has(cid);
@@ -3204,7 +3391,7 @@ const memberByFan = (fan, cid) => cid ? SB().members.find(m => m.id === `${cid}|
 function checkout(cart, day, payment, rawMember, rawDebtor, user, currency = 'TWD', discount = 0) {
   // 記帳由各 Coser 負責，公司帳號不能記帳（2026-10-21）
   if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
-  if (payment === 'recorded') fail('這個帳號不能做這個操作。');
+  if (!PAY[payment]) fail('請選收款方式。');
   if (day > today()) fail('不能記還沒到的日期，請改選今天或以前。');
   const items = cart.filter(i => i.quantity > 0);
   if (!items.length) fail('購物車是空的，請先選商品。');
@@ -3227,13 +3414,19 @@ function checkout(cart, day, payment, rawMember, rawDebtor, user, currency = 'TW
   const memberKey = isMemberCardOn(owner) ? (normalizeFan(rawMember) || null) : null;
   const debtor = trimOrNull(rawDebtor);
   if (payment === 'credit' && !memberKey && !debtor) fail('賒帳要填客人的名字或聯絡方式，之後才追得到。');
-  for (const l of lines) { const p = productByID(l.productID); if (!p.digital && p.stock != null) p.stock -= l.quantity; }
-  if (memberKey && !memberByFan(memberKey, owner)) SB().members.push({ id: `${owner}|${memberKey}`, coserID: owner, fanID: memberKey, nickname: '', note: null, createdAt: nowMs() });
+  const id = 'S-' + nowMs().toString(36) + rid();
+  // 實體商品每一項寫一筆「銷售」庫存異動（未盤點的也寫，數量記負數）
+  for (const l of lines) {
+    const p = productByID(l.productID); if (p.digital) continue;
+    if (p.stock != null) p.stock -= l.quantity;
+    SB().movements.push({ id: `${id}-${p.id}`, at: nowMs(), productID: p.id, productName: l.name, kind: '銷售', quantity: -l.quantity, reason: `銷售・${id}`, coserID: owner, byAccount: user.id });
+  }
+  if (memberKey && !memberByFan(memberKey, owner)) SB().members.push({ id: `${owner}|${memberKey}`, coserID: owner, fanID: memberKey, nickname: '', note: null, level: '尚未分級', discountRate: null, createdAt: nowMs() });
   const sale = {
-    id: 'S-' + nowMs().toString(36) + rid(), day, coserID: owner, at: nowMs(), timeLabel: '', lines,
-    discount, total: subtotal - discount, currency, payment, status: payment === 'credit' ? 'outstanding' : 'paid',
+    id, day, coserID: owner, at: nowMs(), lines, discount, total: subtotal - discount, currency, rate: rateOf(currency, owner, day),
+    payment, status: payment === 'credit' ? 'outstanding' : 'paid',
     memberID: memberKey, debtor: payment === 'credit' ? debtor : null, summary: lines.map(l => `${l.name} ×${l.quantity}`).join('・'),
-    scope: 'company', source: 'App 操作', byAccount: user.id, settledAt: null
+    scope: 'company', byAccount: user.id, settledAt: null
   };
   SB().sales.push(sale);
   return sale;
@@ -3244,13 +3437,28 @@ function settle(id, method, user) {
   if (s.status !== 'outstanding') fail('這筆款項已經登記收到了。');
   s.status = 'paid'; s.payment = method; s.settledAt = nowMs();
 }
-function setCash(kind, day, amount, user) {
+// 錢箱：公司對帳時輸入；每位 Coser 每天一個，金額用那天的今日幣別
+function setCash(kind, day, cid, amount, user) {
   if (user.role !== 'company') fail('這個帳號不能做這個操作。');
   if (!(amount >= 0)) fail('請輸入 0 以上的整數。');
-  let info = dayInfo(day);
-  if (!info) { info = { day, label: null, note: null, openingCash: null, actualCash: null }; SB().days.push(info); }
-  if (kind === 'opening') info.openingCash = amount; else info.actualCash = amount;
+  if (!coser(cid)) fail('找不到這位 Coser。');
+  upsertCashBox(day, cid, b => { if (kind === 'opening') b.openingCash = amount; else b.actualCash = amount; });
 }
+// 庫存異動：盤點（數量＝盤點後的數量）、補貨（＝進貨數量）、銷售（＝負數）各寫一筆，只新增不修改
+function recordMovement(p, kind, quantity, reason, user, id = 'M-' + nowMs().toString(36) + rid()) {
+  SB().movements.push({ id, at: nowMs(), productID: p.id, productName: p.name, kind, quantity, reason, coserID: coserOfProduct(p) || user.coserID || '', byAccount: user.id });
+}
+function setStock(id, n, user) {
+  if (!(n >= 0)) fail('請輸入 0 以上的整數。');
+  const p = ownProduct(id, user); if (p.digital) fail('電子檔不計庫存。');
+  p.stock = n; recordMovement(p, '盤點', n, '盤點', user);
+}
+function restock(id, add, user) {
+  if (!(add > 0)) fail('請輸入 0 以上的整數。');
+  const p = ownProduct(id, user); if (p.digital) fail('電子檔不計庫存。');
+  p.stock = (p.stock ?? 0) + add; recordMovement(p, '補貨', add, '進貨', user);
+}
+const movementsOf = pid => SB().movements.filter(m => m.productID === pid).reverse();
 function ownProduct(id, user) {
   const p = productByID(id); if (!p) fail('找不到這個商品，請重新整理後再試。');
   if (user.role === 'company' || coserOfProduct(p) !== user.coserID) fail('這個帳號不能做這個操作。');
@@ -3281,13 +3489,17 @@ function saveProduct(draft, editingID, user) {
   const digital = draft.kind === 'photobook' && draft.digital;
   if (editing) {
     // 改價只改商品本身；已經成交的交易存的是當時的單價，不會跟著變
+    const oldStock = editing.stock;
     Object.assign(editing, { themeID, kind: draft.kind, name, digital, stock: digital ? null : draft.stock });
     for (const c of CURRENCIES) editing['price' + c] = draft.prices[c] ?? null;
+    // 在編輯畫面改了庫存數字，也算一次盤點
+    if (!digital && draft.stock != null && draft.stock !== oldStock) recordMovement(editing, '盤點', draft.stock, '修改商品時盤點', user);
     return editing;
   }
   const p = { id: 'P-' + nowMs().toString(36) + rid(), themeID, kind: draft.kind, name, note: 'Coser 自行建立', stock: digital ? null : draft.stock, digital, discontinued: false };
   for (const c of CURRENCIES) p['price' + c] = draft.prices[c] ?? null;
   SB().products.push(p);
+  if (!digital && draft.stock != null) recordMovement(p, '盤點', draft.stock, '新增商品', user);
   return p;
 }
 function updateTheme(id, work, character, tint, user) {
@@ -3306,7 +3518,7 @@ function addMember(fan, nickname, note, user) {
   if (!isMemberCardOn(user.coserID)) fail('會員卡還沒打開，請到「更多」打開會員卡。');
   const key = normalizeFan(fan); if (!key) fail('請輸入粉絲 ID。');
   if (memberByFan(key, user.coserID)) fail('這個粉絲 ID 已經是會員了。');
-  SB().members.push({ id: `${user.coserID}|${key}`, coserID: user.coserID, fanID: key, nickname: (nickname || '').trim(), note: trimOrNull(note), createdAt: nowMs() });
+  SB().members.push({ id: `${user.coserID}|${key}`, coserID: user.coserID, fanID: key, nickname: (nickname || '').trim(), note: trimOrNull(note), level: '尚未分級', discountRate: null, createdAt: nowMs() });
 }
 function updateMember(id, nickname, note, user) {
   const m = SB().members.find(x => x.id === id); if (!m) fail('找不到這位會員。');
@@ -3315,6 +3527,8 @@ function updateMember(id, nickname, note, user) {
 }
 const membersFor = u => u.role === 'company' ? [] : SB().members.filter(m => m.coserID === u.coserID);
 const memberSales = m => SB().sales.filter(s => s.coserID === m.coserID && s.memberID === m.fanID).reverse();
+// Notion「累積消費」（台幣）：已收交易換成台幣加總；沒有匯率的外幣交易不算
+const memberSpendTWD = m => Math.round(memberSales(m).filter(s => s.status === 'paid' && s.rate != null).reduce((n, s) => n + s.total * s.rate, 0));
 function memberSpend(m) { const r = {}; for (const s of memberSales(m)) if (s.status === 'paid') r[s.currency] = (r[s.currency] || 0) + s.total; return r; }
 function spendText(sp) { const p = CURRENCIES.filter(c => sp[c] != null).map(c => money(sp[c], c)); return p.length ? '累積 ' + p.join('＋') : '尚無消費'; }
 const memberName = m => m.nickname ? `${m.nickname}（${m.fanID}）` : m.fanID;
@@ -3324,19 +3538,26 @@ const planLabel = v => PLANS.find(p => p[0] === v)?.[1] ?? v;
 const SOCIAL_PLATFORMS = ['Threads', 'Facebook', 'TikTok', 'X', 'YouTube', '小紅書', '其他'];
 const MIN_PASSWORD = 6;
 const isValidAccount = a => /^[a-z][a-z0-9_-]{2,19}$/.test(a);
+const isValidEmail = e => /^[^@\s]+@[^@\s]+\.[^@\s.]+$/.test(e);
+const COSER_STATUS = ['合作中', '暫停', '已解約'];
+// 社群帳號（Notion「Coser 社群帳號」）：平台選「其他」時另外寫平台名稱
+const socialName = so => so.platform === '其他' ? (so.custom || '其他') : so.platform;
 const rosterProfile = id => SB().roster.find(r => r.id === id) || null;
 const rosterFor = u => u.role === 'company' ? SB().roster : [];
-// CoserID 一律＝登入帳號；已經用掉的：登入帳號、App 裡的 Coser、商品系列、名冊
+// CoserID（App 內部代號）跟登入帳號（email，照 Notion「Coser 名冊」）分開存；已經用掉的都不能重複
 const takenIDs = () => new Set([...ACCOUNTS.map(a => a.id), ...COSERS.map(c => c.id), ...SB().themes.map(t => t.coserID), ...SB().roster.map(r => r.id)]);
+const takenEmails = () => new Set([...ACCOUNTS.map(a => a.email), ...SB().roster.map(r => r.loginEmail)].filter(Boolean).map(e => e.toLowerCase()));
 function validateRegistration(f, user) {
   if (user.role !== 'company') fail('只有公司帳號可以登記 Coser。');
   const cosName = (f.cosName || '').trim(), realName = (f.realName || '').trim(), planNote = (f.planNote || '').trim();
-  const account = (f.account || '').trim().toLowerCase();
+  const account = (f.account || '').trim().toLowerCase(), email = (f.email || '').trim().toLowerCase();
+  const contractEndDate = trimOrNull(f.contractEndDate);
   if (!cosName) fail('請填 Cos 名。');
   if (!realName) fail('請填本名。');
   if (!f.plan) fail('請選方案。');
   if (f.plan === '特殊方案' && !planNote) fail('特殊方案請寫方案內容。');
   if (!f.contractDate || !dayDate(f.contractDate)) fail('請選簽約日期。');
+  if (contractEndDate && contractEndDate < f.contractDate) fail('合約到期日不能早於簽約日期。');
   const nonNeg = v => v === '' || v == null || /^\d+$/.test(String(v));
   if (!nonNeg(f.igFollowers)) fail('粉絲數請填 0 以上的整數。');
   const socials = [];
@@ -3344,25 +3565,26 @@ function validateRegistration(f, user) {
     const handle = (so.handle || '').trim();
     if (!handle) fail('社群帳號沒填，請填上帳號或刪掉這一列。');
     if (!nonNeg(so.followers)) fail('粉絲數請填 0 以上的整數。');
-    const name = so.platform === '其他' ? (trimOrNull(so.custom) || '其他') : so.platform;
-    socials.push({ platform: name, handle, followers: so.followers === '' || so.followers == null ? null : Number(so.followers) });
+    socials.push({ platform: so.platform, custom: so.platform === '其他' ? trimOrNull(so.custom) : null, handle, followers: so.followers === '' || so.followers == null ? null : Number(so.followers) });
   }
-  if (!isValidAccount(account)) fail('登入帳號請用 3–20 個英文小寫、數字、底線或減號，英文開頭（例如 momo_cos）。');
-  if (takenIDs().has(account)) fail(`「${account}」已經有人用了，請換一個帳號。`);
+  if (!isValidAccount(account)) fail('CoserID 請用 3–20 個英文小寫、數字、底線或減號，英文開頭（例如 momo_cos）。');
+  if (takenIDs().has(account)) fail(`CoserID「${account}」已經有人用了，請換一個。`);
+  if (!isValidEmail(email)) fail('登入帳號請填 email，例如 momo@example.com。');
+  if (takenEmails().has(email)) fail(`登入帳號「${email}」已經有人用了。`);
   if ((f.password || '').length < MIN_PASSWORD) fail(`密碼至少 ${MIN_PASSWORD} 個字。`);
-  return { cosName, realName, plan: f.plan, planNote: planNote || null, contractDate: f.contractDate, igAccount: trimOrNull(f.igAccount),
-    igFollowers: f.igFollowers === '' || f.igFollowers == null ? null : Number(f.igFollowers), socials, account, password: f.password };
+  return { cosName, realName, plan: f.plan, planNote: planNote || null, contractDate: f.contractDate, contractEndDate, igAccount: trimOrNull(f.igAccount),
+    igFollowers: f.igFollowers === '' || f.igFollowers == null ? null : Number(f.igFollowers), socials, account, email, password: f.password };
 }
-// ①先建名冊資料與 App 用的 Coser（CoserID＝帳號）②再建登入帳號；帳號沒建成功資料會留著，可以重試
+// ①先建名冊資料與 App 用的 Coser ②再建登入帳號；帳號沒建成功資料會留著，可以重試
 function registerCoser(f, user) {
   const v = validateRegistration(f, user);
   const used = new Set(COSERS.map(c => c.colorHex));
   SB().newCosers.push({ id: v.account, name: v.cosName, shortName: v.cosName, initial: [...v.cosName][0] || 'C', colorHex: PALETTE.find(h => !used.has(h)) || PALETTE[COSERS.length % PALETTE.length] });
   syncPeople();
-  const profile = { id: v.account, cosName: v.cosName, realName: v.realName, plan: v.plan, planNote: v.planNote, contractDate: v.contractDate,
-    igAccount: v.igAccount, igFollowers: v.igFollowers, socials: v.socials,
+  const profile = { id: v.account, cosName: v.cosName, realName: v.realName, loginEmail: v.email, status: '合作中', plan: v.plan, planNote: v.planNote,
+    contractDate: v.contractDate, contractEndDate: v.contractEndDate, igAccount: v.igAccount, igFollowers: v.igFollowers, socials: v.socials,
     photos: (f.photos || []).map((src, i) => ({ id: `${v.account}-${nowMs().toString(36)}-${i + 1}`, page: i + 1, src })),
-    hasLogin: false, createdAt: nowMs(), createdBy: user.id };
+    hasLogin: false, createdAt: nowMs() };
   SB().roster.push(profile);
   createLogin(profile.id, v.password, user);
   return profile;
@@ -3372,7 +3594,8 @@ function createLogin(id, password, user) {
   const r = rosterProfile(id); if (!r) fail('名冊裡找不到這位 Coser。');
   if ((password || '').length < MIN_PASSWORD) fail(`密碼至少 ${MIN_PASSWORD} 個字。`);
   if (ACCOUNTS.some(a => a.id === id)) fail(`Coser 資料已建立，但登入帳號沒建成功：「${id}」已經有人用了。`);
-  SB().newAccounts.push({ id, displayName: r.cosName, role: 'coser', coserID: id, password, hint: '公司登記的新 Coser（這次測試新建）' });
+  if (r.loginEmail && ACCOUNTS.some(a => (a.email || '').toLowerCase() === r.loginEmail)) fail(`Coser 資料已建立，但登入帳號沒建成功：「${r.loginEmail}」已經有人用了。`);
+  SB().newAccounts.push({ id, displayName: r.cosName, role: 'coser', coserID: id, email: r.loginEmail, password, hint: '公司登記的新 Coser（這次測試新建）' });
   syncPeople();
   r.hasLogin = true;
 }
@@ -3398,6 +3621,8 @@ const U = {
   reportCur: null,
   // 記帳畫面哪些系列資料夾是打開的（themeID → true/false；沒記錄＝預設），登出才清掉
   openFolders: {}, justOpened: null,
+  // 收銀對帳：現金箱看哪位 Coser（錢箱每位 Coser 每天一個）
+  cashCoserID: null,
   // 寬螢幕：進記帳時左邊選單自動收起（2026-10-22）
   sideCollapsed: false,
   login: { account: '', password: '', error: null }
@@ -3538,10 +3763,10 @@ function calGrid({ month, min, max, picked = [], range = null, blocked = null, d
 }
 
 function saleRow(s, showDay = false) {
-  const pm = PAY[s.payment]; const parts = [];
+  const pm = payOf(s); const parts = [];
   if (showDay) { let t = dayText(s.day); const l = dayInfo(s.day)?.label; if (l) t += ' ' + l; parts.push(t); }
-  if (s.at != null) parts.push(dayKey(new Date(s.at)) === s.day ? clockText(s.at) : `補記於 ${timeText(s.at)}`); else if (s.timeLabel) parts.push(s.timeLabel);
-  parts.push(pm.label); if (s.debtor) parts.push(s.debtor); if (s.memberID) parts.push('會員 ' + s.memberID); if (s.source !== 'App 操作') parts.push(s.source);
+  if (s.at != null) parts.push(dayKey(new Date(s.at)) === s.day ? clockText(s.at) : `補記於 ${timeText(s.at)}`);
+  parts.push(pm.label); if (s.debtor) parts.push(s.debtor); if (s.memberID) parts.push('會員 ' + s.memberID);
   const p = s.status === 'outstanding' ? pill('待收', 'var(--orange-deep)', 'var(--orange-pale)') : s.scope === 'personal' ? pill('個人收入', 'var(--ink-soft)', 'var(--gray-pale)') : '';
   return `<div class="sale-row"><span class="pm" style="--fg:${pm.fg}">${icon(pm.icon, 18)}</span><div class="grow"><div class="bold sub">${esc(s.summary)}</div><div class="cap soft">${esc(parts.join('・'))}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none"><b class="sub num" style="color:${s.scope === 'personal' ? 'var(--ink-soft)' : 'var(--ink)'}">${money(s.total, s.currency)}</b>${p}</div></div>`;
 }
@@ -3668,10 +3893,8 @@ function viewCompanyHome() {
   const cosers = sellerCosers(u);
   const filter = cosers.length > 1 ? `<div class="hscroll">${[null, ...cosers].map(c => { const on = U.homeCoserID === (c?.id ?? null); return `<button class="coser-chip${on ? ' on' : ''}"${act('homeCoser', c?.id ?? '')} aria-pressed="${on}">${c ? avatar(c, 28) : `<span style="width:28px;height:28px;display:grid;place-items:center">${icon('package', 18)}</span>`}${esc(c ? c.shortName : '全部')}</button>`; }).join('')}</div>` : '';
   const numTile = (t, v, fg, bg) => `<button class="tile" style="--fg:${fg};--bg:${bg}"${act('jump', 'reconcile')}><span class="tl">${esc(t)}</span><span class="tv">${esc(v)}</span></button>`;
-  let cashT, cashFg;
-  if (s.variance != null) { cashT = s.variance === 0 ? '相符 ✓' : s.variance > 0 ? `多 ${money(s.variance, s.currency)}` : `少 ${money(-s.variance, s.currency)}`; cashFg = s.variance === 0 ? 'var(--green-deep)' : 'var(--orange-deep)'; }
-  else if (s.expectedCash != null) { cashT = money(s.expectedCash, s.currency); cashFg = 'var(--green-deep)'; }
-  else { cashT = '未設起始現金'; cashFg = 'var(--ink-soft)'; }
+  // 錢箱每位 Coser 各一個（照 Notion「每日錢箱」），「全部」顯示各錢箱合起來的狀況
+  const cashSt = cashBoxesStatus(day, u), cashT = cashSt.label, cashFg = cashSt.fg;
   const tiles = [
     numTile(cid == null ? `${dn}公司收入` : `${sc?.shortName ?? ''} ${dn}收入`, money(s.companySales, s.currency), 'var(--pink-deep)', 'var(--pink-pale)'),
     numTile('交易筆數', `${s.transactionCount} 筆`, 'var(--ink)', '#fff'),
@@ -3703,7 +3926,7 @@ function viewCompanyHome() {
 const todoRow = (ic, t, d, fg) => `<span class="todo" style="--fg:${fg}"><span class="tic">${icon(ic, 20)}</span><span class="grow" style="text-align:left"><b>${esc(t)}</b><span class="cap soft">${esc(d)}</span></span><span class="soft">${icon('chevron-right', 16, 3)}</span></span>`;
 function paymentBreakdown(s) {
   const rows = [['現金', s.byMethod.cash || 0, PAY.cash.fg], ['轉帳', s.byMethod.transfer || 0, PAY.transfer.fg], ['LINE Pay', s.byMethod.linePay || 0, PAY.linePay.fg]];
-  if ((s.byMethod.recorded || 0) > 0) rows.push(['現場表已收（方式未記）', s.byMethod.recorded, PAY.recorded.fg]);
+  if (s.unrecorded > 0) rows.push([UNRECORDED.label, s.unrecorded, UNRECORDED.fg]);
   rows.push(['賒帳待收', s.outstanding, PAY.credit.fg]);
   const total = Math.max(1, rows.reduce((n, r) => n + r[1], 0));
   return stitle('收款方式') + rows.map(([t, a, fg]) => `<div class="stack" style="gap:4px"><div class="row"><span class="grow bold sub">${esc(t)}</span><b class="sub num">${money(a, s.currency)}</b></div><div class="bar" style="--fg:${fg}"><i style="width:${a === 0 ? 0 : Math.max(2, a / total * 100)}%"></i></div></div>`).join('');
@@ -3801,20 +4024,30 @@ function cartPanel() {
 
 
 // ================= 收銀對帳（公司） =================
+/** 收銀對帳的現金箱看哪位 Coser（錢箱每位 Coser 每天一個；沒選過就是第一位） */
+function cashCoserID() { const l = sellerCosers(U.user); return (l.find(c => c.id === U.cashCoserID) || l[0])?.id ?? null; }
+const cashCurrency = () => menuCurrencyOf(cashCoserID(), selDay());
 function viewReconcile() {
   const u = U.user, day = selDay(), s = reconcile(day, u, null, reportCurrency()), daySales = visibleSales(u, day), out = outstandingSales(u), inf = dayInfo(day);
   const m = a => money(a, s.currency);
-  const cashRow = (t, v, kind) => `<button class="row" style="padding:12px;min-height:50px;border-radius:12px;background:var(--cream);width:100%"${act('openCash', kind)}><span class="grow bold sub">${t}</span><b style="color:${v == null ? 'var(--pink)' : 'var(--ink)'}" class="num">${v == null ? '點一下輸入' : m(v)}</b><span style="color:var(--pink)">${icon('pencil', 18)}</span></button>`;
+  // 錢箱：每位 Coser 每天一個（照 Notion「每日錢箱」），金額用那天的今日幣別
+  const sellers = sellerCosers(u), ccid = cashCoserID(), ccur = cashCurrency();
+  const cs = ccid ? reconcile(day, u, ccid, ccur) : null;
+  const cm = a => money(a, ccur);
+  const cashRow = (t, v, kind) => `<button class="row" style="padding:12px;min-height:50px;border-radius:12px;background:var(--cream);width:100%"${act('openCash', kind)}><span class="grow bold sub">${t}</span><b style="color:${v == null ? 'var(--pink)' : 'var(--ink)'}" class="num">${v == null ? '點一下輸入' : cm(v)}</b><span style="color:var(--pink)">${icon('pencil', 18)}</span></button>`;
   let vt, vfg, vbg;
-  if (s.variance == null) { vt = s.expectedCash == null ? '輸入起始現金和實點後，自動算差額' : '輸入收攤實點後，自動算差額'; vfg = 'var(--ink-soft)'; vbg = 'var(--gray-pale)'; }
-  else { vt = s.variance === 0 ? '✓ 現金完全相符' : s.variance > 0 ? `多 ${m(s.variance)}` : `少 ${m(-s.variance)}`; vfg = s.variance === 0 ? 'var(--green-deep)' : 'var(--orange-deep)'; vbg = s.variance === 0 ? 'var(--green-pale)' : 'var(--orange-pale)'; }
+  if (cs?.variance == null) { vt = cs?.expectedCash == null ? '輸入起始現金和實點後，自動算差額' : '輸入收攤實點後，自動算差額'; vfg = 'var(--ink-soft)'; vbg = 'var(--gray-pale)'; }
+  else { vt = cs.variance === 0 ? '✓ 現金完全相符' : cs.variance > 0 ? `多 ${cm(cs.variance)}` : `少 ${cm(-cs.variance)}`; vfg = cs.variance === 0 ? 'var(--green-deep)' : 'var(--orange-deep)'; vbg = cs.variance === 0 ? 'var(--green-pale)' : 'var(--orange-pale)'; }
   const tiles = [mtile('公司商品收入', m(s.companySales), 'var(--pink-deep)', 'var(--pink-pale)')];
   if (s.personalSales > 0) tiles.push(mtile('個人互動收入（不列公司損益）', m(s.personalSales), 'var(--ink-soft)'));
-  for (const k of ['cash', 'transfer', 'linePay', 'recorded']) if (k !== 'recorded' || (s.byMethod.recorded || 0) > 0) tiles.push(mtile(PAY[k].label, m(s.byMethod[k] || 0), PAY[k].fg));
+  for (const k of ['cash', 'transfer', 'linePay']) tiles.push(mtile(PAY[k].label, m(s.byMethod[k] || 0), PAY[k].fg));
+  if (s.unrecorded > 0) tiles.push(mtile(UNRECORDED.label, m(s.unrecorded), UNRECORDED.fg));
   tiles.push(mtile('當天待收', m(s.outstanding), s.outstanding > 0 ? 'var(--orange-deep)' : 'var(--ink)', s.outstanding > 0 ? 'var(--orange-pale)' : 'var(--cream)'));
   const html = [
     dayPicker('對帳日期') + currencySwitch(),
-    card(stitle('現金箱') + `<div class="cap soft">只有明確記為「現金」的收款會算進錢箱；紙本沒記付款方式的不算。每天分開記。</div>` + cashRow('起始現金', s.openingCash, 'opening') + `<div class="row"><span class="grow sub">＋ 現金銷售</span><b class="num">${m(s.cashSales)}</b></div>${HR}<div class="row"><b class="grow">預估錢箱</b><b class="num" style="font-size:19px;color:${s.expectedCash == null ? 'var(--ink-soft)' : 'var(--green-deep)'}">${s.expectedCash == null ? '先輸入起始現金' : m(s.expectedCash)}</b></div>` + cashRow('收攤實點', s.actualCash, 'actual') + `<div style="min-height:48px;border-radius:12px;display:grid;place-items:center;font-weight:900;color:${vfg};background:${vbg};text-align:center;padding:8px">${esc(vt)}</div>`),
+    card(stitle('現金箱') + `<div class="cap soft">錢箱每位 Coser 每天各一個，金額用那天的今日幣別（${CUR[ccur].label}）。只有明確記為「現金」的收款會算進錢箱；收款方式沒記的不算。</div>` +
+      (sellers.length > 1 ? `<div class="hscroll">${sellers.map(c => chip(c.shortName, c.id === ccid, 'cashCoser', c.id)).join('')}</div>` : '') +
+      (cs ? cashRow('起始現金', cs.openingCash, 'opening') + `<div class="row"><span class="grow sub">＋ 現金銷售</span><b class="num">${cm(cs.cashSales)}</b></div>${HR}<div class="row"><b class="grow">預估錢箱</b><b class="num" id="expected-cash" style="font-size:19px;color:${cs.expectedCash == null ? 'var(--ink-soft)' : 'var(--green-deep)'}">${cs.expectedCash == null ? '先輸入起始現金' : cm(cs.expectedCash)}</b></div>` + cashRow('收攤實點', cs.actualCash, 'actual') + `<div style="min-height:48px;border-radius:12px;display:grid;place-items:center;font-weight:900;color:${vfg};background:${vbg};text-align:center;padding:8px">${esc(vt)}</div>` : empty('user', '還沒有 Coser 的商品，沒有錢箱'))),
     card(stitle(isToday() ? '今天收入' : '當天收入') + `<div class="tiles" style="gap:10px">${tiles.join('')}</div>` +
       (s.currency !== 'TWD' ? `<div class="notice">${icon('info', 14)}目前合計的是${CUR[s.currency].label}（${CUR[s.currency].symbol}）。</div>` : '') +
       (s.otherCurrencyCount > 0 ? `<div class="notice">${icon('info', 14)}另有 ${s.otherCurrencyCount} 筆其他幣別的交易沒算進這個合計，可以在上面切換幣別。</div>` : '') +
@@ -3992,8 +4225,8 @@ function viewRoster() {
   const u = U.user, list = rosterFor(u), inRoster = new Set(list.map(r => r.id));
   const missing = COSERS.filter(c => !inRoster.has(c.id) && SB().themes.some(t => t.coserID === c.id));
   let html = btn('登記新 Coser', 'openRegister', null, { ic: 'user-plus' });
-  html += `<div class="row g8 cap bold soft" style="align-items:flex-start">${icon('lock', 14)}<span>名冊有本名與合約照片，只有公司帳號看得到。登記時會同時建立 Coser 的登入帳號，帳號也是 CoserID（商品、交易、會員都用它對應）。</span></div>`;
-  if (list.length) html += card(stitle('已登記', list.length) + list.map(r => `<button class="row" style="width:100%;min-height:64px;gap:12px"${act('openProfile', r.id)} id="roster-${esc(r.id)}">${avatar(coser(r.id), 44)}<span class="grow" style="text-align:left"><b style="display:block;font-size:16px">${esc(r.cosName)}</b><span class="cap soft">${esc(`${planLabel(r.plan)}・簽約 ${r.contractDate}・帳號 ${r.id}`)}</span>${r.hasLogin ? '' : `<br>${pill('登入帳號未建立', 'var(--orange-deep)', 'var(--orange-pale)')}`}</span><span class="cap bold soft">${r.photos.length} 頁</span><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`).join(HR), 'p10');
+  html += `<div class="row g8 cap bold soft" style="align-items:flex-start">${icon('lock', 14)}<span>名冊有本名與合約照片，只有公司帳號看得到。CoserID 是 App 內部代號（商品、交易、會員都用它對應），登入帳號是 email；登入時兩個都可以用。</span></div>`;
+  if (list.length) html += card(stitle('已登記', list.length) + list.map(r => `<button class="row" style="width:100%;min-height:64px;gap:12px"${act('openProfile', r.id)} id="roster-${esc(r.id)}">${avatar(coser(r.id), 44)}<span class="grow" style="text-align:left"><b style="display:block;font-size:16px">${esc(r.cosName)}</b><span class="cap soft">${esc([r.status !== '合作中' ? r.status : null, r.plan ? planLabel(r.plan) : null, r.contractDate ? `簽約 ${r.contractDate}` : null, `CoserID ${r.id}`].filter(Boolean).join('・'))}</span>${r.hasLogin ? '' : `<br>${pill('登入帳號未建立', 'var(--orange-deep)', 'var(--orange-pale)')}`}</span><span class="cap bold soft">${r.photos.length} 頁</span><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`).join(HR), 'p10');
   if (missing.length) html += card(stitle('名冊資料待補', missing.length) + missing.map(c => `<div class="row" style="min-height:52px;gap:12px">${avatar(c, 40)}<span class="grow"><b class="sub" style="display:block">${esc(c.name)}</b><span class="cap soft">CoserID ${esc(c.id)}・本名、方案、簽約日、合約照片還沒填</span></span></div>`).join(HR) + `<div class="cap soft">這些 Coser 已經有商品或交易，請到 Notion「Coser 名冊」補齊資料。</div>`);
   return { title: 'Coser 名冊', html, cls: 'narrowcol' };
 }
@@ -4073,7 +4306,7 @@ function sheetCalendar(sh) {
 function sheetPayment(sh) {
   if (sh.finished) {
     const s = sh.finished; const paid = s.status === 'paid';
-    let d = `${PAY[s.payment].label}・${s.lines.reduce((n, l) => n + l.quantity, 0)} 件`;
+    let d = `${payOf(s).label}・${saleItems(s)} 件`;
     if (s.day !== today()) d += `・記在 ${dayText(s.day)}`; if (s.debtor) d += `・${s.debtor}`; if (s.memberID) d += `・會員 ${s.memberID}`;
     const body = `<div class="success"><span class="mark" style="--b:${paid ? 'var(--green)' : 'var(--orange)'}">${icon(paid ? 'check' : 'file-text', 40, 3)}</span><div class="t-big" style="font-size:28px">${paid ? '收款完成' : '已記成應收'}</div><div class="num" style="font-size:40px;font-weight:900;color:var(--pink-deep)">${money(s.total, s.currency)}</div><div class="sub bold soft">${esc(d)}</div></div>`;
     return sheetFrame({ title: '完成', body, footer: btn('下一位客人', 'closeSheet', null, { ic: 'arrow-right' }), cls: 'short' });
@@ -4102,8 +4335,8 @@ function sheetSettle(sh) {
   return sheetFrame({ title: '登記已收到', left: tb('取消', 'closeSheet'), body, cls: 'short' });
 }
 function sheetCash(sh) {
-  const kind = sh.kind; const title = kind === 'opening' ? '起始現金' : '收攤實點現金';
-  const body = `<div class="row g8 bold sub soft">${icon('calendar', 16)}${esc(dayText(selDay()))}</div><div class="sub soft">${kind === 'opening' ? '開賣前錢箱裡的找零金額。' : '收攤後把錢箱裡的現金全部點一遍。'}</div>${inp('sheet.text', { ph: '金額（NT$）', num: true, cls: 'big num', enter: 'saveCash' })}${btn('儲存', 'saveCash', null, { ic: 'check', dis: sh.text === '' })}`;
+  const kind = sh.kind; const title = kind === 'opening' ? '起始現金' : '收攤實點現金'; const c = coser(sh.coserID);
+  const body = `<div class="row g8 bold sub soft">${icon('calendar', 16)}${esc(dayText(selDay()))}</div>${c ? `<div class="row g8 bold sub soft" id="cash-coser">${icon('user', 16)}${esc(c.shortName)} 的錢箱</div>` : ''}<div class="sub soft">${kind === 'opening' ? '開賣前錢箱裡的找零金額。' : '收攤後把錢箱裡的現金全部點一遍。'}</div>${inp('sheet.text', { ph: `金額（${CUR[menuCurrencyOf(sh.coserID, selDay())].symbol}）`, num: true, cls: 'big num', enter: 'saveCash' })}${btn('儲存', 'saveCash', null, { ic: 'check', dis: sh.text === '' })}`;
   return sheetFrame({ title, left: tb('取消', 'closeSheet'), body, cls: 'short' });
 }
 
@@ -4272,19 +4505,20 @@ function sheetRegister(sh) {
   body += `<b style="font-size:17px">方案</b><div class="curopts">${PLANS.map(([v, l]) => `<button class="${f.plan === v ? 'on' : ''}"${act('regPlan', v)} aria-pressed="${f.plan === v}" id="plan-${esc(v)}">${esc(l)}</button>`).join('')}</div>`;
   if (f.plan === '特殊方案') body += inp('sheet.form.planNote', { ph: '特殊方案內容（必填）' });
   body += `<div class="field"><label for="f-sheet-form-contractDate">簽約日期</label>${inp('sheet.form.contractDate', { type: 'date' })}</div>`;
+  body += `<div class="field"><label for="f-sheet-form-contractEndDate">合約到期日（選填）</label>${inp('sheet.form.contractEndDate', { type: 'date' })}</div>`;
   body += `<b style="font-size:17px">社群</b>${inp('sheet.form.igAccount', { ph: 'IG 帳號，例如 @snow_cos' })}${inp('sheet.form.igFollowers', { ph: '簽約時 IG 粉絲數', num: true })}`;
   body += f.socials.map((so, i) => `<div class="social"><div class="row g8"><select class="select grow" data-bind="sheet.form.socials.${i}.platform" aria-label="平台">${SOCIAL_PLATFORMS.map(pl => `<option${pl === so.platform ? ' selected' : ''}>${pl}</option>`).join('')}</select><button class="icon-btn" style="color:var(--danger)"${act('regDelSocial', i)} aria-label="刪除這個社群帳號">${icon('trash-2', 20)}</button></div>${so.platform === '其他' ? inp(`sheet.form.socials.${i}.custom`, { ph: '平台名稱，例如 Plurk' }) : ''}${inp(`sheet.form.socials.${i}.handle`, { ph: '帳號' })}${inp(`sheet.form.socials.${i}.followers`, { ph: '粉絲數（選填）', num: true })}</div>`).join('');
   body += `<button class="row g8" style="min-height:44px;font-weight:800;font-size:14px;color:var(--pink-deep)"${act('regAddSocial')} id="reg-add-social">${icon('circle-plus', 18)}新增其他社群帳號（Threads、Facebook、TikTok…）</button>`;
   body += `<b style="font-size:17px">合約照片</b>${photoButtons('register')}${f.photos.length ? photoPages(f.photos, 'regDelPhoto') : `<div class="cap soft">還沒有照片。可以先登記，之後在名冊裡補拍。</div>`}`;
-  body += `<b style="font-size:17px">登入帳號</b>${inp('sheet.form.account', { ph: '帳號（英文小寫，也是 CoserID）' })}${inp('sheet.form.password', { ph: `第一次登入的密碼（至少 ${MIN_PASSWORD} 個字）`, type: 'password' })}<div class="cap soft">送出後會先建立 Coser 資料，再建立登入帳號。帳號沒建成功時資料會保留，可以在名冊裡重試。</div>`;
-  const filled = f.cosName.trim() && f.realName.trim() && f.plan && f.account.trim() && f.password;
+  body += `<b style="font-size:17px">登入帳號</b>${inp('sheet.form.account', { ph: 'CoserID（App 代號，英文小寫，例如 snow_cos）' })}${inp('sheet.form.email', { ph: '登入帳號 email，例如 snow@example.com', type: 'email' })}${inp('sheet.form.password', { ph: `第一次登入的密碼（至少 ${MIN_PASSWORD} 個字）`, type: 'password' })}<div class="cap soft">登入時用 CoserID 或 email 都可以。送出後會先建立 Coser 資料，再建立登入帳號。帳號沒建成功時資料會保留，可以在名冊裡重試。</div>`;
+  const filled = f.cosName.trim() && f.realName.trim() && f.plan && f.account.trim() && f.email.trim() && f.password;
   body += btn('登記並建立帳號', 'regSubmit', null, { ic: 'check', dis: !filled });
   return sheetFrame({ title: '登記新 Coser', left: tb('取消', 'closeSheet'), body, cls: 'tall' });
 }
 function sheetProfile(sh) {
   const r = rosterProfile(sh.id); if (!r) return sheetFrame({ title: 'Coser 資料', left: tb('關閉', 'closeSheet'), body: empty('search', '找不到這位 Coser') });
-  let body = `<div class="row" style="gap:14px">${avatar(coser(r.id), 54)}<div class="grow"><div class="t-big">${esc(r.cosName)}</div><div class="cap soft">CoserID／登入帳號：${esc(r.id)}</div></div></div>`;
-  body += card(info('本名', r.realName) + info('方案', planLabel(r.plan) + (r.planNote ? `（${r.planNote}）` : '')) + info('簽約日期', dayText(r.contractDate)) + info('IG', r.igAccount || '—') + info('簽約時 IG 粉絲', r.igFollowers != null ? String(r.igFollowers) : '—') + r.socials.map(so => info(so.platform, so.handle + (so.followers != null ? `・粉絲 ${so.followers}` : ''))).join(''));
+  let body = `<div class="row" style="gap:14px">${avatar(coser(r.id), 54)}<div class="grow"><div class="t-big">${esc(r.cosName)}</div><div class="cap soft">CoserID：${esc(r.id)}・登入帳號：${esc(r.loginEmail || '未填')}</div></div></div>`;
+  body += card(info('狀態', r.status) + info('本名', r.realName) + info('方案', (r.plan ? planLabel(r.plan) : '未填') + (r.planNote ? `（${r.planNote}）` : '')) + info('簽約日期', r.contractDate ? dayText(r.contractDate) : '未填') + info('合約到期日', r.contractEndDate ? dayText(r.contractEndDate) : '未填') + info('IG', r.igAccount || '—') + info('簽約時 IG 粉絲', r.igFollowers != null ? String(r.igFollowers) : '—') + r.socials.map(so => info(socialName(so), so.handle + (so.followers != null ? `・粉絲 ${so.followers}` : ''))).join(''));
   if (!r.hasLogin) body += card(`<b style="color:var(--orange-deep)">登入帳號還沒建立</b>${inp('sheet.password', { ph: '設定第一次登入的密碼', type: 'password' })}<button class="cbtn"${act('retryLogin')}${(sh.password || '').length < MIN_PASSWORD ? ' disabled' : ''}>重試建立帳號</button>`);
   body += card(stitle('合約照片', r.photos.length) + (r.photos.length ? photoPages([...r.photos].sort((a, b) => a.page - b.page), 'profDelPhoto') : `<div class="cap soft">還沒有合約照片。</div>`) + photoButtons('profile'));
   return sheetFrame({ title: 'Coser 資料', left: tb('關閉', 'closeSheet'), body, cls: 'tall' });
@@ -4417,7 +4651,7 @@ let wantScrollTop = false;
 function scrollTop() { wantScrollTop = true; }
 function signIn(acc) {
   U.user = { ...acc }; U.section = 'home'; U.stack = []; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
-  U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null; U.openFolders = {}; U.justOpened = null;
+  U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null; U.openFolders = {}; U.justOpened = null; U.cashCoserID = null;
   // 公司登記的 Coser 與登入帳號要留著（才能登出後用新帳號登入測試）；其他測試資料照舊每次登入重設
   const keep = S.sales ? { roster: S.sales.roster, newCosers: S.sales.newCosers, newAccounts: S.sales.newAccounts } : null;
   resetData(U.dataset); if (keep) { Object.assign(S.sales, keep); syncPeople(); } scrollTop();
@@ -4461,7 +4695,8 @@ const A = {
   doLogin() {
     const a = U.login.account.trim().toLowerCase(), p = U.login.password;
     if (!a || !p) { U.login.error = '請輸入帳號和密碼。'; return; }
-    const acc = ACCOUNTS.find(x => x.id === a && x.password === p);
+    // 用帳號代號（例如 cocoa）或登入帳號 email 都可以
+    const acc = ACCOUNTS.find(x => (x.id === a || (x.email || '').toLowerCase() === a) && x.password === p);
     if (!acc) { U.login.error = '帳號或密碼不正確，可以點上方的測試帳號直接登入。'; return; }
     signIn(acc);
   },
@@ -4517,7 +4752,7 @@ const A = {
   reportCur(c) { U.reportCur = c; },
 
   // Coser 名冊（公司）
-  openRegister() { U.sheet = { type: 'register', form: { cosName: '', realName: '', plan: null, planNote: '', contractDate: today(), igAccount: '', igFollowers: '', socials: [], photos: [], account: '', password: '' } }; },
+  openRegister() { U.sheet = { type: 'register', form: { cosName: '', realName: '', plan: null, planNote: '', contractDate: today(), contractEndDate: '', igAccount: '', igFollowers: '', socials: [], photos: [], account: '', email: '', password: '' } }; },
   regPlan(v) { U.sheet.form.plan = v; },
   regAddSocial() { const used = new Set(U.sheet.form.socials.map(x => x.platform)); U.sheet.form.socials.push({ platform: SOCIAL_PLATFORMS.find(p => !used.has(p)) || '其他', custom: '', handle: '', followers: '' }); },
   regDelSocial(i) { U.sheet.form.socials.splice(+i, 1); },
@@ -4525,15 +4760,16 @@ const A = {
   regSubmit() {
     const f = U.sheet.form;
     const r = perform(() => registerCoser({ ...f, photos: f.photos.map(x => x.src) }, U.user));
-    if (r) { U.sheet = null; show('success', `已登記 ${r.cosName}，登入帳號 ${r.id} 已建立`); }
+    if (r) { U.sheet = null; show('success', `已登記 ${r.cosName}，登入帳號 ${r.loginEmail || r.id} 已建立`); }
   },
   openProfile(id) { U.sheet = { type: 'profile', id, password: '' }; },
   profDelPhoto(pid) { perform(() => removeContractPhoto(U.sheet.id, pid, U.user), '已刪除這頁合約照片'); },
   retryLogin() { if (perform(() => createLogin(U.sheet.id, U.sheet.password, U.user), `登入帳號 ${U.sheet.id} 已建立`)) U.sheet.password = ''; },
 
   // 對帳
-  openCash(kind) { const inf = dayInfo(selDay()); const v = kind === 'opening' ? inf?.openingCash : inf?.actualCash; U.sheet = { type: 'cash', kind, text: v != null ? String(v) : '' }; },
-  saveCash() { const sh = U.sheet; if (sh.text === '') return; if (perform(() => setCash(sh.kind, selDay(), parseInt(sh.text, 10), U.user), `已記錄${sh.kind === 'opening' ? '起始現金' : '收攤實點現金'}`)) U.sheet = null; },
+  openCash(kind) { const cid = cashCoserID(); const inf = dayInfo(selDay(), cid); const v = kind === 'opening' ? inf?.openingCash : inf?.actualCash; U.sheet = { type: 'cash', kind, coserID: cid, text: v != null ? String(v) : '' }; },
+  saveCash() { const sh = U.sheet; if (sh.text === '') return; if (perform(() => setCash(sh.kind, selDay(), sh.coserID, parseInt(sh.text, 10), U.user), `已記錄${sh.kind === 'opening' ? '起始現金' : '收攤實點現金'}`)) U.sheet = null; },
+  cashCoser(id) { U.cashCoserID = id; },
   openSettle(id) { U.sheet = { type: 'settle', saleID: id }; },
   settleWith(m) { if (perform(() => settle(U.sheet.saleID, m, U.user), `已登記收到（${PAY[m].label}）`)) U.sheet = null; },
 
@@ -4623,10 +4859,10 @@ const A = {
   resumeSale(id) { const p = productByID(id); perform(() => { ownProduct(id, U.user).discontinued = false; }, `「${p.name}」恢復販售`); },
   openRestock(id) { U.sheet = { type: 'restock', productID: id, text: '' }; },
   rsAdd(n) { U.sheet.text = String(parseInt(U.sheet.text || '0', 10) + +n); },
-  doRestock() { const sh = U.sheet; const add = parseInt(sh.text || '0', 10); const p = productByID(sh.productID); const after = (p.stock ?? 0) + add; if (add > 0 && perform(() => { ownProduct(p.id, U.user).stock = after; }, `「${p.name}」進貨 ${add} 件，現在 ${after} 件`)) U.sheet = null; },
+  doRestock() { const sh = U.sheet; const add = parseInt(sh.text || '0', 10); const p = productByID(sh.productID); const after = (p.stock ?? 0) + add; if (add > 0 && perform(() => restock(p.id, add, U.user), `「${p.name}」進貨 ${add} 件，現在 ${after} 件`)) U.sheet = null; },
   openCount(id) { const p = productByID(id); U.sheet = { type: 'count', productID: id, text: p.stock != null ? String(p.stock) : '' }; },
   cntStep(n) { U.sheet.text = String(Math.max(0, parseInt(U.sheet.text || '0', 10) + +n)); },
-  doCount() { const sh = U.sheet; const n = parseInt(sh.text, 10); const p = productByID(sh.productID); if (!(n >= 0)) return; if (perform(() => { ownProduct(p.id, U.user).stock = n; }, `已更新「${p.name}」庫存為 ${n} 件`)) U.sheet = null; },
+  doCount() { const sh = U.sheet; const n = parseInt(sh.text, 10); const p = productByID(sh.productID); if (!(n >= 0)) return; if (perform(() => setStock(p.id, n, U.user), `已更新「${p.name}」庫存為 ${n} 件`)) U.sheet = null; },
   openSeries(id) { const t = themeByID(id); U.sheet = { type: 'series', themeID: id, work: t.work, character: t.character, tint: t.tintHex }; },
   sfTint(h) { U.sheet.tint = h; },
   saveSeries() { const sh = U.sheet; if (perform(() => updateTheme(sh.themeID, sh.work, sh.character, sh.tint, U.user), '已更新作品・角色')) U.sheet = null; },
@@ -4656,8 +4892,8 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 3; // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
-const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders',
+const STATE_VERSION = 4; // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
+const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
 function snapshotState() {
   const ui = {}; for (const k of KEEP_UI) ui[k] = U[k];
