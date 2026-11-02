@@ -191,10 +191,26 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .seat-map{display:flex;flex-direction:column;gap:10px}
 .seat-row{display:grid;grid-template-columns:44px repeat(4,minmax(0,1fr));gap:10px;align-items:center}
 .seat-lbl{font-weight:900;font-size:14px;color:var(--ink-soft)}
-.seat{min-height:76px;border-radius:14px;background:var(--pink-pale);border:1.5px solid color-mix(in srgb,var(--pink) 40%,transparent);color:var(--pink-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.seat{min-height:84px;min-width:0;width:100%;border-radius:14px;background:var(--pink-pale);border:1.5px solid color-mix(in srgb,var(--pink) 40%,transparent);color:var(--pink-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px}
 .seat b{font-size:17px;font-weight:900}
-.shell.wide .seat{min-height:96px}
+.seat .tm{font-size:14px;font-weight:900;white-space:nowrap}
+.seat .st{font-size:11px;font-weight:800;white-space:nowrap}
+.seat .g4{gap:4px}
+.shell.wide .seat{min-height:104px}
 .shell.wide .seat b{font-size:20px}
+.shell.wide .seat .tm{font-size:17px}
+.lv-plenty{--sf:var(--green-pale);--sb:var(--green);--si:var(--green-deep)}
+.lv-half{--sf:#FFF4CC;--sb:#E9B820;--si:#7A5B00}
+.lv-low,.lv-overtime{--sf:var(--danger-pale);--sb:var(--danger);--si:#9E2F2F}
+.seat[class*=lv-]{background:var(--sf);border:2.5px solid var(--sb);color:var(--si)}
+.seat.lv-overtime{animation:seatBlink 1s steps(1) infinite}
+@keyframes seatBlink{50%{background:var(--danger);color:#fff}}
+@media (prefers-reduced-motion:reduce){.seat.lv-overtime{animation:none}}
+.seat-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;font-weight:800;color:var(--ink-soft)}
+.seat-legend span{display:inline-flex;align-items:center;gap:5px}
+.seat-legend i{width:16px;height:16px;border-radius:4px;background:var(--sf);border:1.5px solid var(--sb)}
+.seat-pill{font-size:12px;font-weight:900;padding:3px 10px;border-radius:999px;background:var(--sf);border:1.5px solid var(--sb);color:var(--si)}
+@media (min-width:768px){.sheet.seat-sheet{max-width:420px}}
 /* 記帳畫面的系列資料夾（2026-10-27） */
 .folders{display:flex;flex-direction:column;gap:10px}
 .folder{background:#fff;border:2px solid var(--tint);border-radius:14px;overflow:hidden;min-width:0}
@@ -2782,7 +2798,7 @@ const ACCOUNTS = [
   { id: 'company', displayName: 'Coser 管理帳號', role: 'company', coserID: null, email: null, password: 'yume2026', hint: '依日期對帳、Coser 名冊，查看服裝狀態與預約紀錄' },
   // 2026-11-02 新增：女僕管理帳號（功能待補充）、店鋪管理帳號（先只有座位圖）
   { id: 'maid', displayName: '女僕管理帳號', role: 'maidManager', coserID: null, email: null, password: 'yume2026', hint: '女僕管理，功能待補充' },
-  { id: 'shop', displayName: '店鋪管理帳號', role: 'shopManager', coserID: null, email: null, password: 'yume2026', hint: '店鋪座位圖（3 排、共 12 個座位）' },
+  { id: 'shop', displayName: '店鋪管理帳號', role: 'shopManager', coserID: null, email: null, password: 'yume2026', hint: '店鋪座位圖：入座計時、加購、續座、結帳' },
   { id: 'cocoa', displayName: 'ここあ COCOA', role: 'coser', coserID: 'cocoa', email: null, password: 'demo2026', hint: '記帳、管理自己的商品與庫存、預約服裝和場地' },
   { id: 'momo', displayName: '小桃（測試）', role: 'coser', coserID: 'momo', email: null, password: 'demo2026', hint: '測試 Coser，有 6 項測試商品' }
 ];
@@ -3138,6 +3154,7 @@ function resetData(dataset) {
   if (dataset === 'scenario') { const c7 = S.costumes.find(c => c.id === 'C-7'); c7.suspended = true; c7.suspendReason = '缺件：外套左邊口袋扣子掉了'; }
   S.venues = venueRows().map(fromNotion.venue);
   S.sales = salesFromSeed();
+  S.seats = freshSeats();
   syncPeople();
 }
 
@@ -3646,12 +3663,69 @@ const isCoserUser = () => U.user?.role === 'coser';
 const ROLE = {
   company: { label: 'Coser 管理', icon: 'building-2', initial: '管', summary: '可以依日期對帳、管理 Coser 名冊，查看服裝狀態與預約紀錄。記帳、商品庫存、預約、會員由各 Coser 自己管理。' },
   maidManager: { label: '女僕管理', icon: 'coffee', initial: '僕', summary: '女僕管理的功能待補充。' },
-  shopManager: { label: '店鋪管理', icon: 'armchair', initial: '店', summary: '可以看店鋪座位圖。入座等其他功能待補充。' },
+  shopManager: { label: '店鋪管理', icon: 'armchair', initial: '店', summary: '可以操作店鋪座位：點空位入座計時 1 小時，已入座的座位可以加購、續座、結帳。加購品項和其他功能待補充。' },
   coser: { label: 'Coser', icon: 'user-round', initial: 'C', summary: '可以記帳、管理自己的商品和庫存、預約服裝和場地、查看自己的銷售。' }
 };
 // 店鋪座位圖：每排 4 個，共 3 排，合計 12 個座位（A1～C4）；入座等功能待補充，座位還沒有 Notion 資料庫
 const SEAT_ROWS = ['A', 'B', 'C'], SEATS_PER_ROW = 4;
 const SEAT_LAYOUT = SEAT_ROWS.map(r => Array.from({ length: SEATS_PER_ROW }, (_, i) => `${r}${i + 1}`));
+// ===== 店鋪座位：入座計時（照 ShopSeats.swift，2026-11-02） =====
+// 點空位入座 → 計時 1 小時。剩 30 分鐘以上綠色、30 分鐘內黃色、5 分鐘內紅色，時間到之後紅色閃爍＋「超時 +MM:SS」。
+// 已入座：加購（品項待補充）、續座（30 分鐘／1 小時，從原本的到期時間往後加）、結帳（不收座位費，只算加購；超時只記錄不加收）。
+const SEAT_MIN = 60 * 1000;
+const SEAT_LEN = 60 * SEAT_MIN, SEAT_HALF = 30 * SEAT_MIN, SEAT_LOW = 5 * SEAT_MIN;
+const SEAT_EXT = [30, 60];
+const extLabel = m => m === 60 ? '1 小時' : `${m} 分鐘`;
+const SEAT_PAY = ['cash', 'transfer', 'linePay']; // 座位結帳不能賒帳
+const SEAT_LEVEL = { plenty: '使用中', half: '剩半小時內', low: '快到時間', overtime: '超時' };
+const seatLevel = remain => remain > SEAT_HALF ? 'plenty' : remain > SEAT_LOW ? 'half' : remain > 0 ? 'low' : 'overtime';
+function seatClock(ms) {
+  const t = Math.ceil(Math.abs(ms) / 1000); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60;
+  const body = h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+  return ms < 0 && t > 0 ? '+' + body : body;
+}
+/** 加購品項待補充：items 先是空的 */
+const freshSeats = () => ({ sessions: {}, history: [], items: [], serial: 0 });
+const seatBoard = () => (S.seats ||= freshSeats());
+const seatSession = id => seatBoard().sessions[id] || null;
+const seatRemain = (ss, now = nowMs()) => ss.endsAt - now;
+const seatAddOnTotal = ss => ss.addOns.reduce((n, a) => n + a.unitPrice * a.quantity, 0);
+const seatsOccupied = () => Object.keys(seatBoard().sessions).length;
+function seatCheck(id, user) {
+  if (user?.role !== 'shopManager') fail('只有店鋪管理帳號可以操作座位。');
+  if (!SEAT_LAYOUT.flat().includes(id)) fail('找不到這個座位。');
+}
+const seatNext = p => `${p}-${++seatBoard().serial}`;
+function seatOpen(id, user, now = nowMs()) {
+  seatCheck(id, user);
+  if (seatSession(id)) fail('這個座位已經有人入座。');
+  return (seatBoard().sessions[id] = { id: seatNext('SEAT'), seatID: id, startedAt: now, endsAt: now + SEAT_LEN, extensions: [], addOns: [], openedBy: user.id });
+}
+function seatExtend(id, minutes, user, now = nowMs()) {
+  seatCheck(id, user);
+  const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
+  if (!SEAT_EXT.includes(+minutes)) fail('續座只能選 30 分鐘或 1 小時。');
+  ss.endsAt += +minutes * SEAT_MIN; ss.extensions.push({ minutes: +minutes, at: now });
+  return ss;
+}
+function seatAddOn(id, itemID, user, qty = 1, now = nowMs()) {
+  seatCheck(id, user);
+  const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
+  const item = seatBoard().items.find(i => i.id === itemID); if (!item) fail('找不到這個品項。');
+  if (!(qty > 0)) fail('數量要是 1 以上。');
+  const line = ss.addOns.find(a => a.itemID === itemID && a.unitPrice === item.price);
+  if (line) line.quantity += qty; else ss.addOns.push({ id: seatNext('ADD'), itemID, name: item.name, unitPrice: item.price, quantity: qty, addedAt: now });
+  return ss;
+}
+function seatCheckout(id, payment, user, now = nowMs()) {
+  seatCheck(id, user);
+  const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
+  const total = seatAddOnTotal(ss);
+  if (total > 0) { if (!payment) fail('有加購，請選收款方式。'); if (!SEAT_PAY.includes(payment)) fail('座位結帳不能用賒帳。'); }
+  const rec = { id: seatNext('SC'), seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, extensions: ss.extensions, addOns: ss.addOns, total, payment: total > 0 ? payment : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id };
+  seatBoard().history.push(rec); delete seatBoard().sessions[id];
+  return rec;
+}
 const role = () => U.user?.role ?? 'coser';
 const selDay = () => U.pickedDay ?? today();
 const isToday = () => selDay() === today();
@@ -4291,10 +4365,19 @@ function viewStaffHome() {
   const r = ROLE[role()];
   return { title: '首頁', cls: 'narrowcol', html: card(`<div class="stack center" style="padding:24px 0;gap:10px" id="staff-placeholder"><span style="color:var(--pink-light)">${icon(r.icon, 44)}</span><b style="font-size:18px">${esc(r.label)}功能待補充</b><span class="sub soft">帳號已經建立，可以登入。之後要做的功能確定後會加在這裡。</span></div>`) };
 }
-/** 店鋪座位圖：每排 4 個，共 3 排，合計 12 個座位（A1～C4）；入座等功能待補充 */
+/** 店鋪座位圖：每排 4 個，共 3 排，合計 12 個座位（A1～C4）；點空位入座、點已入座的座位加購／續座／結帳 */
+function seatTile(id, now) {
+  const ss = seatSession(id);
+  if (!ss) return `<button class="seat" id="seat-${id}"${act('tapSeat', id)} aria-label="座位 ${id}，空位"><span class="row g4">${icon('armchair', 18)}<b>${id}</b></span><span class="st soft">空位</span></button>`;
+  const r = seatRemain(ss, now), lv = seatLevel(r);
+  const time = seatClock(r); // 超時是「+MM:SS」，下面一行寫「超時」
+  return `<button class="seat lv-${lv}" id="seat-${id}"${act('tapSeat', id)} aria-label="座位 ${id}，${lv === 'overtime' ? `超時 ${time}` : `${SEAT_LEVEL[lv]}，剩 ${time}`}"><span class="row g4">${icon('armchair', 18)}<b>${id}</b></span><span class="tm num">${time}</span><span class="st">${SEAT_LEVEL[lv]}</span></button>`;
+}
 function viewSeats() {
-  const rows = SEAT_LAYOUT.map((row, i) => `<div class="seat-row"><span class="seat-lbl">${SEAT_ROWS[i]} 排</span>${row.map(id => `<div class="seat" id="seat-${id}" role="img" aria-label="座位 ${id}">${icon('armchair', 22)}<b>${id}</b></div>`).join('')}</div>`).join('');
-  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', SEAT_LAYOUT.flat().length)}</span><span class="cap bold soft">${SEAT_ROWS.length} 排・每排 ${SEATS_PER_ROW} 個</span></div><div class="seat-map">${rows}</div><div class="cap bold soft row g8">${icon('info', 14)}入座、預約等功能待補充。</div>`);
+  const now = nowMs(), used = seatsOccupied(), all = SEAT_LAYOUT.flat().length;
+  const rows = SEAT_LAYOUT.map((row, i) => `<div class="seat-row"><span class="seat-lbl">${SEAT_ROWS[i]} 排</span>${row.map(id => seatTile(id, now)).join('')}</div>`).join('');
+  const legend = `<div class="seat-legend">${[['plenty', '30 分鐘以上'], ['half', '30 分鐘內'], ['low', '5 分鐘內／超時']].map(([k, t]) => `<span><i class="lv-${k}"></i>${t}</span>`).join('')}</div>`;
+  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', all)}</span><span class="cap bold soft" id="seat-summary">使用中 ${used}・空位 ${all - used}</span></div><div class="seat-map">${rows}</div>${legend}<div class="cap bold soft row g8">${icon('info', 14)}點空位入座，點已入座的座位可以加購、續座、結帳。</div>`);
   return { title: '座位圖', cls: 'narrowcol', html };
 }
 
@@ -4340,8 +4423,36 @@ function viewSheet() {
     case 'menuCur': return sheetMenuCurrency(sh);
     case 'register': return sheetRegister(sh);
     case 'profile': return sheetProfile(sh);
+    case 'seat': return sheetSeat(sh);
   }
   return '';
+}
+
+// ----- 店鋪座位：懸浮視窗（加購、續座、結帳） -----
+function sheetSeat(sh) {
+  const ss = seatSession(sh.id);
+  const back = sh.step !== 'menu' ? tb('返回', 'seatStep', 'menu') : '';
+  if (!ss) return sheetFrame({ title: `座位 ${sh.id}`, right: tb('關閉', 'closeSheet'), cls: 'short seat-sheet', body: empty('circle-check', `${sh.id} 目前是空位`) });
+  const now = nowMs(), r = seatRemain(ss, now), lv = seatLevel(r), total = seatAddOnTotal(ss);
+  const addOnList = ss.addOns.length ? `<div class="stack g8"><b class="cap heavy soft">已加購</b>${ss.addOns.map(a => info(`${a.name} × ${a.quantity}`, money(a.unitPrice * a.quantity))).join('')}</div>` : '';
+  let body = card(`<div class="row g8"><b style="font-size:22px">${sh.id}</b><span class="seat-pill lv-${lv}">${SEAT_LEVEL[lv]}</span></div>
+    ${info(lv === 'overtime' ? '已超時' : '剩餘時間', seatClock(r))}${info('入座', clockText(ss.startedAt))}${info('到期', clockText(ss.endsAt))}
+    ${ss.extensions.length ? info('續座', ss.extensions.map(e => extLabel(e.minutes)).join('、')) : ''}${info('加購', ss.addOns.length ? money(total) : '沒有')}`, 'seat-head');
+  if (sh.step === 'menu') {
+    body += `<div class="stack g8">${[['addOn', '加購', 'shopping-bag'], ['extend', '續座', 'history'], ['checkout', '結帳', 'circle-check']].map(([k, t, ic]) => btn(t, 'seatStep', k, { kind: 'secondary', ic, cls: `seat-act-${k}`, style: '--b:var(--pink-deep)' })).join('')}</div>`;
+  } else if (sh.step === 'addOn') {
+    const items = seatBoard().items;
+    body += card(stitle('加購') + (items.length ? joinRows(items, it => `<button class="row" style="width:100%;min-height:48px"${act('seatAddItem', it.id)}><b class="grow">${esc(it.name)}</b><b>${money(it.price)}</b><span style="color:var(--pink)">${icon('circle-plus', 22)}</span></button>`) : `<div id="seat-items-pending">${empty('package', '加購品項待補充')}</div>`) + (addOnList ? HR + addOnList : ''));
+  } else if (sh.step === 'extend') {
+    body += card(stitle('續座') + `<div class="cap soft">從目前的到期時間（${clockText(ss.endsAt)}）往後加。</div>` + SEAT_EXT.map(m => btn(`續座 ${extLabel(m)}（到 ${clockText(ss.endsAt + m * SEAT_MIN)}）`, 'seatExtend', m, { kind: 'secondary', cls: `seat-ext-${m}`, style: '--b:var(--pink-deep)' })).join(''));
+  } else if (sh.step === 'checkout') {
+    body += card(stitle('結帳') + (total > 0
+      ? `${addOnList}${HR}${info('合計', money(total))}<b class="sub">收款方式</b><div class="row g8 wrap">${SEAT_PAY.map(k => chip(PAY[k].label, sh.pay === k, 'seatPay', k)).join('')}</div>`
+      : `<div class="sub soft">沒有加購，不用收錢。確認後座位會變回空位。</div>`)
+      + `<div class="cap soft">不收座位費。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>`
+      + btn(total > 0 ? `確認結帳 ${money(total)}` : '確認結帳', 'seatConfirmCheckout', null, { cls: 'seat-confirm', dis: total > 0 && !sh.pay }));
+  }
+  return sheetFrame({ title: `座位 ${sh.id}`, left: back, right: tb('關閉', 'closeSheet'), cls: 'short seat-sheet', body });
 }
 
 function sheetCalendar(sh) {
@@ -4703,7 +4814,8 @@ function signIn(acc) {
   U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null; U.openFolders = {}; U.justOpened = null; U.cashCoserID = null;
   // 公司登記的 Coser 與登入帳號要留著（才能登出後用新帳號登入測試）；其他測試資料照舊每次登入重設
   const keep = S.sales ? { roster: S.sales.roster, newCosers: S.sales.newCosers, newAccounts: S.sales.newAccounts } : null;
-  resetData(U.dataset); if (keep) { Object.assign(S.sales, keep); syncPeople(); } scrollTop();
+  const keepSeats = S.seats; // 座位上的客人登出再登入還在
+  resetData(U.dataset); if (keep) { Object.assign(S.sales, keep); syncPeople(); } if (keepSeats) S.seats = keepSeats; scrollTop();
 }
 function addToCart(p) {
   const cur = menuCurrency();
@@ -4734,6 +4846,19 @@ function openProductForm(pid, tid) {
 const A = {
   noop() { return 'skip'; },
   closeSheet() { U.sheet = null; },
+  // 店鋪座位（2026-11-02）
+  tapSeat(id) {
+    if (seatSession(id)) { U.sheet = { type: 'seat', id, step: 'menu', pay: null }; return; }
+    ask(`${id} 開始入座？`, null, [{ label: '入座，開始計時 1 小時', run: () => perform(() => seatOpen(id, U.user), `${id} 已入座，開始計時 1 小時`) }], '取消');
+  },
+  seatStep(step) { if (U.sheet?.type === 'seat') { U.sheet.step = step; U.sheet.pay = null; } },
+  seatExtend(m) { const id = U.sheet.id; if (perform(() => seatExtend(id, +m, U.user), `${id} 已續座 ${extLabel(+m)}`)) U.sheet.step = 'menu'; },
+  seatAddItem(itemID) { const id = U.sheet.id; const it = seatBoard().items.find(i => i.id === itemID); perform(() => seatAddOn(id, itemID, U.user), `${id} 已加購 ${it?.name || '品項'}`); },
+  seatPay(k) { U.sheet.pay = k; },
+  seatConfirmCheckout() {
+    const id = U.sheet.id, total = seatAddOnTotal(seatSession(id));
+    if (perform(() => seatCheckout(id, total > 0 ? U.sheet.pay : null, U.user), total > 0 ? `${id} 已結帳 ${money(total)}，座位空出來了` : `${id} 已結帳，座位空出來了`)) U.sheet = null;
+  },
   confirmCancel() { U.confirm = null; },
   confirmPick(i) { const b = U.confirm.buttons[+i]; U.confirm = null; b.run(); },
   toastClose() { U.toast = null; },
@@ -4941,7 +5066,8 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 4; // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
+const STATE_VERSION = 5; // 11/02 加店鋪座位後 +1
+// // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
 const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
 function snapshotState() {
@@ -5085,6 +5211,8 @@ document.addEventListener('keydown', e => {
 window.matchMedia('(min-width: 768px)').addEventListener('change', render);
 // 跨日、時段過期：每分鐘重畫一次（沒有開彈出畫面時）
 setInterval(() => { if (!U.sheet && !document.activeElement?.dataset?.bind) render(); }, 60000);
+// 座位倒數：在座位圖時每秒重畫（懸浮視窗開著也更新）
+setInterval(() => { if (U.user?.role === 'shopManager' && U.section === 'seats' && !U.confirm && !document.activeElement?.dataset?.bind) render(); }, 1000);
 
 if (HOST_MODE) bootHost();
 else {
