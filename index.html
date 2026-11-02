@@ -187,6 +187,14 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .page.fullw{max-width:none}
 .shell.wide .topbar-in{max-width:none}
 .tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px}
+/* 店鋪座位圖（2026-11-02） */
+.seat-map{display:flex;flex-direction:column;gap:10px}
+.seat-row{display:grid;grid-template-columns:44px repeat(4,minmax(0,1fr));gap:10px;align-items:center}
+.seat-lbl{font-weight:900;font-size:14px;color:var(--ink-soft)}
+.seat{min-height:76px;border-radius:14px;background:var(--pink-pale);border:1.5px solid color-mix(in srgb,var(--pink) 40%,transparent);color:var(--pink-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.seat b{font-size:17px;font-weight:900}
+.shell.wide .seat{min-height:96px}
+.shell.wide .seat b{font-size:20px}
 /* 記帳畫面的系列資料夾（2026-10-27） */
 .folders{display:flex;flex-direction:column;gap:10px}
 .folder{background:#fff;border:2px solid var(--tint);border-radius:14px;overflow:hidden;min-width:0}
@@ -2770,7 +2778,11 @@ function checkNotionRow(db, row) {
 // ================= 測試資料（照正式資料庫的格式） =================
 // 帳號密碼不在 Notion（正式版由後端處理）；email＝Notion「Coser 名冊 › 登入帳號」，登入時用帳號代號或 email 都可以
 const ACCOUNTS = [
-  { id: 'company', displayName: '公司管理員', role: 'company', coserID: null, email: null, password: 'yume2026', hint: '依日期對帳，查看服裝狀態與預約紀錄' },
+  // Coser 管理帳號：原「公司管理員」，2026-11-02 改名（帳號代號仍是 company，功能不變）
+  { id: 'company', displayName: 'Coser 管理帳號', role: 'company', coserID: null, email: null, password: 'yume2026', hint: '依日期對帳、Coser 名冊，查看服裝狀態與預約紀錄' },
+  // 2026-11-02 新增：女僕管理帳號（功能待補充）、店鋪管理帳號（先只有座位圖）
+  { id: 'maid', displayName: '女僕管理帳號', role: 'maidManager', coserID: null, email: null, password: 'yume2026', hint: '女僕管理，功能待補充' },
+  { id: 'shop', displayName: '店鋪管理帳號', role: 'shopManager', coserID: null, email: null, password: 'yume2026', hint: '店鋪座位圖（3 排、共 12 個座位）' },
   { id: 'cocoa', displayName: 'ここあ COCOA', role: 'coser', coserID: 'cocoa', email: null, password: 'demo2026', hint: '記帳、管理自己的商品與庫存、預約服裝和場地' },
   { id: 'momo', displayName: '小桃（測試）', role: 'coser', coserID: 'momo', email: null, password: 'demo2026', hint: '測試 Coser，有 6 項測試商品' }
 ];
@@ -3184,7 +3196,7 @@ function recentRenters(u, limit = 6) {
 }
 function newOrderID() { const d = new Date(); return `L${String(d.getFullYear()).slice(2)}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${rid()}`; }
 function lend(ids, renter, start, due, details, user) {
-  if (user.role === 'company') fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser') fail('這個帳號不能做這個操作。');
   if (!ids.length) fail('請至少選一套服裝。');
   if (new Set(ids).size !== ids.length) fail('同一套服裝選了兩次，請重新選擇。');
   const name = (renter.name || '').trim();
@@ -3207,7 +3219,7 @@ function lend(ids, renter, start, due, details, user) {
   });
 }
 function ownedLoan(loanID, user) {
-  if (user.role === 'company') fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser') fail('這個帳號不能做這個操作。');
   const l = loanByID(loanID); if (!l) fail('找不到這筆借用紀錄，請重新整理後再試。');
   if (handler(l) !== user.id) fail('這個帳號不能做這個操作。');
   if (!loanActive(l)) fail('這套服裝已經登記歸還或取消了。');
@@ -3230,7 +3242,7 @@ function cancelLoan(loanID, user) {
   l.events.push({ id: `${l.id}-${l.events.length + 1}`, kind: 'cancelled', at: nowMs(), by: user.id, note: null });
 }
 function resumeLending(cid, user) {
-  if (user.role === 'company') fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser') fail('這個帳號不能做這個操作。');
   const c = costumeByID(cid); if (!c) fail('找不到這套服裝，請重新整理後再試。');
   c.suspended = false; c.suspendReason = null;
 }
@@ -3261,7 +3273,7 @@ const visibleBookings = u => (u.role === 'company' ? S.venues : S.venues.filter(
 function bookingEnded(b) { const t = today(); if (b.day !== t) return b.day < t; return new Date().getHours() >= b.endHour; }
 const upcomingBookings = u => visibleBookings(u).filter(b => vActive(b) && !bookingEnded(b)).sort((a, b) => cmp(a.day, b.day) || a.startHour - b.startHour);
 function bookVenue(venue, day, s, e, note, user) {
-  if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || !user.coserID) fail('這個帳號不能做這個操作。');
   if (!(s < e)) fail('請選開始和結束的時間，結束要晚於開始。');
   if (s < OPEN_HOUR || e > CLOSE_HOUR) fail(`只能預約 ${clock(OPEN_HOUR)}–${clock(CLOSE_HOUR)} 之間。`);
   if (slotPast(s, day)) fail('這個時間已經過了，請選之後的時段。');
@@ -3274,7 +3286,7 @@ function bookVenue(venue, day, s, e, note, user) {
   return b;
 }
 function cancelVenue(id, user) {
-  if (user.role === 'company') fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser') fail('這個帳號不能做這個操作。');
   const b = venueBooking(id); if (!b) fail('找不到這筆預約，請重新整理後再試。');
   if (b.coserID !== user.coserID) fail('這個帳號不能做這個操作。');
   if (!vActive(b)) fail('這筆預約已經取消了。');
@@ -3333,7 +3345,7 @@ function rateOf(cur, cid, day) {
   return b && b.currency === cur ? b.rate ?? null : null;
 }
 function setMenuCurrency(cur, day, user) {
-  if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || !user.coserID) fail('這個帳號不能做這個操作。');
   if (!CURRENCIES.includes(cur)) fail('不支援這個幣別。');
   if (day > today()) fail('不能記還沒到的日期，請改選今天或以前。');
   upsertCashBox(day, user.coserID, b => { if (b.currency !== cur) b.rate = cur === 'TWD' ? 1 : null; b.currency = cur; });
@@ -3390,7 +3402,7 @@ const memberByFan = (fan, cid) => cid ? SB().members.find(m => m.id === `${cid}|
 // 成交時把品名、單價、數量、幣別、折扣、金額存成快照：之後商品改價、改名、刪除都不影響這筆交易（2026-10-27）
 function checkout(cart, day, payment, rawMember, rawDebtor, user, currency = 'TWD', discount = 0) {
   // 記帳由各 Coser 負責，公司帳號不能記帳（2026-10-21）
-  if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || !user.coserID) fail('這個帳號不能做這個操作。');
   if (!PAY[payment]) fail('請選收款方式。');
   if (day > today()) fail('不能記還沒到的日期，請改選今天或以前。');
   const items = cart.filter(i => i.quantity > 0);
@@ -3461,7 +3473,7 @@ function restock(id, add, user) {
 const movementsOf = pid => SB().movements.filter(m => m.productID === pid).reverse();
 function ownProduct(id, user) {
   const p = productByID(id); if (!p) fail('找不到這個商品，請重新整理後再試。');
-  if (user.role === 'company' || coserOfProduct(p) !== user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || coserOfProduct(p) !== user.coserID) fail('這個帳號不能做這個操作。');
   return p;
 }
 function makeTheme(work, character, tint, coserID, id) {
@@ -3472,7 +3484,7 @@ function makeTheme(work, character, tint, coserID, id) {
   return t;
 }
 function saveProduct(draft, editingID, user) {
-  if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || !user.coserID) fail('這個帳號不能做這個操作。');
   const name = draft.name.trim(); if (!name) fail('請填商品名稱。');
   if (CURRENCIES.some(c => draft.prices[c] != null && draft.prices[c] < 0) || (draft.stock ?? 0) < 0) fail('請輸入 0 以上的整數。');
   let editing = null;
@@ -3504,17 +3516,17 @@ function saveProduct(draft, editingID, user) {
 }
 function updateTheme(id, work, character, tint, user) {
   const i = SB().themes.findIndex(t => t.id === id); if (i < 0) fail('找不到這個作品・角色，請重新整理後再試。');
-  if (user.role === 'company' || SB().themes[i].coserID !== user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || SB().themes[i].coserID !== user.coserID) fail('這個帳號不能做這個操作。');
   SB().themes[i] = makeTheme(work, character, tint, SB().themes[i].coserID, id);
 }
 function deleteTheme(id, user) {
   const i = SB().themes.findIndex(t => t.id === id); if (i < 0) fail('找不到這個作品・角色，請重新整理後再試。');
-  if (user.role === 'company' || SB().themes[i].coserID !== user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || SB().themes[i].coserID !== user.coserID) fail('這個帳號不能做這個操作。');
   if (productsIn(id).length) fail('這個作品・角色裡還有商品，請先刪除商品。');
   SB().themes.splice(i, 1);
 }
 function addMember(fan, nickname, note, user) {
-  if (user.role === 'company' || !user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || !user.coserID) fail('這個帳號不能做這個操作。');
   if (!isMemberCardOn(user.coserID)) fail('會員卡還沒打開，請到「更多」打開會員卡。');
   const key = normalizeFan(fan); if (!key) fail('請輸入粉絲 ID。');
   if (memberByFan(key, user.coserID)) fail('這個粉絲 ID 已經是會員了。');
@@ -3522,10 +3534,10 @@ function addMember(fan, nickname, note, user) {
 }
 function updateMember(id, nickname, note, user) {
   const m = SB().members.find(x => x.id === id); if (!m) fail('找不到這位會員。');
-  if (user.role === 'company' || m.coserID !== user.coserID) fail('這個帳號不能做這個操作。');
+  if (user.role !== 'coser' || m.coserID !== user.coserID) fail('這個帳號不能做這個操作。');
   m.nickname = (nickname || '').trim(); m.note = trimOrNull(note);
 }
-const membersFor = u => u.role === 'company' ? [] : SB().members.filter(m => m.coserID === u.coserID);
+const membersFor = u => u.role !== 'coser' ? [] : SB().members.filter(m => m.coserID === u.coserID);
 const memberSales = m => SB().sales.filter(s => s.coserID === m.coserID && s.memberID === m.fanID).reverse();
 // Notion「累積消費」（台幣）：已收交易換成台幣加總；沒有匯率的外幣交易不算
 const memberSpendTWD = m => Math.round(memberSales(m).filter(s => s.status === 'paid' && s.rate != null).reduce((n, s) => n + s.total * s.rate, 0));
@@ -3548,7 +3560,7 @@ const rosterFor = u => u.role === 'company' ? SB().roster : [];
 const takenIDs = () => new Set([...ACCOUNTS.map(a => a.id), ...COSERS.map(c => c.id), ...SB().themes.map(t => t.coserID), ...SB().roster.map(r => r.id)]);
 const takenEmails = () => new Set([...ACCOUNTS.map(a => a.email), ...SB().roster.map(r => r.loginEmail)].filter(Boolean).map(e => e.toLowerCase()));
 function validateRegistration(f, user) {
-  if (user.role !== 'company') fail('只有公司帳號可以登記 Coser。');
+  if (user.role !== 'company') fail('只有 Coser 管理帳號可以登記 Coser。');
   const cosName = (f.cosName || '').trim(), realName = (f.realName || '').trim(), planNote = (f.planNote || '').trim();
   const account = (f.account || '').trim().toLowerCase(), email = (f.email || '').trim().toLowerCase();
   const contractEndDate = trimOrNull(f.contractEndDate);
@@ -3590,7 +3602,7 @@ function registerCoser(f, user) {
   return profile;
 }
 function createLogin(id, password, user) {
-  if (user.role !== 'company') fail('只有公司帳號可以建立登入帳號。');
+  if (user.role !== 'company') fail('只有 Coser 管理帳號可以建立登入帳號。');
   const r = rosterProfile(id); if (!r) fail('名冊裡找不到這位 Coser。');
   if ((password || '').length < MIN_PASSWORD) fail(`密碼至少 ${MIN_PASSWORD} 個字。`);
   if (ACCOUNTS.some(a => a.id === id)) fail(`Coser 資料已建立，但登入帳號沒建成功：「${id}」已經有人用了。`);
@@ -3600,13 +3612,13 @@ function createLogin(id, password, user) {
   r.hasLogin = true;
 }
 function addContractPhotos(id, srcs, user) {
-  if (user.role !== 'company') fail('只有公司帳號可以登記 Coser。');
+  if (user.role !== 'company') fail('只有 Coser 管理帳號可以登記 Coser。');
   const r = rosterProfile(id); if (!r) fail('名冊裡找不到這位 Coser。');
   let last = r.photos.reduce((m, x) => Math.max(m, x.page), 0);
   for (const src of srcs) r.photos.push({ id: `${id}-${nowMs().toString(36)}-${++last}`, page: last, src });
 }
 function removeContractPhoto(id, photoID, user) {
-  if (user.role !== 'company') fail('只有公司帳號可以登記 Coser。');
+  if (user.role !== 'company') fail('只有 Coser 管理帳號可以登記 Coser。');
   const r = rosterProfile(id); if (!r) fail('名冊裡找不到這位 Coser。');
   r.photos = r.photos.filter(x => x.id !== photoID).sort((a, b) => a.page - b.page).map((x, i) => ({ ...x, page: i + 1 }));
 }
@@ -3629,35 +3641,59 @@ const U = {
 };
 const FB = { db: null, items: [] };
 const isCompany = () => U.user?.role === 'company';
+const isCoserUser = () => U.user?.role === 'coser';
+// 帳號角色（2026-11-02）：company＝Coser 管理帳號（原公司管理員）、maidManager＝女僕管理、shopManager＝店鋪管理、coser
+const ROLE = {
+  company: { label: 'Coser 管理', icon: 'building-2', initial: '管', summary: '可以依日期對帳、管理 Coser 名冊，查看服裝狀態與預約紀錄。記帳、商品庫存、預約、會員由各 Coser 自己管理。' },
+  maidManager: { label: '女僕管理', icon: 'coffee', initial: '僕', summary: '女僕管理的功能待補充。' },
+  shopManager: { label: '店鋪管理', icon: 'armchair', initial: '店', summary: '可以看店鋪座位圖。入座等其他功能待補充。' },
+  coser: { label: 'Coser', icon: 'user-round', initial: 'C', summary: '可以記帳、管理自己的商品和庫存、預約服裝和場地、查看自己的銷售。' }
+};
+// 店鋪座位圖：每排 4 個，共 3 排，合計 12 個座位（A1～C4）；入座等功能待補充，座位還沒有 Notion 資料庫
+const SEAT_ROWS = ['A', 'B', 'C'], SEATS_PER_ROW = 4;
+const SEAT_LAYOUT = SEAT_ROWS.map(r => Array.from({ length: SEATS_PER_ROW }, (_, i) => `${r}${i + 1}`));
 const role = () => U.user?.role ?? 'coser';
 const selDay = () => U.pickedDay ?? today();
 const isToday = () => selDay() === today();
 function selectDay(d) { const t = today(); const x = d > t ? t : d; U.pickedDay = x === t ? null : x; }
 const relDay = d => d === today() ? '今天' : d === addDays(today(), -1) ? '昨天' : dayText(d);
-const memberCardOn = () => !isCompany() && isMemberCardOn(U.user?.coserID);
+const memberCardOn = () => isCoserUser() && isMemberCardOn(U.user?.coserID);
 const isWide = () => window.matchMedia('(min-width: 768px)').matches;
 const cartCount = () => U.cart.reduce((n, i) => n + i.quantity, 0);
 const qtyInCart = id => U.cart.find(i => i.productID === id)?.quantity ?? 0;
 
 function sectionsFor() {
-  return isCompany() ? ['home', 'reconcile', 'costumes', 'records', 'cosers', 'more']
-    : ['home', 'checkout', 'inventory', 'bookings', 'mySales', ...(memberCardOn() ? ['members'] : []), 'more'];
+  switch (role()) {
+    case 'company': return ['home', 'reconcile', 'costumes', 'records', 'cosers', 'more'];
+    case 'maidManager': return ['home', 'more'];
+    case 'shopManager': return ['seats', 'more'];
+    default: return ['home', 'checkout', 'inventory', 'bookings', 'mySales', ...(memberCardOn() ? ['members'] : []), 'more'];
+  }
 }
-const tabsFor = () => isCompany() ? ['home', 'reconcile', 'costumes', 'records', 'more'] : ['home', 'checkout', 'inventory', 'bookings', 'more'];
+function tabsFor() {
+  switch (role()) {
+    case 'company': return ['home', 'reconcile', 'costumes', 'records', 'more'];
+    case 'maidManager': return ['home', 'more'];
+    case 'shopManager': return ['seats', 'more'];
+    default: return ['home', 'checkout', 'inventory', 'bookings', 'more'];
+  }
+}
 const moreSectionsFor = () => sectionsFor().filter(s => !tabsFor().includes(s) && s !== 'more');
-const SEC_ICON = { cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
-const SEC_GROUP = { cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
+const SEC_ICON = { seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
+const SEC_GROUP = { seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
 function secTitle(s) {
   const c = role() === 'coser';
-  return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', cosers: 'Coser 名冊', more: '更多' }[s];
+  return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', cosers: 'Coser 名冊', seats: '座位圖', more: '更多' }[s];
 }
 function secShort(s) {
   const c = role() === 'coser';
-  return { cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
+  return { seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
 }
 
 // ================= 小元件 =================
 Object.assign(ICONS, {
+  armchair: '<path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3" /> <path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z" /> <path d="M5 18v2" /> <path d="M19 18v2" />',
+  coffee: '<path d="M10 2v2" /> <path d="M14 2v2" /> <path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1" /> <path d="M6 2v2" />',
   coins: '<circle cx="8" cy="8" r="6" /> <path d="M18.09 10.37A6 6 0 1 1 10.34 18" /> <path d="M7 6h1v4" /> <path d="m16.71 13.88.7.71-2.82 2.82" />',
   'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="19" x2="19" y1="8" y2="14" /> <line x1="22" x2="16" y1="11" y2="11" />',
   'id-card': '<path d="M16 10h2" /> <path d="M16 14h2" /> <path d="M6.17 15a3 3 0 0 1 5.66 0" /> <circle cx="9" cy="11" r="2" /> <rect x="2" y="5" width="20" height="14" rx="2" />',
@@ -3794,9 +3830,9 @@ function seriesChip(t, on, a, p) { return `<button class="schip${on ? ' on' : ''
 function viewLogin() {
   const L = U.login;
   const demo = a => {
-    const co = a.role === 'company';
-    return `<button class="demo"${act('demoLogin', a.id)}>${co ? `<span class="avatar" style="width:44px;height:44px;border-radius:14px;background:var(--pink-deep);color:#fff">${icon('building-2', 22)}</span>` : avatar(coser(a.coserID), 44)}
-      <span class="grow"><span class="row g8"><b style="font-size:16px">${esc(a.displayName)}</b>${pill(co ? '公司' : 'Coser', co ? 'var(--pink-deep)' : 'var(--green-deep)', co ? 'var(--pink-pale)' : 'var(--green-pale)')}</span><span class="cap soft" style="display:block">${esc(a.hint)}</span></span>
+    const co = a.role !== 'coser';
+    return `<button class="demo" id="demo-${esc(a.id)}"${act('demoLogin', a.id)}>${co ? `<span class="avatar" style="width:44px;height:44px;border-radius:14px;background:var(--pink-deep);color:#fff">${icon(ROLE[a.role].icon, 22)}</span>` : avatar(coser(a.coserID), 44)}
+      <span class="grow"><span class="row g8"><b style="font-size:16px">${esc(a.displayName)}</b>${pill(ROLE[a.role].label, co ? 'var(--pink-deep)' : 'var(--green-deep)', co ? 'var(--pink-pale)' : 'var(--green-pale)')}</span><span class="cap soft" style="display:block">${esc(a.hint)}</span></span>
       <span style="color:var(--pink)">${icon('chevron-right', 20, 3)}</span></button>`;
   };
   return `<main class="page" style="max-width:560px;padding-top:calc(28px + env(safe-area-inset-top,0px))">
@@ -3808,7 +3844,7 @@ function viewLogin() {
       <div class="field"><label for="f-login-account" class="cap soft">帳號</label>${inp('login.account', { ph: '例如 company', enter: 'doLogin' })}</div>
       <div class="field"><label for="f-login-password" class="cap soft">密碼</label>${inp('login.password', { ph: '輸入密碼', type: 'password', enter: 'doLogin' })}</div>
       ${L.error ? `<div class="row g8 bold sub" style="color:var(--danger)">${icon('circle-x', 18)}${esc(L.error)}</div>` : ''}
-      ${btn('登入', 'doLogin')}<div class="cap soft">測試密碼：公司 yume2026；Coser demo2026</div>`)}
+      ${btn('登入', 'doLogin')}<div class="cap soft">測試密碼：Coser 管理／女僕管理／店鋪管理 yume2026；Coser demo2026</div>`)}
     <p class="cap soft" style="text-align:center;margin:0">第一階段為測試版：資料只存在這台裝置，關閉後會重置。</p>
   </main>`;
 }
@@ -3819,7 +3855,7 @@ function badgeFor(s) {
   switch (s) {
     case 'home': return outstandingSales(u).length;
     case 'checkout': return cartCount();
-    case 'inventory': return isCompany() ? 0 : lowStockProducts(u).length;
+    case 'inventory': return isCoserUser() ? lowStockProducts(u).length : 0;
     case 'bookings': return activeLoans(u).filter(l => { const st = dueState(l); return isOverdue(st) || isDueSoon(st); }).length;
     case 'costumes': return overdueLoans(u).length;
     default: return 0;
@@ -3838,8 +3874,8 @@ function sidebar() {
       h += `<button class="side-item${U.section === s ? ' on' : ''}"${act('tab', s)}><span style="color:var(--pink)">${icon(SEC_ICON[s], 22)}</span>${esc(secTitle(s))}${b ? `<span class="bdg">${b}</span>` : ''}</button>`;
     }
   }
-  const initial = isCompany() ? '公' : (coser(u.coserID)?.initial ?? 'C');
-  h += `<div class="side-foot"><span class="avatar" style="width:38px;height:38px;border-radius:12px;background:var(--pink);color:#fff;font-size:17px">${esc(initial)}</span><div class="grow"><div class="heavy sub ellip">${esc(u.displayName)}</div><div class="cap soft">${isCompany() ? '公司' : 'Coser'}帳號</div></div></div></aside>`;
+  const initial = isCoserUser() ? (coser(u.coserID)?.initial ?? 'C') : ROLE[u.role].initial;
+  h += `<div class="side-foot"><span class="avatar" style="width:38px;height:38px;border-radius:12px;background:var(--pink);color:#fff;font-size:17px">${esc(initial)}</span><div class="grow"><div class="heavy sub ellip">${esc(u.displayName)}</div><div class="cap soft">${ROLE[u.role].label}帳號</div></div></div></aside>`;
   return h;
 }
 function entryTitle(e) {
@@ -3864,7 +3900,8 @@ function currentContent() {
 }
 function sectionView(s) {
   switch (s) {
-    case 'home': return isCompany() ? viewCompanyHome() : viewCoserHome();
+    case 'home': return isCompany() ? viewCompanyHome() : isCoserUser() ? viewCoserHome() : viewStaffHome();
+    case 'seats': return viewSeats();
     case 'checkout': return viewCheckout();
     case 'reconcile': return viewReconcile();
     case 'costumes': return viewCostumes();
@@ -3954,7 +3991,7 @@ function viewCoserHome() {
 
 // ================= 記帳（Coser） =================
 // 記帳由各 Coser 負責：記帳畫面就是登入的 Coser 自己的商品；公司沒有記帳（2026-10-21）
-const activeCheckoutCoser = () => (U.user && U.user.role !== 'company') ? U.user.coserID : null;
+const activeCheckoutCoser = () => (U.user && U.user.role === 'coser') ? U.user.coserID : null;
 // 今日菜單幣別（記帳的 Coser、選的日期）；公司沒有記帳，固定台幣
 const menuCurrency = () => menuCurrencyOf(activeCheckoutCoser(), selDay());
 const mmoney = a => money(a, menuCurrency());
@@ -4093,7 +4130,7 @@ function viewCostumes() {
   const html = `<div class="search">${icon('search', 18)}${inp('costumeSearch', { ph: '搜尋編號、角色、作品或位置' })}</div>
     <div class="hscroll">${COSTUME_FILTERS.map(([k, t]) => chip(t, U.costumeFilter === k, 'costumeFilter', k, S.costumes.filter(c => filterMatch(k, costumeStatus(c))).length)).join('')}</div>
     <div class="hscroll"><span class="soft" style="display:grid;place-items:center">${icon('archive', 18)}</span>${chip('全部位置', U.locationFilter == null, 'locFilter', '')}${locs.map(l => chip(l.length === 1 ? `${l} 區` : l, U.locationFilter === l, 'locFilter', l, S.costumes.filter(c => c.location === l).length)).join('')}</div>
-    <div class="cap soft">服裝的借用、預約、歸還由 Coser 在「預約」裡操作，公司這裡只看。</div>${grid}`;
+    <div class="cap soft">服裝的借用、預約、歸還由 Coser 在「預約」裡操作，Coser 管理帳號這裡只看。</div>${grid}`;
   return { title: '服裝', html };
 }
 function viewCostumeDetail(id) {
@@ -4126,7 +4163,7 @@ function itemsCard(c) {
 function viewLoanDetail(id) {
   const l = loanByID(id), c = l && costumeByID(l.costumeID);
   if (!l || !c) return { title: '借用明細', html: empty('search', '找不到這筆紀錄') };
-  const u = U.user, mine = !isCompany() && handler(l) === u.id, st = dueState(l);
+  const u = U.user, mine = isCoserUser() && handler(l) === u.id, st = dueState(l);
   const same = S.loans.filter(x => x.orderID === l.orderID && x.id !== l.id);
   let actions = '';
   if (mine && loanActive(l)) actions = diffDays(today(), l.lentDay) > 0 ? btn('取消這筆預約', 'askCancelLoan', l.id, { kind: 'secondary', ic: 'circle-x', style: '--b:var(--danger)' }) : btn('登記歸還', 'openReturn', l.id, { ic: 'badge-check', cls: 'green' });
@@ -4155,7 +4192,7 @@ function viewRecords() {
     const day = U.venueDay || today();
     const html = kind + `<div class="daypick"><button class="arrow"${act('venueDayShift', -1)} aria-label="前一天">${icon('chevron-left', 22, 3)}</button><div class="mid" style="justify-content:center;flex-direction:column;gap:0"><b style="font-size:17px">${esc(relDay(day))}</b>${day !== today() ? `<button class="cap bold" style="color:var(--pink)"${act('venueDayToday')}>回到今天</button>` : ''}</div><button class="arrow"${act('venueDayShift', 1)} aria-label="後一天">${icon('chevron-right', 22, 3)}</button></div>`
       + VENUE_KEYS.map(v => { const list = dayBookings(day, v); return card(stitle(VENUES[v].label, list.length, 'var(--blue)') + (list.length ? list.map(b => `<button style="width:100%"${act('venueDetail', b.id)}>${venueRow(b, true)}</button>`).join(HR) : empty('calendar', '這天沒有預約'))); }).join('')
-      + `<div class="cap soft">場地預約由 Coser 自己在「預約」裡登記與取消，公司這裡只看紀錄。</div>`;
+      + `<div class="cap soft">場地預約由 Coser 自己在「預約」裡登記與取消，Coser 管理帳號這裡只看紀錄。</div>`;
     return { title: '預約紀錄', html, cls: 'narrowcol' };
   }
   const base = U.recordsTab === 'active' ? activeLoans(u) : finishedLoans(u);
@@ -4225,7 +4262,7 @@ function viewRoster() {
   const u = U.user, list = rosterFor(u), inRoster = new Set(list.map(r => r.id));
   const missing = COSERS.filter(c => !inRoster.has(c.id) && SB().themes.some(t => t.coserID === c.id));
   let html = btn('登記新 Coser', 'openRegister', null, { ic: 'user-plus' });
-  html += `<div class="row g8 cap bold soft" style="align-items:flex-start">${icon('lock', 14)}<span>名冊有本名與合約照片，只有公司帳號看得到。CoserID 是 App 內部代號（商品、交易、會員都用它對應），登入帳號是 email；登入時兩個都可以用。</span></div>`;
+  html += `<div class="row g8 cap bold soft" style="align-items:flex-start">${icon('lock', 14)}<span>名冊有本名與合約照片，只有 Coser 管理帳號看得到。CoserID 是 App 內部代號（商品、交易、會員都用它對應），登入帳號是 email；登入時兩個都可以用。</span></div>`;
   if (list.length) html += card(stitle('已登記', list.length) + list.map(r => `<button class="row" style="width:100%;min-height:64px;gap:12px"${act('openProfile', r.id)} id="roster-${esc(r.id)}">${avatar(coser(r.id), 44)}<span class="grow" style="text-align:left"><b style="display:block;font-size:16px">${esc(r.cosName)}</b><span class="cap soft">${esc([r.status !== '合作中' ? r.status : null, r.plan ? planLabel(r.plan) : null, r.contractDate ? `簽約 ${r.contractDate}` : null, `CoserID ${r.id}`].filter(Boolean).join('・'))}</span>${r.hasLogin ? '' : `<br>${pill('登入帳號未建立', 'var(--orange-deep)', 'var(--orange-pale)')}`}</span><span class="cap bold soft">${r.photos.length} 頁</span><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`).join(HR), 'p10');
   if (missing.length) html += card(stitle('名冊資料待補', missing.length) + missing.map(c => `<div class="row" style="min-height:52px;gap:12px">${avatar(c, 40)}<span class="grow"><b class="sub" style="display:block">${esc(c.name)}</b><span class="cap soft">CoserID ${esc(c.id)}・本名、方案、簽約日、合約照片還沒填</span></span></div>`).join(HR) + `<div class="cap soft">這些 Coser 已經有商品或交易，請到 Notion「Coser 名冊」補齊資料。</div>`);
   return { title: 'Coser 名冊', html, cls: 'narrowcol' };
@@ -4249,11 +4286,23 @@ function viewMemberDetail(id) {
   return { title: '會員', cls: 'narrowcol', html: card(`<div class="t-big">${esc(memberName(m))}</div>${info('粉絲 ID', m.fanID)}${info('加入日期', dayText(dayKey(new Date(m.createdAt))))}${info('累積消費', spendText(memberSpend(m)))}${m.note ? info('備註', m.note) : ''}${btn('編輯資料', 'openMember', m.id, { kind: 'secondary', ic: 'pencil' })}`) + card(stitle('消費紀錄', hist.length) + (hist.length ? joinRows(hist, s => saleRow(s, true)) : empty('inbox', '還沒有消費紀錄'))) };
 }
 
+// ================= 女僕管理、店鋪管理帳號（2026-11-02） =================
+function viewStaffHome() {
+  const r = ROLE[role()];
+  return { title: '首頁', cls: 'narrowcol', html: card(`<div class="stack center" style="padding:24px 0;gap:10px" id="staff-placeholder"><span style="color:var(--pink-light)">${icon(r.icon, 44)}</span><b style="font-size:18px">${esc(r.label)}功能待補充</b><span class="sub soft">帳號已經建立，可以登入。之後要做的功能確定後會加在這裡。</span></div>`) };
+}
+/** 店鋪座位圖：每排 4 個，共 3 排，合計 12 個座位（A1～C4）；入座等功能待補充 */
+function viewSeats() {
+  const rows = SEAT_LAYOUT.map((row, i) => `<div class="seat-row"><span class="seat-lbl">${SEAT_ROWS[i]} 排</span>${row.map(id => `<div class="seat" id="seat-${id}" role="img" aria-label="座位 ${id}">${icon('armchair', 22)}<b>${id}</b></div>`).join('')}</div>`).join('');
+  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', SEAT_LAYOUT.flat().length)}</span><span class="cap bold soft">${SEAT_ROWS.length} 排・每排 ${SEATS_PER_ROW} 個</span></div><div class="seat-map">${rows}</div><div class="cap bold soft row g8">${icon('info', 14)}入座、預約等功能待補充。</div>`);
+  return { title: '座位圖', cls: 'narrowcol', html };
+}
+
 // ================= 更多 =================
 function viewMore() {
   const u = U.user, extra = moreSectionsFor();
-  let html = card(`<div class="t-title">${esc(u.displayName)}</div>${info('帳號', u.id)}${info('身分', isCompany() ? '公司' : 'Coser')}<div class="cap soft">${isCompany() ? '可以依日期對帳，查看服裝狀態與預約紀錄。記帳、商品庫存、預約、會員由各 Coser 自己管理。' : '可以記帳、管理自己的商品和庫存、預約服裝和場地、查看自己的銷售。'}</div>`);
-  if (!isCompany()) html += card(`<button class="switch" role="switch" aria-checked="${memberCardOn()}"${act('toggleMemberCard')}><span class="row g8 heavy" style="font-size:17px"><span style="color:var(--pink)">${icon('heart', 20)}</span>會員卡</span><span class="knob"></span></button><div class="cap soft">${memberCardOn() ? '已打開：記帳收款時可以輸入粉絲 ID，會員清單在下方「會員」。只有你看得到自己的會員。' : '關閉中：記帳畫面不會出現會員欄位。需要累積粉絲消費時再打開。'}</div>`);
+  let html = card(`<div class="t-title">${esc(u.displayName)}</div>${info('帳號', u.id)}${info('身分', ROLE[u.role].label)}<div class="cap soft">${ROLE[u.role].summary}</div>`);
+  if (isCoserUser()) html += card(`<button class="switch" role="switch" aria-checked="${memberCardOn()}"${act('toggleMemberCard')}><span class="row g8 heavy" style="font-size:17px"><span style="color:var(--pink)">${icon('heart', 20)}</span>會員卡</span><span class="knob"></span></button><div class="cap soft">${memberCardOn() ? '已打開：記帳收款時可以輸入粉絲 ID，會員清單在下方「會員」。只有你看得到自己的會員。' : '關閉中：記帳畫面不會出現會員欄位。需要累積粉絲消費時再打開。'}</div>`);
   if (extra.length) html += card(extra.map(s => `<button class="row" style="width:100%;min-height:56px;gap:14px"${act('pushSection', s)}><span style="color:var(--pink);width:32px;display:grid;place-items:center">${icon(SEC_ICON[s], 22)}</span><b class="grow" style="font-size:16px">${esc(secTitle(s))}</b><span class="soft">${icon('chevron-right', 18, 3)}</span></button>`).join(HR), 'p10');
   html += card(`<b>測試工具</b><div class="cap soft">目前測試資料：${U.dataset === 'notion' ? 'Notion 現況' : '完整測試情境'}。重設會清掉這次在網頁上做的所有操作。</div><div class="row g8 wrap">${FB.db ? `<button class="cbtn ghost"${act('openFeedback')}>${icon('message-square-text', 16)}意見回饋</button>` : ''}<button class="cbtn ghost" style="--b:var(--orange-deep)"${act('askReset')}>${icon('rotate-ccw', 16)}重設測試資料</button></div>`);
   html += btn('登出', 'askSignOut', null, { kind: 'secondary', ic: 'log-out', style: '--b:var(--danger)' });
@@ -4458,7 +4507,7 @@ function sheetVenue(sh) {
 function sheetVenueDetail(sh) {
   const b = venueBooking(sh.id);
   if (!b) return sheetFrame({ title: '場地預約', left: tb('關閉', 'closeSheet'), body: empty('search', '找不到這筆預約'), cls: 'short' });
-  const can = !isCompany() && b.coserID === U.user.coserID && vActive(b) && !slotPast(b.startHour, b.day);
+  const can = isCoserUser() && b.coserID === U.user.coserID && vActive(b) && !slotPast(b.startHour, b.day);
   return sheetFrame({ title: '場地預約', left: tb('關閉', 'closeSheet'), body: venueInfo(b) + (can ? btn('取消這筆預約', 'askCancelVenue', b.id, { kind: 'secondary', ic: 'circle-x', style: '--b:var(--danger)' }) : ''), cls: 'short' });
 }
 
@@ -4501,7 +4550,7 @@ const photoPages = (srcs, delAct) => srcs.length ? `<div class="pages">${srcs.ma
 const photoButtons = target => `<div class="row g8 wrap"><label class="cbtn filebtn">${icon('camera', 16)}拍照<input type="file" accept="image/*" capture="environment" data-photos="${target}"></label><label class="cbtn ghost filebtn">${icon('image', 16)}從相簿選<input type="file" accept="image/*" multiple data-photos="${target}"></label></div>`;
 function sheetRegister(sh) {
   const f = sh.form;
-  let body = `<b style="font-size:17px">基本資料</b>${inp('sheet.form.cosName', { ph: 'Cos 名（對外名稱）' })}${inp('sheet.form.realName', { ph: '本名（真實姓名，只有公司看得到）' })}`;
+  let body = `<b style="font-size:17px">基本資料</b>${inp('sheet.form.cosName', { ph: 'Cos 名（對外名稱）' })}${inp('sheet.form.realName', { ph: '本名（真實姓名，只有 Coser 管理帳號看得到）' })}`;
   body += `<b style="font-size:17px">方案</b><div class="curopts">${PLANS.map(([v, l]) => `<button class="${f.plan === v ? 'on' : ''}"${act('regPlan', v)} aria-pressed="${f.plan === v}" id="plan-${esc(v)}">${esc(l)}</button>`).join('')}</div>`;
   if (f.plan === '特殊方案') body += inp('sheet.form.planNote', { ph: '特殊方案內容（必填）' });
   body += `<div class="field"><label for="f-sheet-form-contractDate">簽約日期</label>${inp('sheet.form.contractDate', { type: 'date' })}</div>`;
@@ -4650,7 +4699,7 @@ function push(entry) { U.stack.push(entry); scrollTop(); }
 let wantScrollTop = false;
 function scrollTop() { wantScrollTop = true; }
 function signIn(acc) {
-  U.user = { ...acc }; U.section = 'home'; U.stack = []; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
+  U.user = { ...acc }; U.section = acc.role === 'shopManager' ? 'seats' : 'home'; U.stack = []; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
   U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null; U.openFolders = {}; U.justOpened = null; U.cashCoserID = null;
   // 公司登記的 Coser 與登入帳號要留著（才能登出後用新帳號登入測試）；其他測試資料照舊每次登入重設
   const keep = S.sales ? { roster: S.sales.roster, newCosers: S.sales.newCosers, newAccounts: S.sales.newAccounts } : null;
