@@ -211,6 +211,7 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .seat-legend i{width:16px;height:16px;border-radius:4px;background:var(--sf);border:1.5px solid var(--sb)}
 .seat-pill{font-size:12px;font-weight:900;padding:3px 10px;border-radius:999px;background:var(--sf);border:1.5px solid var(--sb);color:var(--si)}
 @media (min-width:768px){.sheet.seat-sheet{max-width:420px}}
+.seat-sheet .tile-grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
 .seat-test{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .seat-test-btn{min-height:52px;border-radius:12px;background:var(--orange-pale);border:1.5px solid color-mix(in srgb,var(--orange) 50%,transparent);color:var(--orange-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .seat-test-btn b{font-size:14px;font-weight:900}.seat-test-btn small{font-size:11px;font-weight:800;opacity:.8}
@@ -247,7 +248,7 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .shell.wide .ptile .pb{height:36px;font-size:17px}
 .ptile .pb i{font-style:normal;font-size:.8em;font-weight:900;white-space:nowrap}
 .ptile .pb b{margin-left:auto;font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
-.pbadge{position:absolute;top:5px;right:5px;min-width:34px;height:34px;border-radius:17px;background:var(--ink);color:#fff;font-weight:900;font-size:17px;border:2px solid #fff;display:grid;place-items:center;padding:0 6px;font-variant-numeric:tabular-nums}
+.pbadge{position:absolute;z-index:2;top:5px;right:5px;min-width:34px;height:34px;border-radius:17px;background:var(--ink);color:#fff;font-weight:900;font-size:17px;border:2px solid #fff;display:grid;place-items:center;padding:0 6px;font-variant-numeric:tabular-nums}
 .cday{display:flex;align-items:center;gap:6px;min-width:0}
 .carrow{width:40px;height:40px;border-radius:50%;background:var(--pink-pale);color:var(--pink-deep);display:grid;place-items:center;flex:none}
 .carrow:disabled{opacity:.4}
@@ -3666,7 +3667,7 @@ const isCoserUser = () => U.user?.role === 'coser';
 const ROLE = {
   company: { label: 'Coser 管理', icon: 'building-2', initial: '管', summary: '可以依日期對帳、管理 Coser 名冊，查看服裝狀態與預約紀錄。記帳、商品庫存、預約、會員由各 Coser 自己管理。' },
   maidManager: { label: '女僕管理', icon: 'coffee', initial: '僕', summary: '女僕管理的功能待補充。' },
-  shopManager: { label: '店鋪管理', icon: 'armchair', initial: '店', summary: '可以操作店鋪座位：點空位入座計時 1 小時，已入座的座位可以加購、續座、結帳。加購品項和其他功能待補充。' },
+  shopManager: { label: '店鋪管理', icon: 'armchair', initial: '店', summary: '可以操作店鋪座位：點空位入座計時 1 小時，已入座的座位可以加購（女僕的表演、拍立得、豪華照片組）、續座、結帳。其他功能待補充。' },
   coser: { label: 'Coser', icon: 'user-round', initial: 'C', summary: '可以記帳、管理自己的商品和庫存、預約服裝和場地、查看自己的銷售。' }
 };
 // 店鋪座位圖：每排 4 個，共 3 排，合計 12 個座位（A1～C4）；入座等功能待補充，座位還沒有 Notion 資料庫
@@ -3674,7 +3675,9 @@ const SEAT_ROWS = ['A', 'B', 'C'], SEATS_PER_ROW = 4;
 const SEAT_LAYOUT = SEAT_ROWS.map(r => Array.from({ length: SEATS_PER_ROW }, (_, i) => `${r}${i + 1}`));
 // ===== 店鋪座位：入座計時（照 ShopSeats.swift，2026-11-02） =====
 // 點空位入座 → 計時 1 小時。剩 30 分鐘以上綠色、30 分鐘內黃色、5 分鐘內紅色，時間到之後紅色閃爍＋「超時 +MM:SS」。
-// 已入座：加購（品項待補充）、續座（30 分鐘／1 小時，從原本的到期時間往後加）、結帳（不收座位費，只算加購；超時只記錄不加收）。
+// 已入座：加購、續座（30 分鐘／1 小時，從原本的到期時間往後加）、結帳（不收座位費，只算加購；超時只記錄不加收）。
+// 加購（2026-11-03）：每位女僕都有「表演、拍立得、豪華照片組」，畫面跟 Coser 記帳畫面一樣（女僕資料夾＋色塊格子，點格子 +1、數量圓點 -1）；不算庫存。
+// 女僕名單、價格先用測試資料（照 ShopMockData.swift）。
 const SEAT_MIN = 60 * 1000;
 const SEAT_LEN = 60 * SEAT_MIN, SEAT_HALF = 30 * SEAT_MIN, SEAT_LOW = 5 * SEAT_MIN;
 const SEAT_EXT = [30, 60];
@@ -3687,8 +3690,14 @@ function seatClock(ms) {
   const body = h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
   return ms < 0 && t > 0 ? '+' + body : body;
 }
-/** 加購品項待補充：items 先是空的 */
-const freshSeats = () => ({ sessions: {}, history: [], items: [], serial: 0 });
+const SHOP_KINDS = [['performance', '表演'], ['polaroid', '拍立得'], ['deluxePhotoSet', '豪華照片組']];
+const SHOP_TEST_PRICE = { performance: 300, polaroid: 200, deluxePhotoSet: 800 };
+const SHOP_MAIDS = [{ id: 'yuki', name: '小雪（測試）', colorHex: '79B0DC' }, { id: 'aoi', name: '小葵（測試）', colorHex: 'F3A23F' }, { id: 'suzu', name: '小鈴（測試）', colorHex: 'B4A7E6' }];
+const shopTestItems = () => SHOP_MAIDS.flatMap(m => SHOP_KINDS.map(([k, label]) => ({ id: `${m.id}-${k}`, maidID: m.id, kind: k, name: label, price: SHOP_TEST_PRICE[k], active: true })));
+const freshSeats = () => ({ sessions: {}, history: [], maids: SHOP_MAIDS.map(m => ({ ...m })), items: shopTestItems(), serial: 0 });
+/** 加購畫面的女僕資料夾：照女僕順序，品項照「表演、拍立得、豪華照片組」；停售的不列，沒有品項的女僕不列 */
+const maidFolders = () => seatBoard().maids.map(m => ({ maid: m, items: SHOP_KINDS.map(([k]) => seatBoard().items.find(i => i.maidID === m.id && i.kind === k && i.active)).filter(Boolean) })).filter(f => f.items.length);
+const seatQty = (ss, itemID) => ss.addOns.filter(a => a.itemID === itemID).reduce((n, a) => n + a.quantity, 0);
 const seatBoard = () => (S.seats ||= freshSeats());
 const seatSession = id => seatBoard().sessions[id] || null;
 const seatRemain = (ss, now = nowMs()) => ss.endsAt - now;
@@ -3714,10 +3723,19 @@ function seatExtend(id, minutes, user, now = nowMs()) {
 function seatAddOn(id, itemID, user, qty = 1, now = nowMs()) {
   seatCheck(id, user);
   const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
-  const item = seatBoard().items.find(i => i.id === itemID); if (!item) fail('找不到這個品項。');
+  const item = seatBoard().items.find(i => i.id === itemID && i.active); const maid = item && seatBoard().maids.find(m => m.id === item.maidID);
+  if (!item || !maid) fail('找不到這個品項。');
   if (!(qty > 0)) fail('數量要是 1 以上。');
   const line = ss.addOns.find(a => a.itemID === itemID && a.unitPrice === item.price);
-  if (line) line.quantity += qty; else ss.addOns.push({ id: seatNext('ADD'), itemID, name: item.name, unitPrice: item.price, quantity: qty, addedAt: now });
+  if (line) line.quantity += qty; else ss.addOns.push({ id: seatNext('ADD'), itemID, maidID: maid.id, maidName: maid.name, name: item.name, unitPrice: item.price, quantity: qty, addedAt: now });
+  return ss;
+}
+/** 加購減 1 件（數量圓點）；減到 0 就拿掉那一筆 */
+function seatRemoveAddOn(id, itemID, user) {
+  seatCheck(id, user);
+  const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
+  const i = ss.addOns.map(a => a.itemID).lastIndexOf(itemID); if (i < 0) fail('找不到這個品項。');
+  if (--ss.addOns[i].quantity <= 0) ss.addOns.splice(i, 1);
   return ss;
 }
 // 測試工具（網頁測試版）：把剩餘時間直接設好，檢查綠黃紅的切換；不算續座、不留紀錄（照 SeatBoard.testSetRemaining）
@@ -4444,7 +4462,7 @@ function sheetSeat(sh) {
   const back = sh.step !== 'menu' ? tb('返回', 'seatStep', 'menu') : '';
   if (!ss) return sheetFrame({ title: `座位 ${sh.id}`, right: tb('關閉', 'closeSheet'), cls: 'short seat-sheet', body: empty('circle-check', `${sh.id} 目前是空位`) });
   const now = nowMs(), r = seatRemain(ss, now), lv = seatLevel(r), total = seatAddOnTotal(ss);
-  const addOnList = ss.addOns.length ? `<div class="stack g8"><b class="cap heavy soft">已加購</b>${ss.addOns.map(a => info(`${a.name} × ${a.quantity}`, money(a.unitPrice * a.quantity))).join('')}</div>` : '';
+  const addOnList = ss.addOns.length ? `<div class="stack g8"><b class="cap heavy soft">已加購</b>${ss.addOns.map(a => info(`${a.maidName}・${a.name} × ${a.quantity}`, money(a.unitPrice * a.quantity))).join('')}</div>` : '';
   let body = card(`<div class="row g8"><b style="font-size:22px">${sh.id}</b><span class="seat-pill lv-${lv}">${SEAT_LEVEL[lv]}</span></div>
     ${info(lv === 'overtime' ? '已超時' : '剩餘時間', seatClock(r))}${info('入座', clockText(ss.startedAt))}${info('到期', clockText(ss.endsAt))}
     ${ss.extensions.length ? info('續座', ss.extensions.map(e => extLabel(e.minutes)).join('、')) : ''}${info('加購', ss.addOns.length ? money(total) : '沒有')}`, 'seat-head');
@@ -4452,8 +4470,10 @@ function sheetSeat(sh) {
     const tools = card(`<b class="row g8" style="color:var(--orange-deep)">${icon('puzzle', 18)}測試工具：調整剩餘時間</b><div class="seat-test">${SEAT_TEST.map(([sec, t, h]) => `<button class="seat-test-btn" id="seat-test-${sec}"${act('seatTest', sec)}><b>${t}</b><small>${h}</small></button>`).join('')}</div><div class="cap soft">只有測試版會出現。不算續座、不留紀錄。</div>`);
     body += `<div class="stack g8">${[['addOn', '加購', 'shopping-bag'], ['extend', '續座', 'history'], ['checkout', '結帳', 'circle-check']].map(([k, t, ic]) => btn(t, 'seatStep', k, { kind: 'secondary', ic, cls: `seat-act-${k}`, style: '--b:var(--pink-deep)' })).join('')}</div>` + tools;
   } else if (sh.step === 'addOn') {
-    const items = seatBoard().items;
-    body += card(stitle('加購') + (items.length ? joinRows(items, it => `<button class="row" style="width:100%;min-height:48px"${act('seatAddItem', it.id)}><b class="grow">${esc(it.name)}</b><b>${money(it.price)}</b><span style="color:var(--pink)">${icon('circle-plus', 22)}</span></button>`) : `<div id="seat-items-pending">${empty('package', '加購品項待補充')}</div>`) + (addOnList ? HR + addOnList : ''));
+    // 跟 Coser 記帳畫面一樣：一位女僕一個資料夾，點開是色塊格子；點格子 +1、數量圓點 -1
+    const folders = maidFolders();
+    body += folders.length ? `<div class="folders">${folders.map(f => maidFolder(f, ss, folders.length === 1, sh)).join('')}</div>` : card(`<div id="seat-items-pending">${empty('package', '還沒有可以加購的品項')}</div>`);
+    if (addOnList) body += card(addOnList + HR + info('加購合計', money(total)));
   } else if (sh.step === 'extend') {
     body += card(stitle('續座') + `<div class="cap soft">從目前的到期時間（${clockText(ss.endsAt)}）往後加。</div>` + SEAT_EXT.map(m => btn(`續座 ${extLabel(m)}（到 ${clockText(ss.endsAt + m * SEAT_MIN)}）`, 'seatExtend', m, { kind: 'secondary', cls: `seat-ext-${m}`, style: '--b:var(--pink-deep)' })).join(''));
   } else if (sh.step === 'checkout') {
@@ -4464,6 +4484,17 @@ function sheetSeat(sh) {
       + btn(total > 0 ? `確認結帳 ${money(total)}` : '確認結帳', 'seatConfirmCheckout', null, { cls: 'seat-confirm', dis: total > 0 && !sh.pay }));
   }
   return sheetFrame({ title: `座位 ${sh.id}`, left: back, right: tb('關閉', 'closeSheet'), cls: 'short seat-sheet', body });
+}
+
+function maidFolder(f, ss, only, sh) {
+  const m = f.maid, open = sh.openMaids?.[m.id] ?? only;
+  const picked = f.items.reduce((n, i) => n + seatQty(ss, i.id), 0);
+  const label = [m.name, `${f.items.length} 項`, picked ? `已選 ${picked} 件` : '', open ? '已展開' : '已收起'].filter(Boolean).join('，');
+  const tiles = f.items.map(it => {
+    const qty = seatQty(ss, it.id), hex = m.colorHex, bar = shadeHex(hex);
+    return `<div class="ptile-wrap${qty ? ' has' : ''}" id="seat-item-${esc(it.id)}"><button class="ptile${qty ? ' has' : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('seatAddItem', it.id)} aria-label="${esc(`${it.name}，${money(it.price)}`)}"><span class="pn">${esc(it.name)}</span><span class="pb"><b>${money(it.price)}</b></span></button>${qty ? `<button class="pbadge" id="seat-qty-${esc(it.id)}"${act('seatRemoveItem', it.id)} aria-label="減少 1 件 ${esc(it.name)}，目前 ${qty} 件">${qty}</button>` : ''}</div>`;
+  }).join('');
+  return `<section class="folder${open ? ' open' : ''}" style="${tintVars(m.colorHex)}"><button class="folder-h" id="maid-folder-${esc(m.id)}"${act('seatMaidFolder', m.id, only ? 1 : 0)} aria-expanded="${open}" aria-label="${esc(label)}"><span class="grow stack" style="min-width:0"><span class="c ellip">${esc(m.name)}</span></span>${picked ? `<span class="sel num">已選 ${picked}</span>` : ''}<span class="cnt">${f.items.length} 項</span><span class="chev">${icon('chevron-down', 22, 3)}</span></button>${open ? `<div class="folder-b"><div class="tile-grid">${tiles}</div></div>` : ''}</section>`;
 }
 
 function sheetCalendar(sh) {
@@ -4864,7 +4895,9 @@ const A = {
   },
   seatStep(step) { if (U.sheet?.type === 'seat') { U.sheet.step = step; U.sheet.pay = null; } },
   seatExtend(m) { const id = U.sheet.id; if (perform(() => seatExtend(id, +m, U.user), `${id} 已續座 ${extLabel(+m)}`)) U.sheet.step = 'menu'; },
-  seatAddItem(itemID) { const id = U.sheet.id; const it = seatBoard().items.find(i => i.id === itemID); perform(() => seatAddOn(id, itemID, U.user), `${id} 已加購 ${it?.name || '品項'}`); },
+  seatAddItem(itemID) { perform(() => seatAddOn(U.sheet.id, itemID, U.user)); },
+  seatRemoveItem(itemID) { perform(() => seatRemoveAddOn(U.sheet.id, itemID, U.user)); },
+  seatMaidFolder(maidID, only) { const o = (U.sheet.openMaids ||= {}); o[maidID] = !(o[maidID] ?? only === '1'); },
   seatPay(k) { U.sheet.pay = k; },
   seatTest(sec) { const id = U.sheet.id, t = SEAT_TEST.find(x => x[0] === +sec); perform(() => seatTestSetRemaining(id, +sec, U.user), `測試：${id} ${t[1]}`); },
   seatConfirmCheckout() {
@@ -5078,7 +5111,7 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 5; // 11/02 加店鋪座位後 +1
+const STATE_VERSION = 6; // 11/02 加店鋪座位後 +1；11/03 女僕加購後 +1
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
 const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
