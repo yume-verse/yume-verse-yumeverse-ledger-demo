@@ -211,6 +211,12 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .seat-legend i{width:16px;height:16px;border-radius:4px;background:var(--sf);border:1.5px solid var(--sb)}
 .seat-pill{font-size:12px;font-weight:900;padding:3px 10px;border-radius:999px;background:var(--sf);border:1.5px solid var(--sb);color:var(--si)}
 @media (min-width:768px){.sheet.seat-sheet{max-width:420px}}
+.addon-line{display:flex;align-items:center;gap:8px;min-height:48px;font-size:14px}
+.addon-line .q{min-width:28px;text-align:center;font-size:17px}
+.addon-line .amt{min-width:72px;text-align:right}
+.stepbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none}
+.stepbtn.minus{background:var(--gray-pale);color:var(--ink)}
+.stepbtn.plus{background:var(--pink);color:#fff}
 .seat-sheet .tile-grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
 .seat-test{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .seat-test-btn{min-height:52px;border-radius:12px;background:var(--orange-pale);border:1.5px solid color-mix(in srgb,var(--orange) 50%,transparent);color:var(--orange-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
@@ -3682,7 +3688,7 @@ const SEAT_MIN = 60 * 1000;
 const SEAT_LEN = 60 * SEAT_MIN, SEAT_HALF = 30 * SEAT_MIN, SEAT_LOW = 5 * SEAT_MIN;
 const SEAT_EXT = [30, 60];
 const extLabel = m => m === 60 ? '1 小時' : `${m} 分鐘`;
-const SEAT_PAY = ['cash', 'transfer', 'linePay']; // 座位結帳不能賒帳
+const SEAT_PAY = ['cash', 'transfer', 'linePay', 'credit']; // 跟 Coser 收款一樣四種（2026-11-03）；賒帳要填客人名字
 const SEAT_LEVEL = { plenty: '使用中', half: '剩半小時內', low: '快到時間', overtime: '超時' };
 const seatLevel = remain => remain > SEAT_HALF ? 'plenty' : remain > SEAT_LOW ? 'half' : remain > 0 ? 'low' : 'overtime';
 function seatClock(ms) {
@@ -3745,12 +3751,12 @@ function seatTestSetRemaining(id, seconds, user, now = nowMs()) {
   const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
   ss.endsAt = now + seconds * 1000; return ss;
 }
-function seatCheckout(id, payment, user, now = nowMs()) {
+function seatCheckout(id, payment, user, debtor = '', now = nowMs()) {
   seatCheck(id, user);
   const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
-  const total = seatAddOnTotal(ss);
-  if (total > 0) { if (!payment) fail('有加購，請選收款方式。'); if (!SEAT_PAY.includes(payment)) fail('座位結帳不能用賒帳。'); }
-  const rec = { id: seatNext('SC'), seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, extensions: ss.extensions, addOns: ss.addOns, total, payment: total > 0 ? payment : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id };
+  const total = seatAddOnTotal(ss), name = (debtor || '').trim();
+  if (total > 0) { if (!payment) fail('有加購，請選收款方式。'); if (!SEAT_PAY.includes(payment)) fail('找不到這個收款方式。'); if (payment === 'credit' && !name) fail('賒帳要填客人名字或聯絡方式。'); }
+  const rec = { id: seatNext('SC'), seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, extensions: ss.extensions, addOns: ss.addOns, total, payment: total > 0 ? payment : null, debtor: total > 0 && payment === 'credit' ? name : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id };
   seatBoard().history.push(rec); delete seatBoard().sessions[id];
   return rec;
 }
@@ -4452,6 +4458,7 @@ function viewSheet() {
     case 'register': return sheetRegister(sh);
     case 'profile': return sheetProfile(sh);
     case 'seat': return sheetSeat(sh);
+    case 'seatPay': return sheetSeatPay(sh);
   }
   return '';
 }
@@ -4462,28 +4469,52 @@ function sheetSeat(sh) {
   const back = sh.step !== 'menu' ? tb('返回', 'seatStep', 'menu') : '';
   if (!ss) return sheetFrame({ title: `座位 ${sh.id}`, right: tb('關閉', 'closeSheet'), cls: 'short seat-sheet', body: empty('circle-check', `${sh.id} 目前是空位`) });
   const now = nowMs(), r = seatRemain(ss, now), lv = seatLevel(r), total = seatAddOnTotal(ss);
-  const addOnList = ss.addOns.length ? `<div class="stack g8"><b class="cap heavy soft">已加購</b>${ss.addOns.map(a => info(`${a.maidName}・${a.name} × ${a.quantity}`, money(a.unitPrice * a.quantity))).join('')}</div>` : '';
+  // 已加購清單：每一行「－ 數量 ＋」調整（2026-11-03：格子只管加 1，減少在這裡）
+  const addOnList = ss.addOns.length ? `<div class="stack g8"><b class="cap heavy soft">已加購</b>${ss.addOns.map(a => `<div class="addon-line"><b class="grow">${esc(`${a.maidName}・${a.name}`)}</b><button class="stepbtn minus" id="seat-minus-${esc(a.itemID)}"${act('seatRemoveItem', a.itemID)} aria-label="減少 1 件 ${esc(a.name)}">${icon('minus', 18, 3)}</button><b class="num q" id="seat-line-qty-${esc(a.itemID)}">${a.quantity}</b><button class="stepbtn plus" id="seat-plus-${esc(a.itemID)}"${act('seatAddItem', a.itemID)} aria-label="增加 1 件 ${esc(a.name)}">${icon('plus', 18, 3)}</button><b class="num amt">${money(a.unitPrice * a.quantity)}</b></div>`).join('')}</div>` : '';
   let body = card(`<div class="row g8"><b style="font-size:22px">${sh.id}</b><span class="seat-pill lv-${lv}">${SEAT_LEVEL[lv]}</span></div>
     ${info(lv === 'overtime' ? '已超時' : '剩餘時間', seatClock(r))}${info('入座', clockText(ss.startedAt))}${info('到期', clockText(ss.endsAt))}
     ${ss.extensions.length ? info('續座', ss.extensions.map(e => extLabel(e.minutes)).join('、')) : ''}${info('加購', ss.addOns.length ? money(total) : '沒有')}`, 'seat-head');
   if (sh.step === 'menu') {
     const tools = card(`<b class="row g8" style="color:var(--orange-deep)">${icon('puzzle', 18)}測試工具：調整剩餘時間</b><div class="seat-test">${SEAT_TEST.map(([sec, t, h]) => `<button class="seat-test-btn" id="seat-test-${sec}"${act('seatTest', sec)}><b>${t}</b><small>${h}</small></button>`).join('')}</div><div class="cap soft">只有測試版會出現。不算續座、不留紀錄。</div>`);
-    body += `<div class="stack g8">${[['addOn', '加購', 'shopping-bag'], ['extend', '續座', 'history'], ['checkout', '結帳', 'circle-check']].map(([k, t, ic]) => btn(t, 'seatStep', k, { kind: 'secondary', ic, cls: `seat-act-${k}`, style: '--b:var(--pink-deep)' })).join('')}</div>` + tools;
+    body += `<div class="stack g8">${[['addOn', '加購', 'shopping-bag'], ['extend', '續座', 'history'], ['checkout', '結帳', 'circle-check']].map(([k, t, ic]) => btn(t, k === 'checkout' ? 'seatAskCheckout' : 'seatStep', k, { kind: 'secondary', ic, cls: `seat-act-${k}`, style: '--b:var(--pink-deep)' })).join('')}</div>` + tools;
   } else if (sh.step === 'addOn') {
-    // 跟 Coser 記帳畫面一樣：一位女僕一個資料夾，點開是色塊格子；點格子 +1、數量圓點 -1
+    // 跟 Coser 記帳畫面一樣：一位女僕一個資料夾，點開是色塊格子；點格子 +1，下方「已加購」清單用 －／＋ 調整
     const folders = maidFolders();
     body += folders.length ? `<div class="folders">${folders.map(f => maidFolder(f, ss, folders.length === 1, sh)).join('')}</div>` : card(`<div id="seat-items-pending">${empty('package', '還沒有可以加購的品項')}</div>`);
     if (addOnList) body += card(addOnList + HR + info('加購合計', money(total)));
   } else if (sh.step === 'extend') {
     body += card(stitle('續座') + `<div class="cap soft">從目前的到期時間（${clockText(ss.endsAt)}）往後加。</div>` + SEAT_EXT.map(m => btn(`續座 ${extLabel(m)}（到 ${clockText(ss.endsAt + m * SEAT_MIN)}）`, 'seatExtend', m, { kind: 'secondary', cls: `seat-ext-${m}`, style: '--b:var(--pink-deep)' })).join(''));
-  } else if (sh.step === 'checkout') {
-    body += card(stitle('結帳') + (total > 0
-      ? `${addOnList}${HR}${info('合計', money(total))}<b class="sub">收款方式</b><div class="row g8 wrap">${SEAT_PAY.map(k => chip(PAY[k].label, sh.pay === k, 'seatPay', k)).join('')}</div>`
-      : `<div class="sub soft">沒有加購，不用收錢。確認後座位會變回空位。</div>`)
-      + `<div class="cap soft">不收座位費。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>`
-      + btn(total > 0 ? `確認結帳 ${money(total)}` : '確認結帳', 'seatConfirmCheckout', null, { cls: 'seat-confirm', dis: total > 0 && !sh.pay }));
   }
   return sheetFrame({ title: `座位 ${sh.id}`, left: back, right: tb('關閉', 'closeSheet'), cls: 'short seat-sheet', body });
+}
+
+// ----- 店鋪座位：收款（照 Coser 收款畫面；2026-11-03） -----
+// 懸浮視窗按「結帳」→「你確定要結帳嗎><」→ 這裡；「返回」回到懸浮視窗。不收座位費，只算加購。
+function sheetSeatPay(sh) {
+  if (sh.finished) {
+    const r = sh.finished, paid = r.payment !== 'credit', n = r.addOns.reduce((k, a) => k + a.quantity, 0);
+    let d = `座位 ${r.seatID}`; if (r.payment) d += `・${PAY[r.payment].label}`; if (n) d += `・加購 ${n} 件`; if (r.debtor) d += `・${r.debtor}`;
+    const title = r.total === 0 ? '結帳完成' : paid ? '收款完成' : '已記成應收';
+    const body = `<div class="success" id="seat-pay-done"><span class="mark" style="--b:${paid ? 'var(--green)' : 'var(--orange)'}">${icon(paid ? 'check' : 'file-text', 40, 3)}</span><div class="t-big" style="font-size:28px">${title}</div><div class="num" style="font-size:40px;font-weight:900;color:var(--pink-deep)">${money(r.total)}</div><div class="sub bold soft">${esc(d)}</div><div class="cap soft">座位已經空出來了。</div></div>`;
+    return sheetFrame({ title: '完成', body, footer: btn('完成', 'closeSheet', null, { ic: 'arrow-right', cls: 'seat-pay-finish' }), cls: 'short' });
+  }
+  const ss = seatSession(sh.id);
+  if (!ss) return sheetFrame({ title: '收款', left: tb('返回', 'closeSheet'), body: empty('armchair', `${sh.id} 目前是空位`), cls: 'short' });
+  const total = seatAddOnTotal(ss), lv = seatLevel(seatRemain(ss));
+  const needsName = total > 0 && sh.payment === 'credit' && !(sh.debtor || '').trim();
+  const lines = ss.addOns.length ? ss.addOns.map(a => `<div class="row"><div class="grow"><div class="bold sub">${esc(`${a.maidName}・${a.name}`)}</div><div class="cap soft num">${money(a.unitPrice)} × ${a.quantity}</div></div><b class="num">${money(a.unitPrice * a.quantity)}</b></div>`).join('') : `<div class="sub soft">沒有加購。不收座位費，不用收錢。</div>`;
+  let body = card(`<div class="row g8 heavy sub soft">${icon('armchair', 16)}座位 ${sh.id}・${clockText(ss.startedAt)}～${clockText(ss.endsAt)}</div><div class="row g8 heavy sub soft">${icon('coins', 16)}幣別：台幣（NT$）</div>${lines}${HR}<div class="row"><b class="grow">應收</b><b class="num" id="seat-pay-total" style="font-size:34px;font-weight:900;color:var(--pink-deep)">${money(total)}</b></div>`);
+  if (total > 0) {
+    body += `<div class="stack g8"><b style="font-size:17px">收款方式</b><div class="paygrid">${SEAT_PAY.map(k => `<button class="paybtn${sh.payment === k ? ' on' : ''}" id="seat-pay-${k}" style="--fg:${PAY[k].fg}"${act('seatPayMethod', k)} aria-pressed="${sh.payment === k}">${icon(PAY[k].icon, 22)}${k === 'credit' ? '賒帳（記應收）' : PAY[k].label}</button>`).join('')}</div></div>`;
+    if (sh.payment === 'cash') {
+      const given = parseInt(sh.cashGiven || '0', 10), change = given - total;
+      body += `<div class="field"><label for="f-sheet-cashGiven">客人給多少？（選填，幫你算找零）</label>${inp('sheet.cashGiven', { ph: '例如 1000（NT$）', num: true, cls: 'big num' })}${given > 0 ? `<b id="seat-change" style="font-size:20px;color:${change >= 0 ? 'var(--green-deep)' : 'var(--danger)'}">${change >= 0 ? `找零 ${money(change)}` : `還差 ${money(-change)}`}</b>` : ''}</div>`;
+    }
+    if (sh.payment === 'credit') body += `<div class="field"><label for="f-sheet-debtor">客人名字或聯絡方式（必填）</label>${inp('sheet.debtor', { ph: '例如 小雪・IG @snow', cls: needsName ? 'bad' : '' })}</div>`;
+  }
+  body += btn(total === 0 ? '確認結帳（不用收錢）' : sh.payment === 'credit' ? `記成應收 ${money(total)}` : `確認收款 ${money(total)}`, 'seatDoCheckout', null, { ic: 'check', dis: needsName, cls: 'seat-confirm' })
+    + `<div class="cap soft">不收座位費，只算加購。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>` + testNotice();
+  return sheetFrame({ title: '收款', left: tb('返回', 'seatPayBack'), body });
 }
 
 function maidFolder(f, ss, only, sh) {
@@ -4492,7 +4523,7 @@ function maidFolder(f, ss, only, sh) {
   const label = [m.name, `${f.items.length} 項`, picked ? `已選 ${picked} 件` : '', open ? '已展開' : '已收起'].filter(Boolean).join('，');
   const tiles = f.items.map(it => {
     const qty = seatQty(ss, it.id), hex = m.colorHex, bar = shadeHex(hex);
-    return `<div class="ptile-wrap${qty ? ' has' : ''}" id="seat-item-${esc(it.id)}"><button class="ptile${qty ? ' has' : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('seatAddItem', it.id)} aria-label="${esc(`${it.name}，${money(it.price)}`)}"><span class="pn">${esc(it.name)}</span><span class="pb"><b>${money(it.price)}</b></span></button>${qty ? `<button class="pbadge" id="seat-qty-${esc(it.id)}"${act('seatRemoveItem', it.id)} aria-label="減少 1 件 ${esc(it.name)}，目前 ${qty} 件">${qty}</button>` : ''}</div>`;
+    return `<div class="ptile-wrap${qty ? ' has' : ''}" id="seat-item-${esc(it.id)}"><button class="ptile${qty ? ' has' : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('seatAddItem', it.id)} aria-label="${esc(`${it.name}，${money(it.price)}`)}"><span class="pn">${esc(it.name)}</span><span class="pb"><b>${money(it.price)}</b></span></button>${qty ? `<span class="pbadge" id="seat-qty-${esc(it.id)}" style="pointer-events:none" aria-label="已選 ${qty} 件">${qty}</span>` : ''}</div>`;
   }).join('');
   return `<section class="folder${open ? ' open' : ''}" style="${tintVars(m.colorHex)}"><button class="folder-h" id="maid-folder-${esc(m.id)}"${act('seatMaidFolder', m.id, only ? 1 : 0)} aria-expanded="${open}" aria-label="${esc(label)}"><span class="grow stack" style="min-width:0"><span class="c ellip">${esc(m.name)}</span></span>${picked ? `<span class="sel num">已選 ${picked}</span>` : ''}<span class="cnt">${f.items.length} 項</span><span class="chev">${icon('chevron-down', 22, 3)}</span></button>${open ? `<div class="folder-b"><div class="tile-grid">${tiles}</div></div>` : ''}</section>`;
 }
@@ -4898,12 +4929,19 @@ const A = {
   seatAddItem(itemID) { perform(() => seatAddOn(U.sheet.id, itemID, U.user)); },
   seatRemoveItem(itemID) { perform(() => seatRemoveAddOn(U.sheet.id, itemID, U.user)); },
   seatMaidFolder(maidID, only) { const o = (U.sheet.openMaids ||= {}); o[maidID] = !(o[maidID] ?? only === '1'); },
-  seatPay(k) { U.sheet.pay = k; },
-  seatTest(sec) { const id = U.sheet.id, t = SEAT_TEST.find(x => x[0] === +sec); perform(() => seatTestSetRemaining(id, +sec, U.user), `測試：${id} ${t[1]}`); },
-  seatConfirmCheckout() {
+  // 結帳防呆：先問一次，確定才開收款畫面（2026-11-03）
+  seatAskCheckout() {
     const id = U.sheet.id, total = seatAddOnTotal(seatSession(id));
-    if (perform(() => seatCheckout(id, total > 0 ? U.sheet.pay : null, U.user), total > 0 ? `${id} 已結帳 ${money(total)}，座位空出來了` : `${id} 已結帳，座位空出來了`)) U.sheet = null;
+    ask('你確定要結帳嗎><', total > 0 ? `${id}・加購 ${money(total)}` : `${id}・沒有加購，不用收錢`, [{ label: '確定結帳', run: () => { U.sheet = { type: 'seatPay', id, payment: 'cash', cashGiven: '', debtor: '', finished: null }; } }], '取消');
   },
+  seatPayBack() { U.sheet = { type: 'seat', id: U.sheet.id, step: 'menu' }; },
+  seatPayMethod(k) { U.sheet.payment = k; },
+  seatDoCheckout() {
+    const sh = U.sheet, total = seatAddOnTotal(seatSession(sh.id));
+    const r = perform(() => seatCheckout(sh.id, total > 0 ? sh.payment : null, U.user, sh.debtor));
+    if (r) sh.finished = r;
+  },
+  seatTest(sec) { const id = U.sheet.id, t = SEAT_TEST.find(x => x[0] === +sec); perform(() => seatTestSetRemaining(id, +sec, U.user), `測試：${id} ${t[1]}`); },
   confirmCancel() { U.confirm = null; },
   confirmPick(i) { const b = U.confirm.buttons[+i]; U.confirm = null; b.run(); },
   toastClose() { U.toast = null; },
