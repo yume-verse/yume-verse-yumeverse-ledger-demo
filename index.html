@@ -4046,7 +4046,7 @@ function viewLogin() {
   };
   return `<main class="page" style="max-width:560px;padding-top:calc(28px + env(safe-area-inset-top,0px))">
     <div style="text-align:center;display:flex;flex-direction:column;gap:6px"><div style="font-size:40px;font-weight:900;color:var(--pink);line-height:1.1">Yumeverse</div><div class="t-title">夢次元記帳</div><div class="sub soft">結帳、對帳、庫存、會員，還有服裝租借，都在這裡。</div></div>
-    <div class="proto stack g8"><div><b>給測試的人：</b>這是 iOS App 的網頁測試版，畫面和操作跟 App 一樣。資料只存在這個分頁，重新整理就會還原，不會動到 Notion 或營運總表。</div>${FB.db ? `<button class="cbtn ghost" style="align-self:flex-start"${act('openFeedback')}>${icon('message-square-text', 16)}留下意見</button>` : ''}</div>
+    <div class="proto stack g8"><div><b>給測試的人：</b>這是 iOS App 的網頁測試版，畫面和操作跟 App 一樣。測試資料會存在這個瀏覽器：登出、換帳號、重新整理都還在；要從頭開始，按下面的「重設測試資料」。不會動到 Notion 或營運總表。</div>${FB.db ? `<button class="cbtn ghost" style="align-self:flex-start"${act('openFeedback')}>${icon('message-square-text', 16)}留下意見</button>` : ''}</div>
     ${card(`<b style="font-size:17px">點選測試帳號，直接登入</b>${ACCOUNTS.map(demo).join('')}`)}
     ${'' /* 2026-11-05：測試資料固定用完整測試情境，登入頁不再顯示選擇 */}
     ${card(`<b style="font-size:17px">或輸入帳號密碼</b>
@@ -4054,7 +4054,8 @@ function viewLogin() {
       <div class="field"><label for="f-login-password" class="cap soft">密碼</label>${inp('login.password', { ph: '輸入密碼', type: 'password', enter: 'doLogin' })}</div>
       ${L.error ? `<div class="row g8 bold sub" style="color:var(--danger)">${icon('circle-x', 18)}${esc(L.error)}</div>` : ''}
       ${btn('登入', 'doLogin')}<div class="cap soft">測試密碼：Coser 管理／女僕管理／店鋪管理 yume2026；Coser demo2026</div>`)}
-    <p class="cap soft" style="text-align:center;margin:0">第一階段為測試版：資料只存在這台裝置，關閉後會重置。</p>
+    <p class="cap soft" style="text-align:center;margin:0">第一階段為測試版：測試資料只存在這台裝置的這個瀏覽器。</p>
+    <div style="text-align:center"><button class="link" id="login-reset"${act('askReset')}>重設測試資料</button></div>
   </main>`;
 }
 
@@ -4559,7 +4560,7 @@ function viewMore() {
   let html = card(`<div class="t-title">${esc(u.displayName)}</div>${info('帳號', u.id)}${info('身分', ROLE[u.role].label)}<div class="cap soft">${ROLE[u.role].summary}</div>`);
   if (isCoserUser()) html += card(`<button class="switch" role="switch" aria-checked="${memberCardOn()}"${act('toggleMemberCard')}><span class="row g8 heavy" style="font-size:17px"><span style="color:var(--pink)">${icon('heart', 20)}</span>會員卡</span><span class="knob"></span></button><div class="cap soft">${memberCardOn() ? '已打開：記帳收款時可以輸入粉絲 ID，會員清單在下方「會員」。只有你看得到自己的會員。' : '關閉中：記帳畫面不會出現會員欄位。需要累積粉絲消費時再打開。'}</div>`);
   if (extra.length) html += card(extra.map(s => `<button class="row" style="width:100%;min-height:56px;gap:14px"${act('pushSection', s)}><span style="color:var(--pink);width:32px;display:grid;place-items:center">${icon(SEC_ICON[s], 22)}</span><b class="grow" style="font-size:16px">${esc(secTitle(s))}</b><span class="soft">${icon('chevron-right', 18, 3)}</span></button>`).join(HR), 'p10');
-  html += card(`<b>測試工具</b><div class="cap soft">重設會清掉這次在網頁上做的所有操作，回到一開始的測試資料。</div><div class="row g8 wrap">${FB.db ? `<button class="cbtn ghost"${act('openFeedback')}>${icon('message-square-text', 16)}意見回饋</button>` : ''}<button class="cbtn ghost" style="--b:var(--orange-deep)"${act('askReset')}>${icon('rotate-ccw', 16)}重設測試資料</button></div>`);
+  html += card(`<b>測試工具</b><div class="cap soft">測試資料存在這個瀏覽器，登出、重新整理都會保留。重設會清掉在網頁上做過的所有操作，回到一開始的測試資料。</div><div class="row g8 wrap">${FB.db ? `<button class="cbtn ghost"${act('openFeedback')}>${icon('message-square-text', 16)}意見回饋</button>` : ''}<button class="cbtn ghost" style="--b:var(--orange-deep)"${act('askReset')}>${icon('rotate-ccw', 16)}重設測試資料</button></div>`);
   html += btn('登出', 'askSignOut', null, { kind: 'secondary', ic: 'log-out', style: '--b:var(--danger)' });
   html += `<div class="cap soft" style="text-align:center">Yumeverse 夢次元 App・網頁測試版（資料不保存）</div>`;
   return { title: '更多', html, cls: 'narrowcol' };
@@ -5043,10 +5044,8 @@ function scrollTop() { wantScrollTop = true; }
 function signIn(acc) {
   U.user = { ...acc }; U.section = acc.role === 'shopManager' ? 'seats' : 'home'; U.stack = []; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
   U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null; U.openFolders = {}; U.justOpened = null; U.cashCoserID = null;
-  // 公司登記的 Coser 與登入帳號要留著（才能登出後用新帳號登入測試）；其他測試資料照舊每次登入重設
-  const keep = S.sales ? { roster: S.sales.roster, newCosers: S.sales.newCosers, newAccounts: S.sales.newAccounts } : null;
-  const keepSeats = S.seats; // 座位上的客人登出再登入還在
-  resetData(U.dataset); if (keep) { Object.assign(S.sales, keep); syncPeople(); } if (keepSeats) S.seats = keepSeats; scrollTop();
+  // 2026-11-05：登入、登出都不重設測試資料（換帳號測試時資料都在）；要從頭開始用「重設測試資料」
+  scrollTop();
 }
 function addToCart(p) {
   const cur = menuCurrency();
@@ -5134,7 +5133,7 @@ const A = {
     signIn(acc);
   },
   askSignOut() { ask('確定要登出嗎？', null, [{ label: '登出', danger: true, run: () => { U.user = null; U.sheet = null; U.stack = []; U.homeCoserID = null; resetCart(); scrollTop(); } }], '取消'); },
-  askReset() { ask('要重設測試資料嗎？', '這次在網頁上做的記帳、預約、商品修改都會清掉。', [{ label: '重設', danger: true, run: () => { resetData(U.dataset); resetCart(); U.stack = []; U.pickedDay = null; show('success', '已重設測試資料'); } }], '不要'); },
+  askReset() { ask('要重設測試資料嗎？', '在網頁上做過的記帳、座位、預約、商品和名冊修改都會清掉，回到一開始的測試資料。', [{ label: '重設', danger: true, run: () => { clearSavedData(); resetData(U.dataset); resetCart(); U.stack = []; U.pickedDay = null; show('success', '已重設測試資料'); } }], '不要'); },
 
   // 導覽
   tab(s) { goSection(s); },
@@ -5347,8 +5346,30 @@ function restoreState(json) {
     return true;
   } catch (e) { return false; }
 }
+// 測試資料存在這個瀏覽器（2026-11-05）：登出、重新整理、關掉分頁再打開都還在；「重設測試資料」才清掉
+const DATA_KEY = 'yv-test-data';
+function dataSnapshot() {
+  return JSON.stringify({ v: STATE_VERSION, savedAt: nowMs(), S: { ...S, sales: { ...S.sales, memberCard: [...S.sales.memberCard] } } });
+}
+let saveTimer = null;
+function queueSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(DATA_KEY, dataSnapshot()); } catch (e) { /* 存不了（私密模式等）就只存在這個分頁 */ } }, 300);
+}
+function loadSavedData() {
+  try {
+    const o = JSON.parse(localStorage.getItem(DATA_KEY) || 'null');
+    if (!o || o.v !== STATE_VERSION || !o.S?.sales) return false;
+    Object.assign(S, o.S);
+    S.sales.memberCard = new Set(o.S.sales.memberCard || []);
+    syncPeople();
+    return true;
+  } catch (e) { return false; }
+}
+function clearSavedData() { try { localStorage.removeItem(DATA_KEY); } catch (e) { /* 沒有也沒關係 */ } }
 let snapTimer = null;
 function queueSnapshot() {
+  queueSave();
   if (!IN_FRAME) return;
   clearTimeout(snapTimer);
   snapTimer = setTimeout(() => { try { window.parent.postMessage({ type: 'yv-state', state: snapshotState() }, '*'); } catch (e) { /* 外框收不到就算了 */ } }, 150);
@@ -5476,6 +5497,7 @@ setInterval(() => { if (U.user?.role === 'shopManager' && U.section === 'seats' 
 if (HOST_MODE) bootHost();
 else {
 resetData(U.dataset);
+loadSavedData();
 if (IN_FRAME) {
   // 在裝置外框裡：先跟外框要上一個裝置的狀態，拿到就接著用；0.4 秒沒回應就從頭開始
   let started = false;
