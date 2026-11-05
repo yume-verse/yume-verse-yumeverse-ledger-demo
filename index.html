@@ -211,6 +211,13 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .seat-legend i{width:16px;height:16px;border-radius:4px;background:var(--sf);border:1.5px solid var(--sb)}
 .seat-pill{font-size:12px;font-weight:900;padding:3px 10px;border-radius:999px;background:var(--sf);border:1.5px solid var(--sb);color:var(--si)}
 @media (min-width:768px){.sheet.seat-sheet{max-width:420px}}
+.sc-seat{width:44px;height:44px;border-radius:12px;background:var(--pink-pale);color:var(--pink-deep);font-weight:900;display:grid;place-items:center;flex:none}
+.dot{width:18px;height:18px;border-radius:50%;flex:none;display:inline-block}
+.swatch{width:36px;height:36px;border-radius:10px;flex:none}
+.pill-off{font-size:12px;font-weight:900;padding:2px 8px;border-radius:999px;background:var(--gray-pale);color:var(--ink-soft)}
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.swatch-btn{height:40px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center}
+.swatch-btn.on{box-shadow:inset 0 0 0 3px var(--ink)}
 .addon-line{display:flex;align-items:center;gap:8px;min-height:48px;font-size:14px}
 .addon-line .q{min-width:28px;text-align:center;font-size:17px}
 .addon-line .amt{min-width:72px;text-align:right}
@@ -2807,7 +2814,7 @@ const ACCOUNTS = [
   // Coser 管理帳號：原「公司管理員」，2026-11-02 改名（帳號代號仍是 company，功能不變）
   { id: 'company', displayName: 'Coser 管理帳號', role: 'company', coserID: null, email: null, password: 'yume2026', hint: '依日期對帳、Coser 名冊，查看服裝狀態與預約紀錄' },
   // 2026-11-02 新增：女僕管理帳號（功能待補充）、店鋪管理帳號（先只有座位圖）
-  { id: 'maid', displayName: '女僕管理帳號', role: 'maidManager', coserID: null, email: null, password: 'yume2026', hint: '女僕管理，功能待補充' },
+  { id: 'maid', displayName: '女僕管理帳號', role: 'maidManager', coserID: null, email: null, password: 'yume2026', hint: '店裡營業額、收銀對帳、女僕名冊' },
   { id: 'shop', displayName: '店鋪管理帳號', role: 'shopManager', coserID: null, email: null, password: 'yume2026', hint: '店鋪座位圖：入座計時、加購、續座、結帳' },
   { id: 'cocoa', displayName: 'ここあ COCOA', role: 'coser', coserID: 'cocoa', email: null, password: 'demo2026', hint: '記帳、管理自己的商品與庫存、預約服裝和場地' },
   { id: 'momo', displayName: '小桃（測試）', role: 'coser', coserID: 'momo', email: null, password: 'demo2026', hint: '測試 Coser，有 6 項測試商品' }
@@ -3672,7 +3679,7 @@ const isCoserUser = () => U.user?.role === 'coser';
 // 帳號角色（2026-11-02）：company＝Coser 管理帳號（原公司管理員）、maidManager＝女僕管理、shopManager＝店鋪管理、coser
 const ROLE = {
   company: { label: 'Coser 管理', icon: 'building-2', initial: '管', summary: '可以依日期對帳、管理 Coser 名冊，查看服裝狀態與預約紀錄。記帳、商品庫存、預約、會員由各 Coser 自己管理。' },
-  maidManager: { label: '女僕管理', icon: 'coffee', initial: '僕', summary: '女僕管理的功能待補充。' },
+  maidManager: { label: '女僕管理', icon: 'coffee', initial: '僕', summary: '管店裡的營業額：依日期看營業額和各女僕業績、收銀對帳（錢箱、待收款項）、維護女僕名冊和價格。不操作座位。' },
   shopManager: { label: '店鋪管理', icon: 'armchair', initial: '店', summary: '可以操作店鋪座位：點空位入座計時 1 小時，已入座的座位可以加購（女僕的表演、拍立得、豪華照片組）、續座、結帳。其他功能待補充。' },
   coser: { label: 'Coser', icon: 'user-round', initial: 'C', summary: '可以記帳、管理自己的商品和庫存、預約服裝和場地、查看自己的銷售。' }
 };
@@ -3700,9 +3707,9 @@ const SHOP_KINDS = [['performance', '表演'], ['polaroid', '拍立得'], ['delu
 const SHOP_TEST_PRICE = { performance: 300, polaroid: 200, deluxePhotoSet: 800 };
 const SHOP_MAIDS = [{ id: 'yuki', name: '小雪（測試）', colorHex: '79B0DC' }, { id: 'aoi', name: '小葵（測試）', colorHex: 'F3A23F' }, { id: 'suzu', name: '小鈴（測試）', colorHex: 'B4A7E6' }];
 const shopTestItems = () => SHOP_MAIDS.flatMap(m => SHOP_KINDS.map(([k, label]) => ({ id: `${m.id}-${k}`, maidID: m.id, kind: k, name: label, price: SHOP_TEST_PRICE[k], active: true })));
-const freshSeats = () => ({ sessions: {}, history: [], maids: SHOP_MAIDS.map(m => ({ ...m })), items: shopTestItems(), serial: 0 });
+const freshSeats = () => ({ sessions: {}, history: [], cashBoxes: {}, maids: SHOP_MAIDS.map(m => ({ ...m, active: true })), items: shopTestItems(), serial: 0 });
 /** 加購畫面的女僕資料夾：照女僕順序，品項照「表演、拍立得、豪華照片組」；停售的不列，沒有品項的女僕不列 */
-const maidFolders = () => seatBoard().maids.map(m => ({ maid: m, items: SHOP_KINDS.map(([k]) => seatBoard().items.find(i => i.maidID === m.id && i.kind === k && i.active)).filter(Boolean) })).filter(f => f.items.length);
+const maidFolders = () => seatBoard().maids.filter(m => m.active !== false).map(m => ({ maid: m, items: SHOP_KINDS.map(([k]) => seatBoard().items.find(i => i.maidID === m.id && i.kind === k && i.active)).filter(Boolean) })).filter(f => f.items.length);
 const seatQty = (ss, itemID) => ss.addOns.filter(a => a.itemID === itemID).reduce((n, a) => n + a.quantity, 0);
 const seatBoard = () => (S.seats ||= freshSeats());
 const seatSession = id => seatBoard().sessions[id] || null;
@@ -3730,10 +3737,10 @@ function seatAddOn(id, itemID, user, qty = 1, now = nowMs()) {
   seatCheck(id, user);
   const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
   const item = seatBoard().items.find(i => i.id === itemID && i.active); const maid = item && seatBoard().maids.find(m => m.id === item.maidID);
-  if (!item || !maid) fail('找不到這個品項。');
+  if (!item || !maid || maid.active === false) fail('找不到這個品項。');
   if (!(qty > 0)) fail('數量要是 1 以上。');
   const line = ss.addOns.find(a => a.itemID === itemID && a.unitPrice === item.price);
-  if (line) line.quantity += qty; else ss.addOns.push({ id: seatNext('ADD'), itemID, maidID: maid.id, maidName: maid.name, name: item.name, unitPrice: item.price, quantity: qty, addedAt: now });
+  if (line) line.quantity += qty; else ss.addOns.push({ id: seatNext('ADD'), itemID, kind: item.kind, maidID: maid.id, maidName: maid.name, name: item.name, unitPrice: item.price, quantity: qty, addedAt: now });
   return ss;
 }
 /** 加購減 1 件（數量圓點）；減到 0 就拿掉那一筆 */
@@ -3750,6 +3757,72 @@ function seatTestSetRemaining(id, seconds, user, now = nowMs()) {
   seatCheck(id, user);
   const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
   ss.endsAt = now + seconds * 1000; return ss;
+}
+// ===== 女僕管理帳號：營業額、收銀對帳、女僕名冊（照 ShopSeats.swift，2026-11-05） =====
+// 比照 Coser 管理帳號：只看帳和對帳、維護女僕名冊，不操作座位。營業額＝座位結帳的加購，依結帳時間那天算。
+// 錢箱：店裡整天一個；應有現金＝起始現金＋當天現金收款＋當天用現金收回的賒帳。女僕抽成先不算。
+const checkMaidManager = u => { if (u?.role !== 'maidManager') fail('只有女僕管理帳號可以做這件事。'); };
+const scDay = r => dayKey(new Date(r.closedAt));
+const scItems = r => r.addOns.reduce((n, a) => n + a.quantity, 0);
+const scOutstanding = r => r.payment === 'credit' && !r.settledAt;
+const shopCheckoutsOn = day => seatBoard().history.filter(r => scDay(r) === day).sort((a, b) => b.closedAt - a.closedAt);
+const shopOutstanding = () => seatBoard().history.filter(scOutstanding).sort((a, b) => a.closedAt - b.closedAt);
+function shopSummary(day) {
+  const list = shopCheckoutsOn(day), b = seatBoard(), rows = new Map();
+  for (const m of b.maids) rows.set(m.id, null);
+  for (const a of list.flatMap(r => r.addOns)) {
+    const m = b.maids.find(x => x.id === a.maidID);
+    const r = rows.get(a.maidID) || { maidID: a.maidID, name: m?.name || a.maidName, colorHex: m?.colorHex || '9A918A', q: {}, amount: 0 };
+    r.q[a.kind] = (r.q[a.kind] || 0) + a.quantity; r.amount += a.unitPrice * a.quantity; rows.set(a.maidID, r);
+  }
+  const total = list.reduce((n, r) => n + r.total, 0), receivable = list.filter(r => r.payment === 'credit').reduce((n, r) => n + r.total, 0);
+  const payments = SEAT_PAY.map(k => { const hit = list.filter(r => r.payment === k); return hit.length ? { payment: k, count: hit.length, amount: hit.reduce((n, r) => n + r.total, 0) } : null; }).filter(Boolean);
+  return { day, list, total, paid: total - receivable, receivable, items: list.reduce((n, r) => n + scItems(r), 0), maids: [...rows.values()].filter(Boolean).sort((a, b) => b.amount - a.amount), payments };
+}
+const shopCashBox = day => (seatBoard().cashBoxes ||= {})[day] || { day, opening: null, actual: null };
+const shopCashIncome = day => shopCheckoutsOn(day).filter(r => r.payment === 'cash').reduce((n, r) => n + r.total, 0)
+  + seatBoard().history.filter(r => r.settledPayment === 'cash' && r.settledAt && dayKey(new Date(r.settledAt)) === day).reduce((n, r) => n + r.total, 0);
+const shopExpected = day => shopCashBox(day).opening == null ? null : shopCashBox(day).opening + shopCashIncome(day);
+const shopDiff = day => { const a = shopCashBox(day).actual, e = shopExpected(day); return a == null || e == null ? null : a - e; };
+function shopSetCash(kind, day, amount, user) {
+  checkMaidManager(user);
+  if (amount != null && !(Number.isInteger(amount) && amount >= 0)) fail('金額要是 0 以上的整數。');
+  const box = { ...shopCashBox(day) }; box[kind] = amount; (seatBoard().cashBoxes ||= {})[day] = box; return box;
+}
+function shopSettle(id, payment, user, now = nowMs()) {
+  checkMaidManager(user);
+  const r = seatBoard().history.find(x => x.id === id); if (!r) fail('找不到這筆結帳。');
+  if (r.payment !== 'credit') fail('這筆不是賒帳。');
+  if (r.settledAt) fail('這筆已經登記收到了。');
+  if (!['cash', 'transfer', 'linePay'].includes(payment)) fail('收到錢的方式只能是現金、轉帳或 LINE Pay。');
+  Object.assign(r, { settledAt: now, settledPayment: payment, settledBy: user.id }); return r;
+}
+const maidPrices = id => Object.fromEntries(seatBoard().items.filter(i => i.maidID === id).map(i => [i.kind, i.price]));
+const suggestedMaidColor = () => { const used = new Set(seatBoard().maids.map(m => m.colorHex)); return PALETTE.find(h => !used.has(h)) || PALETTE[seatBoard().maids.length % PALETTE.length]; };
+function maidValidate(name, prices, exceptID) {
+  const n = (name || '').trim(); if (!n) fail('請填女僕名字。');
+  if (seatBoard().maids.some(m => m.id !== exceptID && m.name === n)) fail('已經有同名的女僕。');
+  for (const [k] of SHOP_KINDS) if (!(Number.isInteger(prices[k]) && prices[k] > 0)) fail('價格要是 1 以上的整數。');
+  return n;
+}
+function maidAdd(name, colorHex, prices, user) {
+  checkMaidManager(user);
+  const n = maidValidate(name, prices, null), b = seatBoard();
+  let k = b.maids.length + 1; while (b.maids.some(m => m.id === `maid-${k}`)) k++;
+  const m = { id: `maid-${k}`, name: n, colorHex, active: true }; b.maids.push(m);
+  for (const [kind, label] of SHOP_KINDS) b.items.push({ id: `${m.id}-${kind}`, maidID: m.id, kind, name: label, price: prices[kind], active: true });
+  return m;
+}
+function maidUpdate(id, name, colorHex, prices, active, user) {
+  checkMaidManager(user);
+  const b = seatBoard(), m = b.maids.find(x => x.id === id); if (!m) fail('找不到這位女僕。');
+  const n = maidValidate(name, prices, id);
+  Object.assign(m, { name: n, colorHex, active: !!active });
+  for (const [kind, label] of SHOP_KINDS) {
+    const it = b.items.find(i => i.maidID === id && i.kind === kind);
+    if (it) it.price = prices[kind]; else b.items.push({ id: `${id}-${kind}`, maidID: id, kind, name: label, price: prices[kind], active: true });
+  }
+  return m;
 }
 function seatCheckout(id, payment, user, debtor = '', now = nowMs()) {
   seatCheck(id, user);
@@ -3773,7 +3846,7 @@ const qtyInCart = id => U.cart.find(i => i.productID === id)?.quantity ?? 0;
 function sectionsFor() {
   switch (role()) {
     case 'company': return ['home', 'reconcile', 'costumes', 'records', 'cosers', 'more'];
-    case 'maidManager': return ['home', 'more'];
+    case 'maidManager': return ['home', 'reconcile', 'maids', 'more'];
     case 'shopManager': return ['seats', 'more'];
     default: return ['home', 'checkout', 'inventory', 'bookings', 'mySales', ...(memberCardOn() ? ['members'] : []), 'more'];
   }
@@ -3781,21 +3854,23 @@ function sectionsFor() {
 function tabsFor() {
   switch (role()) {
     case 'company': return ['home', 'reconcile', 'costumes', 'records', 'more'];
-    case 'maidManager': return ['home', 'more'];
+    case 'maidManager': return ['home', 'reconcile', 'maids', 'more'];
     case 'shopManager': return ['seats', 'more'];
     default: return ['home', 'checkout', 'inventory', 'bookings', 'more'];
   }
 }
 const moreSectionsFor = () => sectionsFor().filter(s => !tabsFor().includes(s) && s !== 'more');
-const SEC_ICON = { seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
-const SEC_GROUP = { seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
+const SEC_ICON = { maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
+const SEC_GROUP = { maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
 function secTitle(s) {
   const c = role() === 'coser';
+  if (role() === 'maidManager' && s === 'home') return '營業額';
+  if (s === 'maids') return '女僕名冊';
   return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', cosers: 'Coser 名冊', seats: '座位圖', more: '更多' }[s];
 }
 function secShort(s) {
   const c = role() === 'coser';
-  return { seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
+  return { maids: '名冊', seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
 }
 
 // ================= 小元件 =================
@@ -4008,10 +4083,11 @@ function currentContent() {
 }
 function sectionView(s) {
   switch (s) {
-    case 'home': return isCompany() ? viewCompanyHome() : isCoserUser() ? viewCoserHome() : viewStaffHome();
+    case 'home': return isCompany() ? viewCompanyHome() : isCoserUser() ? viewCoserHome() : role() === 'maidManager' ? viewMaidHome() : viewStaffHome();
+    case 'maids': return viewMaidRoster();
     case 'seats': return viewSeats();
     case 'checkout': return viewCheckout();
-    case 'reconcile': return viewReconcile();
+    case 'reconcile': return role() === 'maidManager' ? viewShopReconcile() : viewReconcile();
     case 'costumes': return viewCostumes();
     case 'records': return viewRecords();
     case 'bookings': return viewBookings();
@@ -4415,6 +4491,42 @@ function viewSeats() {
   return { title: '座位圖', cls: 'narrowcol', html };
 }
 
+// ================= 女僕管理帳號：營業額、收銀對帳、女僕名冊（2026-11-05） =================
+const scPayText = r => !r.payment ? '不用收錢' : r.payment === 'credit' ? (r.settledPayment ? `賒帳（已收：${PAY[r.settledPayment].label}）` : '賒帳（未收）') : PAY[r.payment].label;
+const scItemsText = r => r.addOns.length ? r.addOns.map(a => `${a.maidName}・${a.name}${a.quantity > 1 ? ` ×${a.quantity}` : ''}`).join('、') : '沒有加購';
+const scRow = r => `<div class="row" id="seat-record-${esc(r.id)}" style="align-items:flex-start;padding:6px 0"><span class="sc-seat">${esc(r.seatID)}</span><div class="grow stack" style="gap:2px;min-width:0"><b class="sub">${esc(scItemsText(r))}</b><span class="cap" style="color:${scOutstanding(r) ? 'var(--orange-deep)' : 'var(--ink-soft)'}">${clockText(r.closedAt)}・${esc(scPayText(r))}${r.debtor ? `・${esc(r.debtor)}` : ''}</span></div><b class="num">${money(r.total)}</b></div>`;
+function viewMaidHome() {
+  const day = selDay(), s = shopSummary(day), out = shopOutstanding();
+  let html = dayPicker('營業日期');
+  html += card(`<span class="sub heavy soft">${isToday() ? '今天營業額' : '當天營業額'}</span><b class="num" id="maid-home-total" style="font-size:40px;font-weight:900;color:var(--pink-deep)">${money(s.total)}</b><span class="sub bold soft">座位結帳 ${s.list.length} 筆・加購 ${s.items} 件</span>${HR}${info('已收（現金、轉帳、LINE Pay）', money(s.paid))}${info('記成應收（賒帳）', money(s.receivable), s.receivable ? 'var(--orange-deep)' : '')}<div class="cap soft row g8">${icon('info', 14)}營業額是座位加購的合計（不收座位費）。</div>`);
+  html += card(stitle(isToday() ? '各女僕今天業績' : '各女僕當天業績', s.maids.length) + (s.maids.length ? joinRows(s.maids, r => `<div class="row" id="maid-row-${esc(r.maidID)}" style="min-height:52px"><i class="dot" style="background:#${r.colorHex}"></i><div class="grow stack" style="gap:2px"><b>${esc(r.name)}</b><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${r.q[k] || 0}`).join('・')}</span></div><b class="num">${money(r.amount)}</b></div>`) : empty('user-round', '這天還沒有加購')));
+  if (s.payments.length) html += card(stitle('收款方式') + s.payments.map(x => `<div class="row" style="min-height:40px"><span style="color:${PAY[x.payment].fg};display:flex">${icon(PAY[x.payment].icon, 18)}</span><b class="sub">${x.payment === 'credit' ? '賒帳（記應收）' : PAY[x.payment].label}</b><span class="cap soft">${x.count} 筆</span><span class="grow"></span><b class="num">${money(x.amount)}</b></div>`).join(''));
+  html += card(stitle('待處理') + (out.length ? `<button class="row" id="maid-home-outstanding" style="width:100%;min-height:44px;color:var(--orange-deep)"${act('jump', 'reconcile')}>${icon('file-text', 18)}<b class="grow" style="text-align:left">待收款項 ${out.length} 筆（${money(out.reduce((n, r) => n + r.total, 0))}）</b>${icon('chevron-right', 18, 3)}</button>` : empty('circle-check', '沒有待收款項')));
+  html += card(stitle('最近座位結帳', s.list.length) + (s.list.length ? s.list.slice(0, 5).map(scRow).join(HR) + (s.list.length > 5 ? link('看全部（收銀對帳）', 'jump', 'reconcile') : '') : empty('armchair', '這天還沒有座位結帳')));
+  return { title: '營業額', cls: 'narrowcol', html: html + testNotice() };
+}
+function viewShopReconcile() {
+  const day = selDay(), box = shopCashBox(day), income = shopCashIncome(day), exp = shopExpected(day), diff = shopDiff(day), out = shopOutstanding(), list = shopCheckoutsOn(day);
+  const cashRow = (t, v, kind) => `<button class="row" id="shop-cash-${kind}" style="padding:12px;min-height:50px;border-radius:12px;background:var(--cream);width:100%"${act('openShopCash', kind)}><span class="grow bold sub">${t}</span><b style="color:${v == null ? 'var(--pink)' : 'var(--ink)'}">${v == null ? '點這裡填' : money(v)}</b>${icon('chevron-right', 16, 3)}</button>`;
+  let vt, vfg, vbg;
+  if (diff == null) { vt = exp == null ? '輸入起始現金和實點後，自動算差額' : '輸入收攤實點後，自動算差額'; vfg = 'var(--ink-soft)'; vbg = 'var(--gray-pale)'; }
+  else { vt = diff === 0 ? '✓ 現金完全相符' : diff > 0 ? `多 ${money(diff)}` : `少 ${money(-diff)}`; vfg = diff === 0 ? 'var(--green-deep)' : 'var(--orange-deep)'; vbg = diff === 0 ? 'var(--green-pale)' : 'var(--orange-pale)'; }
+  let html = dayPicker('對帳日期');
+  html += card(stitle('現金箱') + `<div class="cap soft">店裡整天一個錢箱。只有「現金」收款（含當天用現金收回的賒帳）算進錢箱。</div>` + cashRow('起始現金', box.opening, 'opening')
+    + `<div class="row"><span class="grow sub">＋ 當天現金收入</span><b class="num">${money(income)}</b></div>${HR}<div class="row"><b class="grow">應有現金</b><b class="num" id="shop-expected">${exp == null ? '先填起始現金' : money(exp)}</b></div>`
+    + cashRow('收攤實點現金', box.actual, 'actual') + `<div class="row" id="shop-cash-diff" style="padding:12px;border-radius:12px;background:${vbg};color:${vfg};font-weight:900;justify-content:center">${vt}</div>`);
+  html += card(stitle('待收款項（所有日期）', out.length, 'var(--orange-deep)') + (out.length ? out.map(r => `<div class="stack g8" id="outstanding-${esc(r.id)}"><div class="row" style="align-items:flex-start"><div class="grow stack" style="gap:2px"><b>${esc(r.debtor || '（沒填名字）')}</b><span class="cap soft">${esc(relDay(scDay(r)))} ${clockText(r.closedAt)}・座位 ${esc(r.seatID)}</span><span class="cap soft">${esc(scItemsText(r))}</span></div><b class="num" style="color:var(--orange-deep)">${money(r.total)}</b></div><button class="cbtn green" style="align-self:flex-end" id="settle-${esc(r.id)}"${act('askShopSettle', r.id)}>登記已收到</button></div>`).join(HR) : empty('circle-check', '沒有待收款項')));
+  html += card(stitle('當天座位結帳', list.length) + (list.length ? list.map(scRow).join(HR) : empty('armchair', '這天還沒有座位結帳')));
+  return { title: '收銀對帳', cls: 'narrowcol', html: html + testNotice() };
+}
+function viewMaidRoster() {
+  const maids = seatBoard().maids;
+  let html = btn('新增女僕', 'openMaidForm', '', { ic: 'plus', cls: 'add-maid' });
+  html += card(joinRows(maids, m => { const pr = maidPrices(m.id); return `<button class="row" id="maid-${esc(m.id)}" style="width:100%;min-height:60px;opacity:${m.active === false ? .6 : 1}"${act('openMaidForm', m.id)}><span class="swatch" style="background:#${m.colorHex}"></span><div class="grow stack" style="gap:3px;text-align:left"><span class="row g8"><b>${esc(m.name)}</b>${m.active === false ? '<span class="pill-off">停用</span>' : ''}</span><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${money(pr[k] ?? 0)}`).join('・')}</span></div>${icon('chevron-right', 18, 3)}</button>`; }), 'p12');
+  html += `<div class="cap soft row g8">${icon('info', 14)}停用的女僕不會出現在座位加購裡；改價格只影響之後的加購。</div>`;
+  return { title: '女僕名冊', cls: 'narrowcol', html: html + testNotice() };
+}
+
 // ================= 更多 =================
 function viewMore() {
   const u = U.user, extra = moreSectionsFor();
@@ -4459,6 +4571,8 @@ function viewSheet() {
     case 'profile': return sheetProfile(sh);
     case 'seat': return sheetSeat(sh);
     case 'seatPay': return sheetSeatPay(sh);
+    case 'shopCash': return sheetShopCash(sh);
+    case 'maidForm': return sheetMaidForm(sh);
   }
   return '';
 }
@@ -4515,6 +4629,22 @@ function sheetSeatPay(sh) {
   body += btn(total === 0 ? '確認結帳（不用收錢）' : sh.payment === 'credit' ? `記成應收 ${money(total)}` : `確認收款 ${money(total)}`, 'seatDoCheckout', null, { ic: 'check', dis: needsName, cls: 'seat-confirm' })
     + `<div class="cap soft">不收座位費，只算加購。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>` + testNotice();
   return sheetFrame({ title: '收款', left: tb('返回', 'seatPayBack'), body });
+}
+
+// ----- 女僕管理帳號：錢箱、女僕表單（2026-11-05） -----
+function sheetShopCash(sh) {
+  const t = sh.kind === 'opening' ? '起始現金' : '收攤實點現金';
+  const body = `<b>${esc(relDay(selDay()))}</b><div class="sub soft">${sh.kind === 'opening' ? '開店前錢箱裡的找零金額。' : '收攤後把錢箱裡的現金全部點一遍。'}</div><div class="field">${inp('sheet.amount', { ph: '例如 2000（NT$）', num: true, cls: 'big num', enter: 'saveShopCash' })}</div>` + btn('儲存', 'saveShopCash', null, { ic: 'check', dis: sh.amount === '', cls: 'shop-cash-save' });
+  return sheetFrame({ title: t, left: tb('取消', 'closeSheet'), body, cls: 'short' });
+}
+function sheetMaidForm(sh) {
+  const f = sh.form;
+  let body = `<div class="field"><label for="f-sheet-form-name">名字</label>${inp('sheet.form.name', { ph: '例如 小雪' })}</div>`;
+  body += `<div class="stack g8"><b class="sub">顏色（加購資料夾的底色）</b><div class="swatches">${PALETTE.map(h => `<button class="swatch-btn${f.colorHex === h ? ' on' : ''}" style="background:#${h};color:${readableInk(h)}"${act('maidColor', h)} aria-label="顏色 ${h}" aria-pressed="${f.colorHex === h}">${f.colorHex === h ? icon('check', 18, 3) : ''}</button>`).join('')}</div></div>`;
+  body += `<div class="stack g8"><b class="sub">價格（台幣）</b>${SHOP_KINDS.map(([k, l]) => `<div class="row"><b style="width:96px">${l}</b><div class="grow">${inp(`sheet.form.prices.${k}`, { ph: 'NT$', num: true })}</div></div>`).join('')}<div class="cap soft">改價格只影響之後的加購，已經加購的照原價。</div></div>`;
+  if (sh.id) body += `<button class="switch" role="switch" id="maid-active" aria-checked="${f.active}"${act('maidActive')}><span class="stack" style="gap:2px;text-align:left"><b>在店裡（出現在座位加購）</b><span class="cap soft">關掉＝停用，名冊還看得到，之後可以再打開。</span></span><span class="knob"></span></button>`;
+  body += btn(sh.id ? '儲存' : '新增女僕', 'saveMaid', null, { ic: 'check', cls: 'save-maid' });
+  return sheetFrame({ title: sh.id ? '修改女僕' : '新增女僕', left: tb('取消', 'closeSheet'), body });
 }
 
 function maidFolder(f, ss, only, sh) {
@@ -4934,6 +5064,25 @@ const A = {
     const id = U.sheet.id, total = seatAddOnTotal(seatSession(id));
     ask('你確定要結帳嗎><', total > 0 ? `${id}・加購 ${money(total)}` : `${id}・沒有加購，不用收錢`, [{ label: '確定結帳', run: () => { U.sheet = { type: 'seatPay', id, payment: 'cash', cashGiven: '', debtor: '', finished: null }; } }], '取消');
   },
+  // 女僕管理帳號（2026-11-05）
+  openShopCash(kind) { const v = shopCashBox(selDay())[kind]; U.sheet = { type: 'shopCash', kind, amount: v == null ? '' : String(v) }; },
+  saveShopCash() { const sh = U.sheet; if (sh.amount === '') return; if (perform(() => shopSetCash(sh.kind, selDay(), parseInt(sh.amount, 10), U.user), `已儲存${sh.kind === 'opening' ? '起始現金' : '收攤實點現金'}`)) U.sheet = null; },
+  askShopSettle(id) {
+    const r = seatBoard().history.find(x => x.id === id);
+    ask(`${r.debtor || '這筆'} ${money(r.total)} 用什麼方式收到？`, null, ['cash', 'transfer', 'linePay'].map(k => ({ label: PAY[k].label, run: () => perform(() => shopSettle(id, k, U.user), `已登記收到（${PAY[k].label}）`) })), '取消');
+  },
+  openMaidForm(id) {
+    const m = id ? seatBoard().maids.find(x => x.id === id) : null;
+    const pr = m ? maidPrices(m.id) : SHOP_TEST_PRICE;
+    U.sheet = { type: 'maidForm', id: m ? m.id : null, form: { name: m ? m.name : '', colorHex: m ? m.colorHex : suggestedMaidColor(), active: m ? m.active !== false : true, prices: Object.fromEntries(SHOP_KINDS.map(([k]) => [k, pr[k] != null ? String(pr[k]) : ''])) } };
+  },
+  maidColor(h) { U.sheet.form.colorHex = h; },
+  maidActive() { U.sheet.form.active = !U.sheet.form.active; },
+  saveMaid() {
+    const sh = U.sheet, f = sh.form, prices = Object.fromEntries(SHOP_KINDS.map(([k]) => [k, f.prices[k] === '' ? NaN : parseInt(f.prices[k], 10)]));
+    const ok = perform(() => sh.id ? maidUpdate(sh.id, f.name, f.colorHex, prices, f.active, U.user) : maidAdd(f.name, f.colorHex, prices, U.user), `${sh.id ? '已儲存' : '已新增女僕'} ${f.name.trim()}`);
+    if (ok) U.sheet = null;
+  },
   seatPayBack() { U.sheet = { type: 'seat', id: U.sheet.id, step: 'menu' }; },
   seatPayMethod(k) { U.sheet.payment = k; },
   seatDoCheckout() {
@@ -5149,7 +5298,7 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 6; // 11/02 加店鋪座位後 +1；11/03 女僕加購後 +1
+const STATE_VERSION = 7; // 11/02 加店鋪座位後 +1；11/03 女僕加購後 +1；11/05 女僕管理帳號後 +1
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
 const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
