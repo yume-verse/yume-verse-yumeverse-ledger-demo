@@ -2776,7 +2776,12 @@ const NOTION_SCHEMA = {
   '場地預約': { id: 'abb6395a-c925-457b-8a9f-ad81b01899e8', props: [['預約編號', 'title'], ['場地', 'select', ['攝影棚A', '攝影棚B', '工作室']], ['日期', 'date'], ['開始', 'number'], ['結束', 'number'], ['CoserID', 'text'], ['預約帳號', 'text'], ['狀態', 'select', ['已預約', '已取消']], ['備註', 'text'], ['取消時間', 'date']] },
   '服裝借用': { id: '07c8b086-54c9-499a-85bc-53458b6e9d20', props: [['借用單號', 'title'], ['服裝', 'relation'], ['服裝編號', 'text'], ['服裝名稱', 'text'], ['借用CoserID', 'text'], ['借用人姓名', 'text'], ['聯絡方式', 'text'], ['借用日期', 'date'], ['約定歸還日期', 'date'], ['實際歸還日期', 'date'], ['狀態', 'select', ['已登記', '借出中', '已歸還', '已取消']], ['借用用途', 'select', ['拍攝', '場次活動', '其他']], ['活動名稱', 'text'], ['經手人', 'text'], ['歸還狀況', 'select', ['正常', '有損壞', '缺件']], ['狀況說明', 'text'], ['借出時狀況', 'text', null, 'n'], ['同意注意事項', 'checkbox', null, 'n'], ['配件已確認', 'checkbox', null, 'n'], ['備註', 'text', null, 'n']] },
   // 服裝基本資料在 Notion 維護，App 只讀；App 只改借用狀態、暫停借用、暫停原因（COS服編號用來找到那一列）
-  'Y-5 COS服拍賣': { id: 'ea662a59-d19d-49e9-8650-55b3dd05ccb7', props: [['COS服編號', 'title', null, 'r'], ['作品名稱', 'text', null, 'r'], ['角色名稱', 'text', null, 'r'], ['廠家尺寸', 'text', null, 'r'], ['細項', 'text', null, 'r'], ['保存位置', 'select', ['A', 'B', 'C', 'D', 'E', 'F', 'G', '巧巧', '待確認'], 'r'], ['借用狀態', 'select', ['可借用', '借出中', '已售出（不可借）']], ['暫停借用', 'checkbox'], ['暫停原因', 'text'], ['圖片', 'files', null, 'r'], ['備註', 'text', null, 'r'], ['販賣狀態', 'select', ['未賣出', '已賣出'], 'n'], ['購入金額', 'text', null, 'n'], ['售出金額', 'text', null, 'n'], ['淘寶圖片', 'text', null, 'n'], ['借用紀錄', 'relation', null, 'n']] }
+  'Y-5 COS服拍賣': { id: 'ea662a59-d19d-49e9-8650-55b3dd05ccb7', props: [['COS服編號', 'title', null, 'r'], ['作品名稱', 'text', null, 'r'], ['角色名稱', 'text', null, 'r'], ['廠家尺寸', 'text', null, 'r'], ['細項', 'text', null, 'r'], ['保存位置', 'select', ['A', 'B', 'C', 'D', 'E', 'F', 'G', '巧巧', '待確認'], 'r'], ['借用狀態', 'select', ['可借用', '借出中', '已售出（不可借）']], ['暫停借用', 'checkbox'], ['暫停原因', 'text'], ['圖片', 'files', null, 'r'], ['備註', 'text', null, 'r'], ['販賣狀態', 'select', ['未賣出', '已賣出'], 'n'], ['購入金額', 'text', null, 'n'], ['售出金額', 'text', null, 'n'], ['淘寶圖片', 'text', null, 'n'], ['借用紀錄', 'relation', null, 'n']] },
+  // 店鋪・女僕（2026-11-05 在「App 資料（正式）」新建；照 NotionSchema.swift 的 shop）
+  '女僕名冊': { id: '19f8d004-680b-4869-8c65-9fa70184ed2a', props: [['名字', 'title'], ['女僕ID', 'text'], ['狀態', 'select', ['在店裡', '停用']], ['顏色', 'text'], ['表演價格', 'number'], ['拍立得價格', 'number'], ['豪華照片組價格', 'number'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n']] },
+  '店鋪每日錢箱': { id: '649b77a8-bb35-4fb0-a9b4-1efafcf7a392', props: [['日期文字', 'title'], ['日期', 'date'], ['起始現金', 'number'], ['收攤實點現金', 'number'], ['備註', 'text', null, 'n']] },
+  '座位紀錄': { id: 'c7587ac4-70bf-41d5-b014-881a1ea8e079', props: [['座位紀錄編號', 'title'], ['座位', 'select', ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']], ['狀態', 'select', ['使用中', '已結帳']], ['入座時間', 'date'], ['到期時間', 'date'], ['續座紀錄', 'text'], ['結帳時間', 'date'], ['營業日', 'date'], ['合計', 'number'], ['收款方式', 'select', ['現金', '轉帳', 'LINE Pay', '賒帳']], ['賒帳客人', 'text'], ['已收時間', 'date'], ['收回方式', 'select', ['現金', '轉帳', 'LINE Pay']], ['超時秒數', 'number'], ['入座帳號', 'text'], ['結帳帳號', 'text'], ['登記已收帳號', 'text'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n'], ['加購小計加總', 'rollup']] },
+  '座位加購明細': { id: '8299663c-a1fa-469e-8c62-8d6085830815', props: [['明細', 'title'], ['座位紀錄', 'relation'], ['女僕', 'relation'], ['明細ID', 'text'], ['女僕ID', 'text'], ['女僕名字', 'text'], ['品項', 'select', ['表演', '拍立得', '豪華照片組']], ['單價', 'number'], ['數量', 'number'], ['小計', 'formula', null, 'r'], ['加購時間', 'date']] }
 };
 const nprop = (db, name) => NOTION_SCHEMA[db].props.find(p => p[0] === name) || null;
 const nAccess = p => p[3] || (['formula', 'rollup', 'createdTime'].includes(p[1]) ? 'r' : 'rw');
@@ -3093,6 +3098,25 @@ const fromNotion = {
 };
 
 // ================= 畫面用的資料 → 正式資料庫的列（之後接 Notion 用；測試逐欄檢查） =================
+/** 店鋪・女僕 → Notion 4 個資料庫（照 NotionMapping.exportShop；還沒接，只對齊格式） */
+function shopToNotion() {
+  const b = seatBoard(), out = {};
+  const pay = k => k ? PAY[k].label : null;
+  const ext = list => list.length ? list.map(e => `${e.minutes} 分鐘（${clockText(e.at)}）`).join('、') : null;
+  const kindLabel = k => (SHOP_KINDS.find(x => x[0] === k) || [k, k])[1];
+  out['女僕名冊'] = b.maids.map(m => { const pr = maidPrices(m.id); return { '名字': m.name, '女僕ID': m.id, '狀態': m.active === false ? '停用' : '在店裡', '顏色': m.colorHex, '表演價格': pr.performance ?? null, '拍立得價格': pr.polaroid ?? null, '豪華照片組價格': pr.deluxePhotoSet ?? null }; });
+  out['店鋪每日錢箱'] = Object.values(b.cashBoxes || {}).sort((x, y) => cmp(x.day, y.day)).map(c => ({ '日期文字': c.day, '日期': c.day, '起始現金': c.opening ?? null, '收攤實點現金': c.actual ?? null }));
+  const sessions = Object.values(b.sessions).sort((x, y) => x.startedAt - y.startedAt);
+  out['座位紀錄'] = sessions.map(ss => ({ '座位紀錄編號': ss.id, '座位': ss.seatID, '狀態': '使用中', '入座時間': isoTime(ss.startedAt), '到期時間': isoTime(ss.endsAt), '續座紀錄': ext(ss.extensions),
+    '結帳時間': null, '營業日': null, '合計': seatAddOnTotal(ss), '收款方式': null, '賒帳客人': null, '已收時間': null, '收回方式': null, '超時秒數': null, '入座帳號': ss.openedBy, '結帳帳號': null, '登記已收帳號': null }))
+    .concat(b.history.map(r => ({ '座位紀錄編號': r.id, '座位': r.seatID, '狀態': '已結帳', '入座時間': isoTime(r.startedAt), '到期時間': isoTime(r.endsAt), '續座紀錄': ext(r.extensions),
+      '結帳時間': isoTime(r.closedAt), '營業日': scDay(r), '合計': r.total, '收款方式': pay(r.payment), '賒帳客人': r.debtor || null, '已收時間': isoTime(r.settledAt ?? null), '收回方式': pay(r.settledPayment),
+      '超時秒數': r.overtimeSeconds, '入座帳號': null, '結帳帳號': r.closedBy, '登記已收帳號': r.settledBy || null })));
+  const line = (a, recordID) => ({ '明細': `${a.maidName}・${a.name}`, '座位紀錄': [recordID], '女僕': [a.maidID], '明細ID': a.id, '女僕ID': a.maidID, '女僕名字': a.maidName,
+    '品項': kindLabel(a.kind), '單價': a.unitPrice, '數量': a.quantity, '加購時間': isoTime(a.addedAt) });
+  out['座位加購明細'] = sessions.flatMap(ss => ss.addOns.map(a => line(a, ss.id))).concat(b.history.flatMap(r => r.addOns.map(a => line(a, r.id))));
+  return out;
+}
 function toNotion() {
   const out = {};
   const coserNotion = c => {
@@ -3829,7 +3853,8 @@ function seatCheckout(id, payment, user, debtor = '', now = nowMs()) {
   const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
   const total = seatAddOnTotal(ss), name = (debtor || '').trim();
   if (total > 0) { if (!payment) fail('有加購，請選收款方式。'); if (!SEAT_PAY.includes(payment)) fail('找不到這個收款方式。'); if (payment === 'credit' && !name) fail('賒帳要填客人名字或聯絡方式。'); }
-  const rec = { id: seatNext('SC'), seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, extensions: ss.extensions, addOns: ss.addOns, total, payment: total > 0 ? payment : null, debtor: total > 0 && payment === 'credit' ? name : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id };
+  // 結帳沿用入座編號：Notion「座位紀錄」一次入座一筆（2026-11-05）
+  const rec = { id: ss.id, seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, extensions: ss.extensions, addOns: ss.addOns, total, payment: total > 0 ? payment : null, debtor: total > 0 && payment === 'credit' ? name : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id };
   seatBoard().history.push(rec); delete seatBoard().sessions[id];
   return rec;
 }
