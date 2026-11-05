@@ -191,7 +191,7 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .seat-map{display:flex;flex-direction:column;gap:10px}
 .seat-row{display:grid;grid-template-columns:44px repeat(4,minmax(0,1fr));gap:10px;align-items:center}
 .seat-lbl{font-weight:900;font-size:14px;color:var(--ink-soft)}
-.seat{min-height:84px;min-width:0;width:100%;border-radius:14px;background:var(--pink-pale);border:1.5px solid color-mix(in srgb,var(--pink) 40%,transparent);color:var(--pink-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px}
+.seat{min-height:84px;min-width:0;width:100%;border-radius:14px;background:var(--gray-pale);border:1.5px solid color-mix(in srgb,var(--gray) 50%,transparent);color:var(--ink-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px}
 .seat b{font-size:17px;font-weight:900}
 .seat .tm{font-size:14px;font-weight:900;white-space:nowrap}
 .seat .st{font-size:11px;font-weight:800;white-space:nowrap}
@@ -199,6 +199,7 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .shell.wide .seat{min-height:104px}
 .shell.wide .seat b{font-size:20px}
 .shell.wide .seat .tm{font-size:17px}
+.lv-empty{--sf:var(--gray-pale);--sb:color-mix(in srgb,var(--gray) 50%,transparent);--si:var(--ink-soft)}
 .lv-plenty{--sf:var(--green-pale);--sb:var(--green);--si:var(--green-deep)}
 .lv-half{--sf:#FFF4CC;--sb:#E9B820;--si:#7A5B00}
 .lv-low,.lv-overtime{--sf:var(--danger-pale);--sb:var(--danger);--si:#9E2F2F}
@@ -3961,16 +3962,16 @@ const mtile = (title, value, fg = 'var(--ink)', bg = 'var(--cream)') => `<div cl
 function jump(section, inner, before) { return `<button style="width:100%;display:block"${act('jump', section, before)}>${inner}</button>`; }
 const primaryLabel = (t, ic) => `<span class="btn primary">${icon(ic, 20, 2.6)}<span>${esc(t)}</span></span>`;
 
-function dayPicker(title = '日期') {
+function dayPicker(title = '日期', arrows = true) {
   const d = selDay(); const label = dayInfo(d)?.label;
   return `<div class="stack g8"><div class="daypick">
-    <button class="arrow"${act('dayShift', -1)} aria-label="前一天">${icon('chevron-left', 22, 3)}</button>
+    ${arrows ? `<button class="arrow"${act('dayShift', -1)} aria-label="前一天">${icon('chevron-left', 22, 3)}</button>` : ''}
     <button class="mid"${act('openCalendar')}><span style="color:var(--pink)">${icon('calendar', 22)}</span>
       <span class="grow" style="display:flex;flex-direction:column;gap:1px;min-width:0"><span class="cap bold soft">${esc(isToday() ? `${title}・今天` : title)}</span>
       <b class="ellip" style="font-size:17px;font-weight:900">${esc(dayText(d))}</b>
       ${label ? `<span class="cap bold ellip" style="color:var(--pink-deep)">${esc(label)}</span>` : ''}</span>
-      <span class="soft chev">${icon('chevron-down', 16, 2.8)}</span></button>
-    <button class="arrow"${act('dayShift', 1)} aria-label="後一天"${isToday() ? ' disabled' : ''}>${icon('chevron-right', 22, 3)}</button></div>
+      ${arrows ? '' : `<span class="cap bold" style="color:var(--pink)">選日期</span>`}<span class="soft chev">${icon('chevron-down', 16, 2.8)}</span></button>
+    ${arrows ? `<button class="arrow"${act('dayShift', 1)} aria-label="後一天"${isToday() ? ' disabled' : ''}>${icon('chevron-right', 22, 3)}</button>` : ''}</div>
     ${isToday() ? '' : `<div class="notToday">${icon('history', 16)}<span class="grow ellip">正在看 ${esc(dayText(d))}，不是今天</span><button style="font-size:14px;font-weight:900;min-height:40px"${act('dayToday')}>回到今天</button></div>`}</div>`;
 }
 const WD_SHORT = ['日', '一', '二', '三', '四', '五', '六'];
@@ -4511,7 +4512,7 @@ function seatTile(id, now) {
 function viewSeats() {
   const now = nowMs(), used = seatsOccupied(), all = SEAT_LAYOUT.flat().length;
   const rows = SEAT_LAYOUT.map((row, i) => `<div class="seat-row"><span class="seat-lbl">${SEAT_ROWS[i]} 排</span>${row.map(id => seatTile(id, now)).join('')}</div>`).join('');
-  const legend = `<div class="seat-legend">${[['plenty', '30 分鐘以上'], ['half', '30 分鐘內'], ['low', '5 分鐘內／超時']].map(([k, t]) => `<span><i class="lv-${k}"></i>${t}</span>`).join('')}</div>`;
+  const legend = `<div class="seat-legend">${[['empty', '空位'], ['plenty', '30 分鐘以上'], ['half', '30 分鐘內'], ['low', '5 分鐘內／超時']].map(([k, t]) => `<span><i class="lv-${k}"></i>${t}</span>`).join('')}</div>`;
   const html = card(`<div class="row"><span class="grow">${stitle('座位圖', all)}</span><span class="cap bold soft" id="seat-summary">使用中 ${used}・空位 ${all - used}</span></div><div class="seat-map">${rows}</div>${legend}<div class="cap bold soft row g8">${icon('info', 14)}點空位入座，點已入座的座位可以加購、續座、結帳。</div>`);
   return { title: '座位圖', cls: 'narrowcol', html };
 }
@@ -4522,7 +4523,7 @@ const scItemsText = r => r.addOns.length ? r.addOns.map(a => `${a.maidName}・${
 const scRow = r => `<div class="row" id="seat-record-${esc(r.id)}" style="align-items:flex-start;padding:6px 0"><span class="sc-seat">${esc(r.seatID)}</span><div class="grow stack" style="gap:2px;min-width:0"><b class="sub">${esc(scItemsText(r))}</b><span class="cap" style="color:${scOutstanding(r) ? 'var(--orange-deep)' : 'var(--ink-soft)'}">${clockText(r.closedAt)}・${esc(scPayText(r))}${r.debtor ? `・${esc(r.debtor)}` : ''}</span></div><b class="num">${money(r.total)}</b></div>`;
 function viewMaidHome() {
   const day = selDay(), s = shopSummary(day), out = shopOutstanding();
-  let html = dayPicker('營業日期');
+  let html = dayPicker('營業日期', false);
   html += card(`<span class="sub heavy soft">${isToday() ? '今天營業額' : '當天營業額'}</span><b class="num" id="maid-home-total" style="font-size:40px;font-weight:900;color:var(--pink-deep)">${money(s.total)}</b><span class="sub bold soft">座位結帳 ${s.list.length} 筆・加購 ${s.items} 件</span>${HR}${info('已收（現金、轉帳、LINE Pay）', money(s.paid))}${info('記成應收（賒帳）', money(s.receivable), s.receivable ? 'var(--orange-deep)' : '')}<div class="cap soft row g8">${icon('info', 14)}營業額是座位加購的合計（不收座位費）。</div>`);
   html += card(stitle(isToday() ? '各女僕今天業績' : '各女僕當天業績', s.maids.length) + (s.maids.length ? joinRows(s.maids, r => `<div class="row" id="maid-row-${esc(r.maidID)}" style="min-height:52px"><i class="dot" style="background:#${r.colorHex}"></i><div class="grow stack" style="gap:2px"><b>${esc(r.name)}</b><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${r.q[k] || 0}`).join('・')}</span></div><b class="num">${money(r.amount)}</b></div>`) : empty('user-round', '這天還沒有加購')));
   if (s.payments.length) html += card(stitle('收款方式') + s.payments.map(x => `<div class="row" style="min-height:40px"><span style="color:${PAY[x.payment].fg};display:flex">${icon(PAY[x.payment].icon, 18)}</span><b class="sub">${x.payment === 'credit' ? '賒帳（記應收）' : PAY[x.payment].label}</b><span class="cap soft">${x.count} 筆</span><span class="grow"></span><b class="num">${money(x.amount)}</b></div>`).join(''));
@@ -4536,7 +4537,7 @@ function viewShopReconcile() {
   let vt, vfg, vbg;
   if (diff == null) { vt = exp == null ? '輸入起始現金和實點後，自動算差額' : '輸入收攤實點後，自動算差額'; vfg = 'var(--ink-soft)'; vbg = 'var(--gray-pale)'; }
   else { vt = diff === 0 ? '✓ 現金完全相符' : diff > 0 ? `多 ${money(diff)}` : `少 ${money(-diff)}`; vfg = diff === 0 ? 'var(--green-deep)' : 'var(--orange-deep)'; vbg = diff === 0 ? 'var(--green-pale)' : 'var(--orange-pale)'; }
-  let html = dayPicker('對帳日期');
+  let html = dayPicker('營業日期', false);
   html += card(stitle('現金箱') + `<div class="cap soft">店裡整天一個錢箱。只有「現金」收款（含當天用現金收回的賒帳）算進錢箱。</div>` + cashRow('起始現金', box.opening, 'opening')
     + `<div class="row"><span class="grow sub">＋ 當天現金收入</span><b class="num">${money(income)}</b></div>${HR}<div class="row"><b class="grow">應有現金</b><b class="num" id="shop-expected">${exp == null ? '先填起始現金' : money(exp)}</b></div>`
     + cashRow('收攤實點現金', box.actual, 'actual') + `<div class="row" id="shop-cash-diff" style="padding:12px;border-radius:12px;background:${vbg};color:${vfg};font-weight:900;justify-content:center">${vt}</div>`);
@@ -4684,9 +4685,11 @@ function maidFolder(f, ss, only, sh) {
 }
 
 function sheetCalendar(sh) {
-  const recent = activeDays(U.user).slice(0, 10);
+  // 女僕管理帳號：列有座位結帳的日子（2026-11-05）
+  const shopMode = role() === 'maidManager';
+  const recent = (shopMode ? [...new Set(seatBoard().history.map(scDay))].sort().reverse() : activeDays(U.user)).slice(0, 10);
   const body = btn(`今天・${dayText(today())}`, 'calPick', today(), { ic: 'sun' }) + monthGrid(sh.month, selDay(), null, today(), 'calPick', 'calMonth')
-    + (recent.length ? card(stitle('有記帳的日子') + recent.map(d => `<button class="row" style="min-height:44px;width:100%"${act('calPick', d)}><b class="sub">${esc(relDay(d))}</b>${dayInfo(d)?.label ? `<span class="cap bold ellip" style="color:var(--pink-deep)">${esc(dayInfo(d).label)}</span>` : ''}<span class="grow"></span>${d === selDay() ? `<span style="color:var(--pink)">${icon('check', 18, 3)}</span>` : ''}</button>`).join(HR)) : '');
+    + (recent.length ? card(stitle(shopMode ? '有座位結帳的日子' : '有記帳的日子') + recent.map(d => `<button class="row" style="min-height:44px;width:100%"${act('calPick', d)}><b class="sub">${esc(relDay(d))}</b>${dayInfo(d)?.label ? `<span class="cap bold ellip" style="color:var(--pink-deep)">${esc(dayInfo(d).label)}</span>` : ''}<span class="grow"></span>${d === selDay() ? `<span style="color:var(--pink)">${icon('check', 18, 3)}</span>` : ''}</button>`).join(HR)) : '');
   return sheetFrame({ title: '選日期', left: tb('關閉', 'closeSheet'), body });
 }
 
