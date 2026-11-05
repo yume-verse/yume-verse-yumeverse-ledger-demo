@@ -3684,7 +3684,7 @@ function removeContractPhoto(id, photoID, user) {
 
 // ================= 畫面狀態 =================
 const U = {
-  user: null, dataset: 'notion', section: 'home', stack: [], sheet: null, confirm: null, toast: null, pickedDay: null,
+  user: null, dataset: 'scenario', section: 'home', stack: [], sheet: null, confirm: null, toast: null, pickedDay: null,
   cart: [], cartMember: '', cartDebtor: '', homeCoserID: null,
   costumeFilter: 'all', locationFilter: null, costumeSearch: '', recordsKind: 'costume', recordsTab: 'active', recordsSearch: '',
   venueDay: null, showPast: false, themeFilter: null, memberSearch: '',
@@ -4048,7 +4048,7 @@ function viewLogin() {
     <div style="text-align:center;display:flex;flex-direction:column;gap:6px"><div style="font-size:40px;font-weight:900;color:var(--pink);line-height:1.1">Yumeverse</div><div class="t-title">夢次元記帳</div><div class="sub soft">結帳、對帳、庫存、會員，還有服裝租借，都在這裡。</div></div>
     <div class="proto stack g8"><div><b>給測試的人：</b>這是 iOS App 的網頁測試版，畫面和操作跟 App 一樣。資料只存在這個分頁，重新整理就會還原，不會動到 Notion 或營運總表。</div>${FB.db ? `<button class="cbtn ghost" style="align-self:flex-start"${act('openFeedback')}>${icon('message-square-text', 16)}留下意見</button>` : ''}</div>
     ${card(`<b style="font-size:17px">點選測試帳號，直接登入</b>${ACCOUNTS.map(demo).join('')}`)}
-    ${card(`<b style="font-size:17px">要用哪一份測試資料？</b><div class="seg"><button class="${U.dataset === 'notion' ? 'on' : ''}"${act('dataset', 'notion')}>Notion 現況</button><button class="${U.dataset === 'scenario' ? 'on' : ''}"${act('dataset', 'scenario')}>完整測試情境</button></div><div class="cap soft">${U.dataset === 'notion' ? '服裝借用照 Notion 現在的 3 筆（C-2、C-4 已登記，C-5 已歸還），跟 App 一般開啟時一樣。' : '依今天產生各種情況：逾期未還、今天到期、暫停借用、5 天後的預約，方便測每個畫面。借用人都是測試資料。'}</div>`)}
+    ${'' /* 2026-11-05：測試資料固定用完整測試情境，登入頁不再顯示選擇 */}
     ${card(`<b style="font-size:17px">或輸入帳號密碼</b>
       <div class="field"><label for="f-login-account" class="cap soft">帳號</label>${inp('login.account', { ph: '例如 company', enter: 'doLogin' })}</div>
       <div class="field"><label for="f-login-password" class="cap soft">密碼</label>${inp('login.password', { ph: '輸入密碼', type: 'password', enter: 'doLogin' })}</div>
@@ -4559,7 +4559,7 @@ function viewMore() {
   let html = card(`<div class="t-title">${esc(u.displayName)}</div>${info('帳號', u.id)}${info('身分', ROLE[u.role].label)}<div class="cap soft">${ROLE[u.role].summary}</div>`);
   if (isCoserUser()) html += card(`<button class="switch" role="switch" aria-checked="${memberCardOn()}"${act('toggleMemberCard')}><span class="row g8 heavy" style="font-size:17px"><span style="color:var(--pink)">${icon('heart', 20)}</span>會員卡</span><span class="knob"></span></button><div class="cap soft">${memberCardOn() ? '已打開：記帳收款時可以輸入粉絲 ID，會員清單在下方「會員」。只有你看得到自己的會員。' : '關閉中：記帳畫面不會出現會員欄位。需要累積粉絲消費時再打開。'}</div>`);
   if (extra.length) html += card(extra.map(s => `<button class="row" style="width:100%;min-height:56px;gap:14px"${act('pushSection', s)}><span style="color:var(--pink);width:32px;display:grid;place-items:center">${icon(SEC_ICON[s], 22)}</span><b class="grow" style="font-size:16px">${esc(secTitle(s))}</b><span class="soft">${icon('chevron-right', 18, 3)}</span></button>`).join(HR), 'p10');
-  html += card(`<b>測試工具</b><div class="cap soft">目前測試資料：${U.dataset === 'notion' ? 'Notion 現況' : '完整測試情境'}。重設會清掉這次在網頁上做的所有操作。</div><div class="row g8 wrap">${FB.db ? `<button class="cbtn ghost"${act('openFeedback')}>${icon('message-square-text', 16)}意見回饋</button>` : ''}<button class="cbtn ghost" style="--b:var(--orange-deep)"${act('askReset')}>${icon('rotate-ccw', 16)}重設測試資料</button></div>`);
+  html += card(`<b>測試工具</b><div class="cap soft">重設會清掉這次在網頁上做的所有操作，回到一開始的測試資料。</div><div class="row g8 wrap">${FB.db ? `<button class="cbtn ghost"${act('openFeedback')}>${icon('message-square-text', 16)}意見回饋</button>` : ''}<button class="cbtn ghost" style="--b:var(--orange-deep)"${act('askReset')}>${icon('rotate-ccw', 16)}重設測試資料</button></div>`);
   html += btn('登出', 'askSignOut', null, { kind: 'secondary', ic: 'log-out', style: '--b:var(--danger)' });
   html += `<div class="cap soft" style="text-align:center">Yumeverse 夢次元 App・網頁測試版（資料不保存）</div>`;
   return { title: '更多', html, cls: 'narrowcol' };
@@ -5124,7 +5124,6 @@ const A = {
   toastClose() { U.toast = null; },
 
   // 登入
-  dataset(d) { U.dataset = d; },
   demoLogin(id) { signIn(ACCOUNTS.find(a => a.id === id)); },
   doLogin() {
     const a = U.login.account.trim().toLowerCase(), p = U.login.password;
@@ -5326,9 +5325,9 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 7; // 11/02 加店鋪座位後 +1；11/03 女僕加購後 +1；11/05 女僕管理帳號後 +1
+const STATE_VERSION = 8; // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
-const KEEP_UI = ['user', 'dataset', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
+const KEEP_UI = ['user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
 function snapshotState() {
   const ui = {}; for (const k of KEEP_UI) ui[k] = U[k];
