@@ -413,6 +413,15 @@ body.host{background:#E9DFD0}
 @media (max-width:420px){.daypick .chev{display:none}.daypick .mid{gap:8px;padding:6px 10px}.paygrid{grid-template-columns:1fr 1fr}.tile .tv{font-size:21px}.topbar h1{font-size:20px}}
 .fb-item{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:4px}
 .fb-item p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+/* 接資料庫狀態列（2026-11-06） */
+.live-bar { display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:13px; font-weight:700; border-bottom:1px solid rgba(0,0,0,.05); }
+.live-bar .grow { flex:1; min-width:0; }
+.live-bar .link { font-size:13px; white-space:nowrap; }
+.live-ok { background:var(--green-pale); color:var(--green-deep); }
+.live-info { background:var(--blue-pale, #E8F1FB); color:var(--blue-deep, #2D6CB5); }
+.live-warn { background:var(--orange-pale); color:var(--orange-deep); }
+.live-bad { background:#FDE8E8; color:var(--danger); }
+#login-pending { border-radius:14px; }
 </style>
 </head>
 <body>
@@ -3917,7 +3926,7 @@ const stitle = (t, count, tint) => `<div class="stitle"${tint ? ` style="--t:${t
 const empty = (ic, t) => `<div class="empty">${icon(ic, 24)}<span>${esc(t)}</span></div>`;
 const info = (l, v, color) => `<div class="info"><span>${esc(l)}</span><b${color ? ` style="color:${color}"` : ''}>${esc(v)}</b></div>`;
 const chip = (title, on, a, p, count) => `<button class="chip${on ? ' on' : ''}"${act(a, p)} aria-pressed="${on}">${esc(title)}${count != null ? `<span class="n">${count}</span>` : ''}</button>`;
-const testNotice = () => `<div class="notice">${icon('info', 14)}<span>測試版：不會真的收款，也不會寫回營運總表。</span></div>`;
+const testNotice = () => LIVE ? '' : `<div class="notice">${icon('info', 14)}<span>測試版：不會真的收款，也不會寫回營運總表。</span></div>`;
 const HR = '<hr class="divider">';
 const joinRows = (arr, fn) => arr.map(fn).join(HR);
 const btn = (label, a, p, { kind = 'primary', ic, dis, cls = '', style = '' } = {}) => `<button class="btn ${kind} ${cls}"${act(a, p)}${dis ? ' disabled' : ''}${style ? ` style="${style}"` : ''}>${ic ? icon(ic, 20, 2.6) : ''}<span>${esc(label)}</span></button>`;
@@ -4038,6 +4047,7 @@ function seriesChip(t, on, a, p) { return `<button class="schip${on ? ' on' : ''
 // ================= 頁面：登入 =================
 function viewLogin() {
   const L = U.login;
+  if (LIVE) return viewLiveLogin();
   const demo = a => {
     const co = a.role !== 'coser';
     return `<button class="demo" id="demo-${esc(a.id)}"${act('demoLogin', a.id)}>${co ? `<span class="avatar" style="width:44px;height:44px;border-radius:14px;background:var(--pink-deep);color:#fff">${icon(ROLE[a.role].icon, 22)}</span>` : avatar(coser(a.coserID), 44)}
@@ -4059,6 +4069,21 @@ function viewLogin() {
   </main>`;
 }
 
+function viewLiveLogin() {
+  const L = U.login, pending = LIVE.outbox.length;
+  return `<main class="page" style="max-width:560px;padding-top:calc(28px + env(safe-area-inset-top,0px))">
+    <div style="text-align:center;display:flex;flex-direction:column;gap:6px"><div style="font-size:40px;font-weight:900;color:var(--pink);line-height:1.1">Yumeverse</div><div class="t-title">夢次元記帳</div><div class="sub soft">已連到 Notion${LIVE.notionLabel ? `：${esc(LIVE.notionLabel)}` : ''}</div></div>
+    ${pending ? `<div class="live-bar live-warn" id="login-pending">${icon('triangle-alert', 16, 2.4)}<span class="grow">這台還有 ${pending} 筆沒上傳到 Notion，用記帳的那個帳號登入就會自動補送。</span></div>` : ''}
+    ${card(`<b style="font-size:17px">登入</b>
+      <div class="field"><label for="f-login-account" class="cap soft">帳號</label>${inp('login.account', { ph: '帳號代號或 email', enter: 'doLogin' })}</div>
+      <div class="field"><label for="f-login-password" class="cap soft">密碼</label>${inp('login.password', { ph: '輸入密碼', type: 'password', enter: 'doLogin' })}</div>
+      ${L.error ? `<div class="row g8 bold sub" style="color:var(--danger)" id="login-error">${icon('circle-x', 18)}${esc(L.error)}</div>` : ''}
+      ${btn(L.busy ? '登入中…' : '登入', 'doLogin', null, { dis: L.busy })}`)}
+    <p class="cap soft" style="text-align:center;margin:0">結帳、賒帳收款、錢箱會寫進 Notion；網路斷掉時先存在這台，連上會自動補送。</p>
+    <div style="text-align:center"><a class="link" id="live-off" href="?api=off">改回測試版（不接資料庫）</a></div>
+  </main>`;
+}
+
 // ================= 外框 =================
 function badgeFor(s) {
   const u = U.user;
@@ -4076,7 +4101,7 @@ function tabbar() {
 }
 function sidebar() {
   const secs = sectionsFor(); const groups = unique(secs.map(s => SEC_GROUP[s])); const u = U.user;
-  let h = `<aside class="sidebar"><div class="brand">Yumeverse<small>夢次元記帳・網頁測試版</small></div>`;
+  let h = `<aside class="sidebar"><div class="brand">Yumeverse<small>夢次元記帳・${LIVE ? '已接 Notion' : '網頁測試版'}</small></div>`;
   for (const g of groups) {
     h += `<div class="side-group">${g}</div>`;
     for (const s of secs.filter(x => SEC_GROUP[x] === g)) {
@@ -4130,7 +4155,7 @@ function viewShell() {
   const back = U.stack.length ? `<button class="back-btn"${act('back')}>${icon('chevron-left', 24, 3)}<span class="ellip" style="max-width:110px">${esc(c.backLabel)}</span></button>` : '';
   const fb = FB.db ? `<button class="icon-btn"${act('openFeedback')} aria-label="意見回饋" title="意見回饋">${icon('message-square-text', 22)}</button>` : '';
   const sideBtn = wide ? `<button class="icon-btn"${act('toggleSide')} aria-label="${U.sideCollapsed ? '顯示側邊欄' : '收起側邊欄'}" title="${U.sideCollapsed ? '顯示側邊欄' : '收起側邊欄'}">${icon(U.sideCollapsed ? 'panel-left-open' : 'panel-left-close', 22)}</button>` : '';
-  return `<div class="shell ${wide ? 'wide' : 'narrow'}">${wide && !U.sideCollapsed ? sidebar() : ''}<div class="main"><header class="topbar"><div class="topbar-in">${sideBtn}${back}<h1>${esc(c.title)}</h1>${c.right || ''}${fb}</div></header><main class="page ${c.cls || ''}" id="pg-${esc(c.key)}">${c.html}</main></div></div>${wide ? '' : tabbar()}${c.after || ''}`;
+  return `<div class="shell ${wide ? 'wide' : 'narrow'}">${wide && !U.sideCollapsed ? sidebar() : ''}<div class="main"><header class="topbar"><div class="topbar-in">${sideBtn}${back}<h1>${esc(c.title)}</h1>${c.right || ''}${fb}</div></header>${liveBar()}<main class="page ${c.cls || ''}" id="pg-${esc(c.key)}">${c.html}</main></div></div>${wide ? '' : tabbar()}${c.after || ''}`;
 }
 
 // ================= 公司首頁 =================
@@ -4560,9 +4585,14 @@ function viewMore() {
   let html = card(`<div class="t-title">${esc(u.displayName)}</div>${info('帳號', u.id)}${info('身分', ROLE[u.role].label)}<div class="cap soft">${ROLE[u.role].summary}</div>`);
   if (isCoserUser()) html += card(`<button class="switch" role="switch" aria-checked="${memberCardOn()}"${act('toggleMemberCard')}><span class="row g8 heavy" style="font-size:17px"><span style="color:var(--pink)">${icon('heart', 20)}</span>會員卡</span><span class="knob"></span></button><div class="cap soft">${memberCardOn() ? '已打開：記帳收款時可以輸入粉絲 ID，會員清單在下方「會員」。只有你看得到自己的會員。' : '關閉中：記帳畫面不會出現會員欄位。需要累積粉絲消費時再打開。'}</div>`);
   if (extra.length) html += card(extra.map(s => `<button class="row" style="width:100%;min-height:56px;gap:14px"${act('pushSection', s)}><span style="color:var(--pink);width:32px;display:grid;place-items:center">${icon(SEC_ICON[s], 22)}</span><b class="grow" style="font-size:16px">${esc(secTitle(s))}</b><span class="soft">${icon('chevron-right', 18, 3)}</span></button>`).join(HR), 'p10');
-  html += card(`<b>測試工具</b><div class="cap soft">測試資料存在這個瀏覽器，登出、重新整理都會保留。重設會清掉在網頁上做過的所有操作，回到一開始的測試資料。</div><div class="row g8 wrap">${FB.db ? `<button class="cbtn ghost"${act('openFeedback')}>${icon('message-square-text', 16)}意見回饋</button>` : ''}<button class="cbtn ghost" style="--b:var(--orange-deep)"${act('askReset')}>${icon('rotate-ccw', 16)}重設測試資料</button></div>`);
+  if (LIVE && u.role === 'company') {
+    const set = LIVE.accounts || [];
+    html += card(`<b>Coser 登入帳號</b><div class="cap soft">Coser 的密碼存在後端，在這裡設定或重設。名單照 Notion「Coser 名冊」。</div>
+      ${COSERS.length ? COSERS.map(c => `<div class="row g8" style="min-height:52px">${avatar(c, 32)}<span class="grow"><b>${esc(c.name)}</b><span class="cap soft" style="display:block">${esc(c.id)}・${set.includes(c.id) ? '已設定密碼' : '還沒設定'}</span></span><button class="cbtn ghost" id="live-pw-${esc(c.id)}"${act('liveCoserPw', c.id)}>${set.includes(c.id) ? '重設密碼' : '設定密碼'}</button></div>`).join('') : '<div class="sub soft">Notion 的 Coser 名冊還沒有人。</div>'}`);
+  }
+  if (!LIVE) html += card(`<b>測試工具</b><div class="cap soft">測試資料存在這個瀏覽器，登出、重新整理都會保留。重設會清掉在網頁上做過的所有操作，回到一開始的測試資料。</div><div class="row g8 wrap">${FB.db ? `<button class="cbtn ghost"${act('openFeedback')}>${icon('message-square-text', 16)}意見回饋</button>` : ''}<button class="cbtn ghost" style="--b:var(--orange-deep)"${act('askReset')}>${icon('rotate-ccw', 16)}重設測試資料</button></div>`);
   html += btn('登出', 'askSignOut', null, { kind: 'secondary', ic: 'log-out', style: '--b:var(--danger)' });
-  html += `<div class="cap soft" style="text-align:center">Yumeverse 夢次元 App・網頁測試版（資料不保存）</div>`;
+  html += `<div class="cap soft" style="text-align:center">${LIVE ? `Yumeverse 夢次元 App・網頁版（已接 Notion${LIVE.notionLabel ? '・' + esc(LIVE.notionLabel) : ''}）` : 'Yumeverse 夢次元 App・網頁測試版（資料不保存）'}</div>`;
   return { title: '更多', html, cls: 'narrowcol' };
 }
 // ================= 彈出畫面 =================
@@ -4583,6 +4613,7 @@ function viewSheet() {
     case 'payment': return sheetPayment(sh);
     case 'settle': return sheetSettle(sh);
     case 'cash': return sheetCash(sh);
+    case 'livePw': return sheetLivePassword(sh);
     case 'lend': return sheetLend(sh);
     case 'return': return sheetReturn(sh);
     case 'venue': return sheetVenue(sh);
@@ -4725,6 +4756,16 @@ function sheetSettle(sh) {
   if (!s) return sheetFrame({ title: '登記已收到', left: tb('取消', 'closeSheet'), body: empty('search', '找不到這筆款項'), cls: 'short' });
   const body = card(saleRow(s, true)) + `<b style="font-size:17px">用什麼方式收到的？</b>` + ['cash', 'transfer', 'linePay'].map(k => btn(PAY[k].label, 'settleWith', k, { ic: PAY[k].icon, style: `--b:${PAY[k].fg};--bs:rgba(0,0,0,.25)` })).join('');
   return sheetFrame({ title: '登記已收到', left: tb('取消', 'closeSheet'), body, cls: 'short' });
+}
+// 接資料庫（2026-11-06）：Coser 管理帳號幫 Coser 設定登入密碼（密碼只存在後端）
+function sheetLivePassword(sh) {
+  const c = coser(sh.coserID), email = sh.email;
+  const body = `<div class="row g8 bold sub soft">${icon('user-round', 16)}${esc(c?.name ?? sh.coserID)}</div>
+    <div class="sub soft">Coser 用「${esc(sh.coserID)}」${email ? `或「${esc(email)}」` : ''}加這組密碼登入。重設後，原本登入中的會被登出。</div>
+    ${inp('sheet.password', { ph: '新密碼（至少 6 個字）', type: 'password', enter: 'liveSavePw' })}
+    ${sh.error ? `<div class="row g8 bold sub" style="color:var(--danger)" id="live-pw-error">${icon('circle-x', 18)}${esc(sh.error)}</div>` : ''}
+    ${btn(sh.busy ? '儲存中…' : '儲存密碼', 'liveSavePw', null, { ic: 'check', dis: sh.busy || (sh.password || '').length < 6 })}`;
+  return sheetFrame({ title: '設定登入密碼', left: tb('取消', 'closeSheet'), body, cls: 'short' });
 }
 function sheetCash(sh) {
   const kind = sh.kind; const title = kind === 'opening' ? '起始現金' : '收攤實點現金'; const c = coser(sh.coserID);
@@ -5073,6 +5114,228 @@ function openProductForm(pid, tid) {
   U.sheet = sh;
 }
 
+// ================= 接資料庫（2026-11-06）：登入、讀 Notion、結帳寫回 Notion =================
+// 網址加 ?api=後端網址 一次就會記住（?api=off 取消）。沒設定時照舊是測試版（資料只存在這個瀏覽器）。
+// 寫入先放在這台的「待上傳」清單，一筆一筆送到後端；後端收到就先存起來，再依序寫進 Notion。
+// 網路斷掉時資料留在這台，連上網路會自動補送；同一筆重送後端只會寫一次。
+const LIVE_KEY = { api: 'yv-api', session: 'yv-live-session', data: 'yv-live-data', outbox: 'yv-live-outbox', rejected: 'yv-live-rejected' };
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* 存不了就只在這個分頁 */ } };
+const lsJSON = k => { try { return JSON.parse(lsGet(k) || 'null'); } catch (e) { return null; } };
+const LIVE = (() => {
+  const q = new URLSearchParams(location.search).get('api');
+  if (q === 'off') lsSet(LIVE_KEY.api, null);
+  else if (q && (/^https:\/\/[^\s/]+/.test(q) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(q))) lsSet(LIVE_KEY.api, q.replace(/\/+$/, ''));
+  const api = lsGet(LIVE_KEY.api);
+  return api ? { api, token: null, outbox: [], rejected: [], sending: false, lastError: null, notionLabel: '', refreshedAt: null, serverSync: null, refreshing: false } : null;
+})();
+// 第一版只接 Coser 結帳、賒帳收款、每日錢箱；其他會改資料的先擋下來，請直接在 Notion 改
+const LIVE_BLOCKED = new Set(['tapSeat', 'seatExtend', 'seatAddItem', 'seatRemoveItem', 'seatAskCheckout', 'seatDoCheckout', 'seatTest', 'openShopCash', 'saveShopCash',
+  'askShopSettle', 'openMaidForm', 'saveMaid', 'openRegister', 'regSubmit', 'profDelPhoto', 'retryLogin', 'openProduct', 'pfSave', 'pfDiscontinue', 'askDeleteProduct',
+  'resumeSale', 'openRestock', 'doRestock', 'openCount', 'doCount', 'openSeries', 'saveSeries', 'askDeleteSeries', 'toggleMemberCard', 'openMember', 'saveMember',
+  'openLend', 'doLend', 'openReturn', 'doReturn', 'askCancelLoan', 'askResume', 'openVenue', 'doVenue', 'askCancelVenue', 'askReset']);
+const LIVE_BLOCKED_TEXT = '接資料庫的第一版只做結帳、賒帳收款、錢箱。這個請先直接在 Notion 改，大約 5 分鐘內會更新到這裡。';
+
+function liveMessage(e) {
+  if (e && e.status) return e.message;
+  return '連不上後端，請檢查網路。';
+}
+async function liveFetch(path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (LIVE.token) headers.Authorization = 'Bearer ' + LIVE.token;
+  const res = await fetch(LIVE.api + path, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* 不是 JSON */ }
+  if (!res.ok) { const err = new Error(data?.message || `後端回應 ${res.status}`); err.status = res.status; throw err; }
+  return data;
+}
+
+/** 後端給的 Notion 資料 → 畫面用的資料（跟測試資料用同一套轉換） */
+function liveApply(tables) {
+  const T = name => tables[name] || [];
+  const safe = (rows, fn) => rows.flatMap(r => { try { return [fn(r)]; } catch (e) { console.warn('略過讀不懂的一列', r, e); return []; } });
+  for (const k of Object.keys(NOTION_SEED)) NOTION_SEED[k] = T(k);
+  S.costumes = safe(T('Y-5 COS服拍賣'), fromNotion.costume).filter(c => c.lendState !== '已售出（不可借）');
+  S.loans = safe(T('服裝借用'), fromNotion.loan);
+  S.venues = safe(T('場地預約'), fromNotion.venue);
+  const lines = id => T('交易明細').filter(l => (l['交易'] || []).includes(id));
+  S.sales = {
+    themes: safe(T('作品・角色'), fromNotion.series),
+    products: safe(T('商品'), fromNotion.product),
+    sales: safe(T('交易紀錄'), r => fromNotion.sale(r, lines(r['交易編號']))),
+    cashBoxes: safe(T('每日錢箱'), fromNotion.cashBox),
+    members: safe(T('會員'), fromNotion.member),
+    movements: safe(T('庫存異動'), fromNotion.movement),
+    memberCard: new Set(T('Coser 名冊').filter(r => r['會員卡']).map(r => r['CoserID'])),
+    lowStock: 5, roster: [], newCosers: [], newAccounts: []
+  };
+  S.sales.sales.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
+  S.seats = freshSeats();
+  COSERS.splice(0, Infinity, ...safe(T('Coser 名冊'), fromNotion.coser));
+}
+function liveSave() {
+  if (!LIVE || !U.user) return;
+  lsSet(LIVE_KEY.data, JSON.stringify({ user: U.user.id, savedAt: nowMs(), refreshedAt: LIVE.refreshedAt, cosers: COSERS,
+    S: { ...S, sales: { ...S.sales, memberCard: [...S.sales.memberCard] } } }));
+}
+function liveRestore(userID) {
+  const o = lsJSON(LIVE_KEY.data);
+  if (!o || o.user !== userID || !o.S?.sales) return false;
+  Object.assign(S, o.S);
+  S.sales.memberCard = new Set(o.S.sales.memberCard || []);
+  COSERS.splice(0, Infinity, ...(o.cosers || []));
+  LIVE.refreshedAt = o.refreshedAt || null;
+  return true;
+}
+const liveSaveOutbox = () => { lsSet(LIVE_KEY.outbox, JSON.stringify(LIVE.outbox)); lsSet(LIVE_KEY.rejected, JSON.stringify(LIVE.rejected)); };
+const liveMine = () => LIVE.outbox.filter(o => o.by === U.user?.id);
+
+/** 從後端拿最新資料。這台還有沒上傳的就先不換（避免蓋掉），先上傳 */
+async function liveRefresh(force) {
+  if (!LIVE?.token || LIVE.refreshing) return false;
+  if (liveMine().length) { await liveFlush(); if (liveMine().length) return false; }
+  LIVE.refreshing = true; render();
+  try {
+    const snap = await liveFetch('/snapshot' + (force ? '?refresh=1' : ''));
+    if (liveMine().length) return false; // 抓的時候又記了一筆：下次再換
+    liveApply(snap.tables || {});
+    LIVE.serverSync = snap.sync || null;
+    liveAccounts();
+    LIVE.refreshedAt = nowMs();
+    LIVE.lastError = null;
+    liveSave();
+    return true;
+  } catch (e) {
+    if (e.status === 401) return liveExpired();
+    LIVE.lastError = liveMessage(e);
+    return false;
+  } finally { LIVE.refreshing = false; render(); }
+}
+function liveExpired() {
+  LIVE.token = null; lsSet(LIVE_KEY.session, null);
+  if (U.user) { U.user = null; U.sheet = null; U.stack = []; show('failure', '登入已過期，請重新登入。還沒上傳的資料還在，登入後會自動上傳。'); }
+  return false;
+}
+
+/** 寫入排進「待上傳」，馬上試著送 */
+function liveEnqueue(op) {
+  if (!LIVE) return;
+  LIVE.outbox.push({ ...op, by: U.user.id, at: nowMs() });
+  liveSaveOutbox();
+  liveFlush();
+}
+async function liveFlush() {
+  if (!LIVE?.token || LIVE.sending) return;
+  LIVE.sending = true;
+  let sent = 0;
+  try {
+    for (;;) {
+      const op = liveMine()[0];
+      if (!op) break;
+      const { by, at, ...body } = op;
+      try {
+        await liveFetch('/ops', body);
+      } catch (e) {
+        if (e.status === 401) { liveExpired(); break; }
+        if (e.status === 400 || e.status === 403) {
+          // 後端說這筆不對：拿出待上傳，記下來給人看（資料還在這台的畫面上）
+          LIVE.rejected.push({ ...op, message: e.message });
+          LIVE.outbox.splice(LIVE.outbox.indexOf(op), 1); liveSaveOutbox();
+          show('failure', `有一筆沒寫進 Notion：${e.message}`);
+          continue;
+        }
+        LIVE.lastError = liveMessage(e);
+        break;
+      }
+      LIVE.outbox.splice(LIVE.outbox.indexOf(op), 1); liveSaveOutbox();
+      LIVE.lastError = null; sent++;
+    }
+  } finally {
+    LIVE.sending = false;
+    if (sent) setTimeout(liveStatus, 4000);
+    render();
+  }
+}
+/** Coser 管理帳號：哪些 Coser 已經設定過密碼 */
+async function liveAccounts() {
+  if (!LIVE?.token || U.user?.role !== 'company') return;
+  try { LIVE.accounts = ((await liveFetch('/accounts')).accounts || []).map(a => a.id); render(); } catch (e) { /* 下次再看 */ }
+}
+async function liveStatus() {
+  if (!LIVE?.token) return;
+  try { LIVE.serverSync = await liveFetch('/ops/status'); render(); } catch (e) { /* 下次再看 */ }
+}
+
+async function liveLogin(account, password) {
+  U.login.busy = true; U.login.error = null; render();
+  try {
+    const r = await liveFetch('/auth/login', { account, password });
+    LIVE.token = r.token;
+    const user = { id: r.user.id, displayName: r.user.displayName, role: r.user.role, coserID: r.user.coserID || null, email: r.user.email || null };
+    lsSet(LIVE_KEY.session, JSON.stringify({ token: r.token, user }));
+    if (!liveRestore(user.id)) liveApply({});
+    signIn(user);
+    await liveFlush();
+    if (!(await liveRefresh(false)) && LIVE.lastError) show('failure', `暫時抓不到 Notion 資料：${LIVE.lastError}`);
+  } catch (e) {
+    U.login.error = e.status === 401 || e.status === 400 ? '帳號或密碼不對。' : liveMessage(e);
+  } finally { U.login.busy = false; render(); }
+}
+function liveSignOut() {
+  LIVE.token = null; LIVE.serverSync = null;
+  lsSet(LIVE_KEY.session, null); lsSet(LIVE_KEY.data, null);
+  liveApply({});
+}
+function liveBoot() {
+  resetData(U.dataset);
+  LIVE.outbox = lsJSON(LIVE_KEY.outbox) || [];
+  LIVE.rejected = lsJSON(LIVE_KEY.rejected) || [];
+  const sess = lsJSON(LIVE_KEY.session);
+  if (sess?.token && sess.user) {
+    LIVE.token = sess.token;
+    if (!liveRestore(sess.user.id)) liveApply({});
+    signIn(sess.user);
+    liveFlush().then(() => liveRefresh(false));
+  } else liveApply({});
+  liveFetch('/').then(r => { LIVE.notionLabel = r?.notion || ''; render(); }).catch(() => {});
+  setInterval(liveFlush, 15000);
+  setInterval(liveStatus, 60000);
+  // 每 5 分鐘自動拿最新的價格、商品（有開著的視窗就不換，等下次）
+  setInterval(() => { if (U.user && !U.sheet && !U.confirm && !U.cart.length) liveRefresh(false); }, 5 * 60000);
+  window.addEventListener('online', liveFlush);
+}
+
+// 畫面資料 → 寫入（欄位名稱照 Notion，跟 toNotion() 一樣）
+function liveSaleOp(s) {
+  return {
+    kind: 'sale', opId: 'op-' + s.id,
+    sale: { '交易編號': s.id, '記帳日期': s.day, '交易時間': isoTime(s.at), '幣別': s.currency, '匯率': s.rate, '折扣': s.discount || 0,
+      '收款方式': PAY[s.payment]?.label ?? null, '狀態': s.status === 'paid' ? '已收' : '待收', '歸屬': s.scope === 'personal' ? '個人' : '公司',
+      '賒帳客人': s.debtor, '粉絲ID': s.memberID, '收款登記時間': isoTime(s.settledAt), '備註': trimOrNull(s.summary) },
+    lines: s.lines.map(l => ({ '品名': l.name, '商品ID': l.productID, '成交單價': l.unitPrice, '數量': l.quantity })),
+    movements: SB().movements.filter(m => m.reason === `銷售・${s.id}`).map(m => ({ '異動ID': m.id, '時間': isoTime(m.at), '商品ID': m.productID,
+      '商品名稱': m.productName, '類型': m.kind, '數量': m.quantity, '原因': trimOrNull(m.reason) })),
+    member: s.memberID ? { '粉絲ID': s.memberID } : null
+  };
+}
+const liveOpID = tag => `op-${tag}-${nowMs().toString(36)}${rid()}`;
+
+function liveBar() {
+  if (!LIVE || !U.user) return '';
+  const mine = liveMine().length, sync = LIVE.serverSync, isCo = U.user.role === 'company';
+  let tone = 'ok', ic = 'circle-check', text;
+  if (LIVE.rejected.length) { tone = 'bad'; ic = 'circle-x'; text = `${LIVE.rejected.length} 筆沒寫進 Notion（${LIVE.rejected[LIVE.rejected.length - 1].message}），資料還在這台，請截圖給巧。`; }
+  else if (mine) { tone = LIVE.lastError ? 'warn' : 'info'; ic = LIVE.lastError ? 'triangle-alert' : 'arrow-up-right';
+    text = LIVE.lastError ? `${mine} 筆還沒上傳：${LIVE.lastError} 資料先存在這台，連上網路會自動補送。` : `上傳中…（${mine} 筆）`; }
+  else if (LIVE.lastError) { tone = 'warn'; ic = 'triangle-alert'; text = `暫時抓不到最新資料：${LIVE.lastError}`; }
+  else if (sync?.failed && isCo) { tone = 'bad'; ic = 'circle-x'; text = `有 ${sync.failed} 筆寫不進 Notion：${sync.lastError || '原因不明'}`; }
+  else if (sync?.pending) { tone = 'info'; ic = 'history'; text = `已送到後端，正在寫進 Notion（${sync.pending} 筆）`; }
+  else { const m = LIVE.refreshedAt ? Math.max(0, Math.round((nowMs() - LIVE.refreshedAt) / 60000)) : null;
+    text = `已連到 Notion${LIVE.notionLabel ? '・' + LIVE.notionLabel.replace(/（.*$/, '') : ''}${m != null ? `・${m ? m + ' 分鐘前' : '剛剛'}更新` : ''}`; }
+  const retry = sync?.failed && isCo && !mine ? `<button class="link" id="live-retry"${act('liveRetry')}>重試</button>` : '';
+  return `<div class="live-bar live-${tone}" id="live-bar" role="status">${icon(ic, 16, 2.4)}<span class="grow">${esc(text)}</span>${retry}<button class="link" id="live-refresh"${act('liveRefreshNow')}${LIVE.refreshing ? ' disabled' : ''}>${LIVE.refreshing ? '更新中…' : '重新整理'}</button></div>`;
+}
+
 const A = {
   noop() { return 'skip'; },
   closeSheet() { U.sheet = null; },
@@ -5127,12 +5390,40 @@ const A = {
   doLogin() {
     const a = U.login.account.trim().toLowerCase(), p = U.login.password;
     if (!a || !p) { U.login.error = '請輸入帳號和密碼。'; return; }
+    if (LIVE) { if (!U.login.busy) liveLogin(a, p); return; }
     // 用帳號代號（例如 cocoa）或登入帳號 email 都可以
     const acc = ACCOUNTS.find(x => (x.id === a || (x.email || '').toLowerCase() === a) && x.password === p);
     if (!acc) { U.login.error = '帳號或密碼不正確，可以點上方的測試帳號直接登入。'; return; }
     signIn(acc);
   },
-  askSignOut() { ask('確定要登出嗎？', null, [{ label: '登出', danger: true, run: () => { U.user = null; U.sheet = null; U.stack = []; U.homeCoserID = null; resetCart(); scrollTop(); } }], '取消'); },
+  askSignOut() {
+    const pending = LIVE ? liveMine().length : 0;
+    ask('確定要登出嗎？', pending ? `還有 ${pending} 筆還沒上傳到 Notion。資料會留在這台，下次用同一個帳號登入會自動補送。` : null,
+      [{ label: '登出', danger: true, run: () => { if (LIVE) liveSignOut(); U.user = null; U.sheet = null; U.stack = []; U.homeCoserID = null; resetCart(); scrollTop(); } }], '取消');
+  },
+  // 接資料庫（2026-11-06）
+  liveRefreshNow() { liveRefresh(true).then(ok => { if (ok) show('success', '已更新成 Notion 上最新的資料'); else if (LIVE.lastError) show('failure', LIVE.lastError); else if (liveMine().length) show('info', '還有資料在上傳，傳完再更新'); render(); }); },
+  liveCoserPw(id) {
+    const row = (NOTION_SEED['Coser 名冊'] || []).find(r => r['CoserID'] === id);
+    U.sheet = { type: 'livePw', coserID: id, email: row?.['登入帳號'] || null, password: '', error: null, busy: false };
+  },
+  liveSavePw() {
+    const sh = U.sheet; if (!sh || sh.busy || (sh.password || '').length < 6) return;
+    const c = coser(sh.coserID);
+    sh.busy = true; sh.error = null;
+    (async () => {
+      try {
+        try { await liveFetch(`/accounts/${encodeURIComponent(sh.coserID)}/password`, { password: sh.password }); }
+        catch (e) {
+          if (e.status !== 404) throw e;
+          await liveFetch('/accounts', { id: sh.coserID, displayName: c?.name || sh.coserID, coserID: sh.coserID, ...(sh.email ? { email: sh.email } : {}), password: sh.password });
+        }
+        U.sheet = null; show('success', `已設定 ${c?.name ?? sh.coserID} 的登入密碼`); liveAccounts();
+      } catch (e) { sh.busy = false; sh.error = liveMessage(e); }
+      render();
+    })();
+  },
+  liveRetry() { liveFetch('/ops/retry', {}).then(r => { show('info', `已重新排隊 ${r.retried} 筆`); liveStatus(); }).catch(e => show('failure', liveMessage(e))).finally(render); },
   askReset() { ask('要重設測試資料嗎？', '在網頁上做過的記帳、座位、預約、商品和名冊修改都會清掉，回到一開始的測試資料。', [{ label: '重設', danger: true, run: () => { clearSavedData(); resetData(U.dataset); resetCart(); U.stack = []; U.pickedDay = null; show('success', '已重設測試資料'); } }], '不要'); },
 
   // 導覽
@@ -5168,7 +5459,7 @@ const A = {
   doCheckout() {
     const sh = U.sheet; const owner = activeCheckoutCoser();
     const sale = perform(() => checkout(U.cart, selDay(), sh.payment, isMemberCardOn(owner) ? U.cartMember : '', U.cartDebtor, U.user, menuCurrency(), 0));
-    if (sale) { resetCart(); sh.finished = sale; }
+    if (sale) { resetCart(); sh.finished = sale; if (LIVE) liveEnqueue(liveSaleOp(sale)); }
   },
 
   // 今日菜單幣別、報表幣別（2026-10-27）
@@ -5176,6 +5467,7 @@ const A = {
   setMenuCur(c) {
     if (c === menuCurrency()) { U.sheet = null; return; }
     if (!perform(() => setMenuCurrency(c, selDay(), U.user))) return;
+    if (LIVE) { const b = cashBoxOf(selDay(), U.user.coserID); liveEnqueue({ kind: 'cashBox', opId: liveOpID('menu'), '日期': selDay(), CoserID: U.user.coserID, fields: { '今日幣別': b.currency, '今日匯率': b.rate ?? null } }); }
     U.sheet = null;
     const removed = U.cart.map(i => productByID(i.productID)).filter(p => p && priceIn(p, c) == null);
     U.cart = U.cart.filter(i => !removed.some(p => p.id === i.productID));
@@ -5200,10 +5492,20 @@ const A = {
 
   // 對帳
   openCash(kind) { const cid = cashCoserID(); const inf = dayInfo(selDay(), cid); const v = kind === 'opening' ? inf?.openingCash : inf?.actualCash; U.sheet = { type: 'cash', kind, coserID: cid, text: v != null ? String(v) : '' }; },
-  saveCash() { const sh = U.sheet; if (sh.text === '') return; if (perform(() => setCash(sh.kind, selDay(), sh.coserID, parseInt(sh.text, 10), U.user), `已記錄${sh.kind === 'opening' ? '起始現金' : '收攤實點現金'}`)) U.sheet = null; },
+  saveCash() {
+    const sh = U.sheet; if (sh.text === '') return; const amount = parseInt(sh.text, 10);
+    if (!perform(() => setCash(sh.kind, selDay(), sh.coserID, amount, U.user), `已記錄${sh.kind === 'opening' ? '起始現金' : '收攤實點現金'}`)) return;
+    if (LIVE) liveEnqueue({ kind: 'cashBox', opId: liveOpID('cash'), '日期': selDay(), CoserID: sh.coserID, fields: { [sh.kind === 'opening' ? '起始現金' : '收攤實點']: amount } });
+    U.sheet = null;
+  },
   cashCoser(id) { U.cashCoserID = id; },
   openSettle(id) { U.sheet = { type: 'settle', saleID: id }; },
-  settleWith(m) { if (perform(() => settle(U.sheet.saleID, m, U.user), `已登記收到（${PAY[m].label}）`)) U.sheet = null; },
+  settleWith(m) {
+    const id = U.sheet.saleID;
+    if (!perform(() => settle(id, m, U.user), `已登記收到（${PAY[m].label}）`)) return;
+    if (LIVE) liveEnqueue({ kind: 'settle', opId: liveOpID('settle'), '交易編號': id, '收款方式': PAY[m].label, '收款登記時間': isoTime(saleByID(id).settledAt) });
+    U.sheet = null;
+  },
 
   // 服裝、紀錄
   costumeFilter(k) { U.costumeFilter = k; },
@@ -5354,6 +5656,7 @@ function dataSnapshot() {
 let saveTimer = null;
 function queueSave() {
   clearTimeout(saveTimer);
+  if (LIVE) { saveTimer = setTimeout(liveSave, 300); return; }
   saveTimer = setTimeout(() => { try { localStorage.setItem(DATA_KEY, dataSnapshot()); } catch (e) { /* 存不了（私密模式等）就只存在這個分頁 */ } }, 300);
 }
 function loadSavedData() {
@@ -5441,6 +5744,7 @@ document.addEventListener('click', e => {
   if (el.tagName === 'BUTTON') e.preventDefault();
   e.stopPropagation();
   const fn = A[name]; if (!fn) return;
+  if (LIVE && LIVE_BLOCKED.has(name)) { show('info', LIVE_BLOCKED_TEXT); render(); return; }
   fn(el.dataset.p, el.dataset.q);
   render();
 });
@@ -5477,6 +5781,7 @@ function shrinkImage(file) {
 }
 document.addEventListener('change', async e => {
   const el = e.target; if (!el.dataset?.photos || !el.files?.length) return;
+  if (LIVE) { el.value = ''; show('info', LIVE_BLOCKED_TEXT); render(); return; }
   const target = el.dataset.photos, files = [...el.files]; el.value = '';
   const srcs = (await Promise.all(files.map(shrinkImage))).filter(Boolean);
   if (!srcs.length) { show('failure', '讀不到這張照片，請換一張再試。'); render(); return; }
@@ -5496,15 +5801,15 @@ setInterval(() => { if (U.user?.role === 'shopManager' && U.section === 'seats' 
 
 if (HOST_MODE) bootHost();
 else {
-resetData(U.dataset);
-loadSavedData();
+if (LIVE) liveBoot();
+else { resetData(U.dataset); loadSavedData(); }
 if (IN_FRAME) {
   // 在裝置外框裡：先跟外框要上一個裝置的狀態，拿到就接著用；0.4 秒沒回應就從頭開始
   let started = false;
   const start = () => { if (!started) { started = true; render(); } };
   window.addEventListener('message', e => {
     if (e.source !== window.parent || !e.data || e.data.type !== 'yv-restore') return;
-    if (e.data.state) restoreState(e.data.state);
+    if (e.data.state && !LIVE) restoreState(e.data.state); // 接資料庫時不沿用外框的測試資料
     started = false; start();
   });
   window.parent.postMessage({ type: 'yv-hello' }, '*');
