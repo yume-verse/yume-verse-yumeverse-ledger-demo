@@ -4585,6 +4585,10 @@ function viewMore() {
   let html = card(`<div class="t-title">${esc(u.displayName)}</div>${info('帳號', u.id)}${info('身分', ROLE[u.role].label)}<div class="cap soft">${ROLE[u.role].summary}</div>`);
   if (isCoserUser()) html += card(`<button class="switch" role="switch" aria-checked="${memberCardOn()}"${act('toggleMemberCard')}><span class="row g8 heavy" style="font-size:17px"><span style="color:var(--pink)">${icon('heart', 20)}</span>會員卡</span><span class="knob"></span></button><div class="cap soft">${memberCardOn() ? '已打開：記帳收款時可以輸入粉絲 ID，會員清單在下方「會員」。只有你看得到自己的會員。' : '關閉中：記帳畫面不會出現會員欄位。需要累積粉絲消費時再打開。'}</div>`);
   if (extra.length) html += card(extra.map(s => `<button class="row" style="width:100%;min-height:56px;gap:14px"${act('pushSection', s)}><span style="color:var(--pink);width:32px;display:grid;place-items:center">${icon(SEC_ICON[s], 22)}</span><b class="grow" style="font-size:16px">${esc(secTitle(s))}</b><span class="soft">${icon('chevron-right', 18, 3)}</span></button>`).join(HR), 'p10');
+  if (LIVE) {
+    const m = LIVE.refreshedAt ? Math.max(0, Math.round((nowMs() - LIVE.refreshedAt) / 60000)) : null;
+    html += card(`<div class="row g8">${icon('circle-check', 18, 2.4)}<span class="grow"><b>已連到 Notion${LIVE.notionLabel ? '・' + esc(LIVE.notionLabel.replace(/（.*$/, '')) : ''}</b><span class="cap soft" style="display:block">${m != null ? `${m ? m + ' 分鐘前' : '剛剛'}更新・` : ''}每 5 分鐘自動更新</span></span><button class="cbtn ghost" id="more-live-refresh"${act('liveRefreshNow')}${LIVE.refreshing ? ' disabled' : ''}>${LIVE.refreshing ? '更新中…' : '重新整理'}</button></div>`);
+  }
   if (LIVE && u.role === 'company') {
     const set = LIVE.accounts || [];
     html += card(`<b>Coser 登入帳號</b><div class="cap soft">Coser 的密碼存在後端，在這裡設定或重設。名單照 Notion「Coser 名冊」。</div>
@@ -5374,8 +5378,7 @@ function liveBar() {
   else if (LIVE.lastError) { tone = 'warn'; ic = 'triangle-alert'; text = `暫時抓不到最新資料：${LIVE.lastError}`; }
   else if (sync?.failed && isCo) { tone = 'bad'; ic = 'circle-x'; text = `有 ${sync.failed} 筆寫不進 Notion：${sync.lastError || '原因不明'}`; }
   else if (sync?.pending) { tone = 'info'; ic = 'history'; text = `已送到後端，正在寫進 Notion（${sync.pending} 筆）`; }
-  else { const m = LIVE.refreshedAt ? Math.max(0, Math.round((nowMs() - LIVE.refreshedAt) / 60000)) : null;
-    text = `已連到 Notion${LIVE.notionLabel ? '・' + LIVE.notionLabel.replace(/（.*$/, '') : ''}${m != null ? `・${m ? m + ' 分鐘前' : '剛剛'}更新` : ''}`; }
+  else return ''; // 一切正常就不顯示（重新整理在「更多」）
   const retry = sync?.failed && isCo && !mine ? `<button class="link" id="live-retry"${act('liveRetry')}>重試</button>` : '';
   return `<div class="live-bar live-${tone}" id="live-bar" role="status">${icon(ic, 16, 2.4)}<span class="grow">${esc(text)}</span>${retry}<button class="link" id="live-refresh"${act('liveRefreshNow')}${LIVE.refreshing ? ' disabled' : ''}>${LIVE.refreshing ? '更新中…' : '重新整理'}</button></div>`;
 }
