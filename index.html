@@ -414,8 +414,6 @@ body.host{background:#E9DFD0}
 .fb-item{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:4px}
 .fb-item p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 /* 座位價格（2026-11-06） */
-.seat-prices { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; padding:10px 12px; border-radius:12px; background:var(--pink-pale, #FDEEF3); color:var(--pink-deep); font-size:14px; font-weight:700; }
-.seat-prices > span { color:var(--ink); }
 /* 接資料庫狀態列（2026-11-06） */
 .live-bar { display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:13px; font-weight:700; border-bottom:1px solid rgba(0,0,0,.05); }
 .live-bar .grow { flex:1; min-width:0; }
@@ -4590,7 +4588,7 @@ function viewSeats() {
   const now = nowMs(), used = seatsOccupied(), all = SEAT_LAYOUT.flat().length;
   const rows = SEAT_LAYOUT.map((row, i) => `<div class="seat-row"><span class="seat-lbl">${SEAT_ROWS[i]} 排</span>${row.map(id => seatTile(id, now)).join('')}</div>`).join('');
   const legend = `<div class="seat-legend">${[['empty', '空位'], ['plenty', '30 分鐘以上'], ['half', '30 分鐘內'], ['low', '5 分鐘內／超時']].map(([k, t]) => `<span><i class="lv-${k}"></i>${t}</span>`).join('')}</div>`;
-  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', all)}</span><span class="cap bold soft" id="seat-summary">使用中 ${used}・空位 ${all - used}</span></div><div class="seat-map">${rows}</div>${legend}<div class="seat-prices" id="seat-prices">${icon('coins', 16)}<b>價格</b><span>開桌 1 小時 <b class="num">${money(SEAT_FEE_OPEN)}</b></span><span>續座 1 小時 <b class="num">${money(SEAT_FEE_EXT[60])}</b></span><span>續座 30 分鐘 <b class="num">${money(SEAT_FEE_EXT[30])}</b></span></div><div class="cap bold soft row g8">${icon('info', 14)}點空位入座，點已入座的座位可以加購、續座、結帳。</div>`);
+  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', all)}</span><span class="cap bold soft" id="seat-summary">使用中 ${used}・空位 ${all - used}</span></div><div class="seat-map">${rows}</div>${legend}<div class="cap bold soft row g8">${icon('info', 14)}點空位入座，點已入座的座位可以加購、續座、結帳。</div>`);
   return { title: '座位圖', cls: 'narrowcol', html };
 }
 
