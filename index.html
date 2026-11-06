@@ -4101,7 +4101,7 @@ function tabbar() {
 }
 function sidebar() {
   const secs = sectionsFor(); const groups = unique(secs.map(s => SEC_GROUP[s])); const u = U.user;
-  let h = `<aside class="sidebar"><div class="brand">Yumeverse<small>夢次元記帳・${LIVE ? '已接 Notion' : '網頁測試版'}</small></div>`;
+  let h = `<aside class="sidebar"><div class="brand">Yumeverse<small>${LIVE ? '夢次元記帳' : '夢次元記帳・網頁測試版'}</small></div>`;
   for (const g of groups) {
     h += `<div class="side-group">${g}</div>`;
     for (const s of secs.filter(x => SEC_GROUP[x] === g)) {
