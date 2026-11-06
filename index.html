@@ -215,6 +215,21 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .sc-seat{width:44px;height:44px;border-radius:12px;background:var(--pink-pale);color:var(--pink-deep);font-weight:900;display:grid;place-items:center;flex:none}
 .dot{width:18px;height:18px;border-radius:50%;flex:none;display:inline-block}
 .swatch{width:36px;height:36px;border-radius:10px;flex:none}
+.av-list{display:flex;flex-direction:column;gap:6px}
+.av-day{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:#fff}
+.av-day.wkend{background:var(--pink-pale)}
+.av-btn{flex:1 1 0;min-height:44px;border-radius:12px;border:2px solid var(--line, #E8E0D8);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:14px;line-height:1.1;background:#fff}
+.av-btn small{font-size:11px;font-weight:800;color:var(--ink-soft)}
+.av-btn.v1{background:var(--pink);border-color:var(--pink);color:#fff}
+.av-btn.v1 small{color:#fff}
+.av-btn.v2{background:var(--green-deep, #2E7D32);border-color:var(--green-deep, #2E7D32);color:#fff}
+.av-btn.v2 small{color:#fff}
+.av-wks{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;flex:1}
+.av-wk{min-height:40px;border-radius:10px;border:2px solid var(--line, #E8E0D8);font-weight:800;background:#fff}
+.av-wk.on{background:var(--pink);border-color:var(--pink);color:#fff}
+.slot-row{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:6px 0;border-top:1px solid var(--line, #EFE7DF)}
+.mchip{font-size:13px;font-weight:800;padding:3px 9px;border-radius:999px}
+.credit-pill{font-size:12px}
 .pill-off{font-size:12px;font-weight:900;padding:2px 8px;border-radius:999px;background:var(--gray-pale);color:var(--ink-soft)}
 .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 .swatch-btn{height:40px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center}
@@ -2789,10 +2804,14 @@ const NOTION_SCHEMA = {
   // 服裝基本資料在 Notion 維護，App 只讀；App 只改借用狀態、暫停借用、暫停原因（COS服編號用來找到那一列）
   'Y-5 COS服拍賣': { id: 'ea662a59-d19d-49e9-8650-55b3dd05ccb7', props: [['COS服編號', 'title', null, 'r'], ['作品名稱', 'text', null, 'r'], ['角色名稱', 'text', null, 'r'], ['廠家尺寸', 'text', null, 'r'], ['細項', 'text', null, 'r'], ['保存位置', 'select', ['A', 'B', 'C', 'D', 'E', 'F', 'G', '巧巧', '待確認'], 'r'], ['借用狀態', 'select', ['可借用', '借出中', '已售出（不可借）']], ['暫停借用', 'checkbox'], ['暫停原因', 'text'], ['圖片', 'files', null, 'r'], ['備註', 'text', null, 'r'], ['販賣狀態', 'select', ['未賣出', '已賣出'], 'n'], ['購入金額', 'text', null, 'n'], ['售出金額', 'text', null, 'n'], ['淘寶圖片', 'text', null, 'n'], ['借用紀錄', 'relation', null, 'n']] },
   // 店鋪・女僕（2026-11-05 在「App 資料（正式）」新建；照 NotionSchema.swift 的 shop）
-  '女僕名冊': { id: '19f8d004-680b-4869-8c65-9fa70184ed2a', props: [['名字', 'title'], ['女僕ID', 'text'], ['狀態', 'select', ['在店裡', '停用']], ['顏色', 'text'], ['表演價格', 'number'], ['拍立得價格', 'number'], ['豪華照片組價格', 'number'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n']] },
+  '女僕名冊': { id: '19f8d004-680b-4869-8c65-9fa70184ed2a', props: [['名字', 'title'], ['女僕ID', 'text'], ['CoserID', 'text'], ['狀態', 'select', ['在店裡', '停用']], ['顏色', 'text'], ['表演價格', 'number'], ['拍立得價格', 'number'], ['豪華照片組價格', 'number'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n']] },
   '店鋪每日錢箱': { id: '649b77a8-bb35-4fb0-a9b4-1efafcf7a392', props: [['日期文字', 'title'], ['日期', 'date'], ['起始現金', 'number'], ['收攤實點現金', 'number'], ['備註', 'text', null, 'n']] },
   '座位紀錄': { id: 'c7587ac4-70bf-41d5-b014-881a1ea8e079', props: [['座位紀錄編號', 'title'], ['座位', 'select', ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']], ['狀態', 'select', ['使用中', '已結帳']], ['入座時間', 'date'], ['到期時間', 'date'], ['續座紀錄', 'text'], ['結帳時間', 'date'], ['營業日', 'date'], ['座位費', 'number'], ['合計', 'number'], ['收款方式', 'select', ['現金', '轉帳', 'LINE Pay', '賒帳']], ['賒帳客人', 'text'], ['已收時間', 'date'], ['收回方式', 'select', ['現金', '轉帳', 'LINE Pay']], ['超時秒數', 'number'], ['入座帳號', 'text'], ['結帳帳號', 'text'], ['登記已收帳號', 'text'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n'], ['加購小計加總', 'rollup']] },
-  '座位加購明細': { id: '8299663c-a1fa-469e-8c62-8d6085830815', props: [['明細', 'title'], ['座位紀錄', 'relation'], ['女僕', 'relation'], ['明細ID', 'text'], ['女僕ID', 'text'], ['女僕名字', 'text'], ['品項', 'select', ['表演', '拍立得', '豪華照片組']], ['單價', 'number'], ['數量', 'number'], ['小計', 'formula', null, 'r'], ['加購時間', 'date']] }
+  '座位加購明細': { id: '8299663c-a1fa-469e-8c62-8d6085830815', props: [['明細', 'title'], ['座位紀錄', 'relation'], ['女僕', 'relation'], ['明細ID', 'text'], ['女僕ID', 'text'], ['女僕名字', 'text'], ['品項', 'select', ['表演', '拍立得', '豪華照片組']], ['單價', 'number'], ['數量', 'number'], ['小計', 'formula', null, 'r'], ['加購時間', 'date']] },
+  // 女僕店排班、信用分（2026-11-06 新建；照 NotionSchema.swift 的 schedule）
+  '排班申請': { id: '7d13abb3-488b-44c1-8c39-952f5328d962', props: [['申請ID', 'title'], ['女僕ID', 'text'], ['CoserID', 'text'], ['日期', 'date'], ['班別', 'select', ['早班', '晚班']], ['偏好', 'select', ['可上班', '優先希望']], ['提交時間', 'date'], ['提交帳號', 'text']] },
+  '女僕班表': { id: '9a246fc8-019e-47e4-b191-79e98eb6eb0e', props: [['班次ID', 'title'], ['女僕ID', 'text'], ['CoserID', 'text'], ['女僕名字', 'text'], ['日期', 'date'], ['班別', 'select', ['早班', '晚班']], ['狀態', 'select', ['草稿', '已排班', '已確認出勤', '已報到', '已下班', '請假', '未到', '已取消']], ['確認時間', 'date'], ['報到時間', 'date'], ['下班時間', 'date'], ['請假時間', 'date'], ['請假原因', 'text'], ['補班對象', 'text'], ['排班原因', 'text'], ['排班帳號', 'text'], ['更新帳號', 'text']] },
+  '信用分紀錄': { id: 'b35b8db5-7132-420d-bf6c-c901c3f007fb', props: [['事件ID', 'title'], ['CoserID', 'text'], ['女僕ID', 'text'], ['時間', 'date'], ['事件', 'select', ['臨時請假（24 小時內）', '臨時請假（4 小時內）', '未到', '預約放鳥', '更正']], ['分數', 'number'], ['班次ID', 'text'], ['說明', 'text'], ['登記帳號', 'text'], ['規則版本', 'text']] }
 };
 const nprop = (db, name) => NOTION_SCHEMA[db].props.find(p => p[0] === name) || null;
 const nAccess = p => p[3] || (['formula', 'rollup', 'createdTime'].includes(p[1]) ? 'r' : 'rw');
@@ -3115,7 +3134,7 @@ function shopToNotion() {
   const pay = k => k ? PAY[k].label : null;
   const ext = list => list.length ? list.map(e => `${e.minutes} 分鐘${e.price ? ` NT$${e.price}` : ''}（${clockText(e.at)}）`).join('、') : null;
   const kindLabel = k => (SHOP_KINDS.find(x => x[0] === k) || [k, k])[1];
-  out['女僕名冊'] = b.maids.map(m => { const pr = maidPrices(m.id); return { '名字': m.name, '女僕ID': m.id, '狀態': m.active === false ? '停用' : '在店裡', '顏色': m.colorHex, '表演價格': pr.performance ?? null, '拍立得價格': pr.polaroid ?? null, '豪華照片組價格': pr.deluxePhotoSet ?? null }; });
+  out['女僕名冊'] = b.maids.map(m => { const pr = maidPrices(m.id); return { '名字': m.name, '女僕ID': m.id, 'CoserID': m.coserID || null, '狀態': m.active === false ? '停用' : '在店裡', '顏色': m.colorHex, '表演價格': pr.performance ?? null, '拍立得價格': pr.polaroid ?? null, '豪華照片組價格': pr.deluxePhotoSet ?? null }; });
   out['店鋪每日錢箱'] = Object.values(b.cashBoxes || {}).sort((x, y) => cmp(x.day, y.day)).map(c => ({ '日期文字': c.day, '日期': c.day, '起始現金': c.opening ?? null, '收攤實點現金': c.actual ?? null }));
   const sessions = Object.values(b.sessions).sort((x, y) => x.startedAt - y.startedAt);
   out['座位紀錄'] = sessions.map(ss => ({ '座位紀錄編號': ss.id, '座位': ss.seatID, '狀態': '使用中', '入座時間': isoTime(ss.startedAt), '到期時間': isoTime(ss.endsAt), '續座紀錄': ext(ss.extensions),
@@ -3135,7 +3154,7 @@ function shopFromNotion(T) {
   const maids = [], items = [];
   for (const r of T('女僕名冊')) {
     const id = trimOrNull(r['女僕ID']); if (!id || !r['名字']) continue;
-    maids.push({ id, name: r['名字'], colorHex: r['顏色'] || PALETTE[maids.length % PALETTE.length], active: r['狀態'] !== '停用' });
+    maids.push({ id, name: r['名字'], colorHex: r['顏色'] || PALETTE[maids.length % PALETTE.length], active: r['狀態'] !== '停用', coserID: trimOrNull(r['CoserID'])?.toLowerCase() ?? null });
     for (const [k, label] of SHOP_KINDS) if (r[PRICE_COL[k]] != null) items.push({ id: `${id}-${k}`, maidID: id, kind: k, name: label, price: r[PRICE_COL[k]], active: true });
   }
   const cashBoxes = {};
@@ -3166,6 +3185,27 @@ function shopFromNotion(T) {
   }
   history.sort((a, b) => a.closedAt - b.closedAt);
   return { sessions, history, cashBoxes, maids, items, serial: 0 };
+}
+/** 女僕店排班 → Notion 3 個資料庫（照 ScheduleMapping.swift） */
+function scheduleToNotion() {
+  const sc = schedule(), t = ms => isoTime(ms ?? null);
+  return {
+    '排班申請': sc.availability.map(a => ({ '申請ID': availID(a), '女僕ID': a.maidID, 'CoserID': a.coserID || null, '日期': a.day, '班別': a.period, '偏好': a.preferred ? '優先希望' : '可上班', '提交時間': t(a.submittedAt), '提交帳號': a.submittedBy })),
+    '女僕班表': sc.shifts.map(x => ({ '班次ID': x.id, '女僕ID': x.maidID, 'CoserID': x.coserID || null, '女僕名字': x.maidName, '日期': x.day, '班別': x.period, '狀態': x.status, '確認時間': t(x.confirmedAt), '報到時間': t(x.checkInAt),
+      '下班時間': t(x.checkOutAt), '請假時間': t(x.leaveAt), '請假原因': x.leaveReason || null, '補班對象': x.substituteFor || null, '排班原因': x.reason || null, '排班帳號': x.createdBy, '更新帳號': x.updatedBy || null })),
+    '信用分紀錄': sc.credits.map(e => ({ '事件ID': e.id, 'CoserID': e.coserID, '女僕ID': e.maidID || null, '時間': t(e.at), '事件': e.kind, '分數': e.points, '班次ID': e.shiftID || null, '說明': e.note || null, '登記帳號': e.by, '規則版本': e.ruleVersion || null }))
+  };
+}
+function scheduleFromNotion(T) {
+  const day = v => (v || '').slice(0, 10), lc = v => trimOrNull(v)?.toLowerCase() ?? null;
+  return {
+    availability: T('排班申請').filter(r => r['女僕ID'] && r['日期'] && PERIODS.includes(r['班別'])).map(r => ({ maidID: r['女僕ID'], coserID: lc(r['CoserID']), day: day(r['日期']), period: r['班別'], preferred: r['偏好'] === '優先希望', submittedAt: parseTime(r['提交時間']) ?? 0, submittedBy: r['提交帳號'] || '' })),
+    shifts: T('女僕班表').filter(r => r['班次ID'] && r['女僕ID'] && r['日期'] && PERIODS.includes(r['班別'])).map(r => ({ id: r['班次ID'], maidID: r['女僕ID'], coserID: lc(r['CoserID']), maidName: r['女僕名字'] || '', day: day(r['日期']), period: r['班別'],
+      status: SHIFT_STATUS.includes(r['狀態']) ? r['狀態'] : '已排班', confirmedAt: parseTime(r['確認時間']), checkInAt: parseTime(r['報到時間']), checkOutAt: parseTime(r['下班時間']), leaveAt: parseTime(r['請假時間']),
+      leaveReason: trimOrNull(r['請假原因']), substituteFor: trimOrNull(r['補班對象']), reason: trimOrNull(r['排班原因']), createdBy: r['排班帳號'] || '', updatedBy: trimOrNull(r['更新帳號']) })),
+    credits: T('信用分紀錄').filter(r => r['事件ID'] && r['CoserID'] && CREDIT_KINDS.includes(r['事件'])).map(r => ({ id: r['事件ID'], coserID: lc(r['CoserID']), maidID: trimOrNull(r['女僕ID']), at: parseTime(r['時間']) ?? 0, kind: r['事件'], points: r['分數'] ?? 0,
+      shiftID: trimOrNull(r['班次ID']), note: trimOrNull(r['說明']), by: r['登記帳號'] || '', ruleVersion: trimOrNull(r['規則版本']) }))
+  };
 }
 function toNotion() {
   const out = {};
@@ -3246,6 +3286,7 @@ function resetData(dataset) {
   S.venues = venueRows().map(fromNotion.venue);
   S.sales = salesFromSeed();
   S.seats = freshSeats();
+  S.schedule = demoSchedule();
   syncPeople();
 }
 
@@ -3745,7 +3786,9 @@ const U = {
   cashCoserID: null,
   // 寬螢幕：進記帳時左邊選單自動收起（2026-10-22）
   sideCollapsed: false,
-  login: { account: '', password: '', error: null }
+  login: { account: '', password: '', error: null },
+  // 女僕班表看哪個月（管理端）
+  schedMonth: null
 };
 const FB = { db: null, items: [] };
 const isCompany = () => U.user?.role === 'company';
@@ -3782,7 +3825,8 @@ function seatClock(ms) {
 }
 const SHOP_KINDS = [['performance', '表演'], ['polaroid', '拍立得'], ['deluxePhotoSet', '豪華照片組']];
 const SHOP_TEST_PRICE = { performance: 300, polaroid: 200, deluxePhotoSet: 800 };
-const SHOP_MAIDS = [{ id: 'yuki', name: '小雪（測試）', colorHex: '79B0DC' }, { id: 'aoi', name: '小葵（測試）', colorHex: 'F3A23F' }, { id: 'suzu', name: '小鈴（測試）', colorHex: 'B4A7E6' }];
+// 2026-11-06：女僕連到 Coser 帳號才能排班。測試版：小雪＝小桃（momo，可以登入試排班），小葵、小鈴連到沒有登入帳號的測試 Coser
+const SHOP_MAIDS = [{ id: 'yuki', name: '小雪（測試）', colorHex: '79B0DC', coserID: 'momo' }, { id: 'aoi', name: '小葵（測試）', colorHex: 'F3A23F', coserID: 'aoi-test' }, { id: 'suzu', name: '小鈴（測試）', colorHex: 'B4A7E6', coserID: 'suzu-test' }];
 const shopTestItems = () => SHOP_MAIDS.flatMap(m => SHOP_KINDS.map(([k, label]) => ({ id: `${m.id}-${k}`, maidID: m.id, kind: k, name: label, price: SHOP_TEST_PRICE[k], active: true })));
 const freshSeats = () => ({ sessions: {}, history: [], cashBoxes: {}, maids: SHOP_MAIDS.map(m => ({ ...m, active: true })), items: shopTestItems(), serial: 0 });
 /** 加購畫面的女僕資料夾：照女僕順序，品項照「表演、拍立得、豪華照片組」；停售的不列，沒有品項的女僕不列 */
@@ -3896,6 +3940,14 @@ function maidAdd(name, colorHex, prices, user) {
   for (const [kind, label] of SHOP_KINDS) b.items.push({ id: `${m.id}-${kind}`, maidID: m.id, kind, name: label, price: prices[kind], active: true });
   return m;
 }
+/** 女僕對應的 Coser 帳號（排班用；空白＝不連）。一個 Coser 帳號只能對一位女僕 */
+function maidLinkCoser(id, coserID, user) {
+  checkMaidManager(user);
+  const b = seatBoard(), m = b.maids.find(x => x.id === id); if (!m) fail('找不到這位女僕。');
+  const v = (coserID || '').trim().toLowerCase() || null;
+  if (v && b.maids.some(x => x.id !== id && x.coserID === v)) fail('這個 Coser 帳號已經連到另一位女僕。');
+  m.coserID = v; return m;
+}
 function maidUpdate(id, name, colorHex, prices, active, user) {
   checkMaidManager(user);
   const b = seatBoard(), m = b.maids.find(x => x.id === id); if (!m) fail('找不到這位女僕。');
@@ -3917,6 +3969,156 @@ function seatCheckout(id, payment, user, debtor = '', now = nowMs()) {
   seatBoard().history.push(rec); delete seatBoard().sessions[id];
   return rec;
 }
+// ===== 女僕店排班、信用分（照 MaidSchedule.swift，2026-11-06 第一階段） =====
+// 營業時間 13:00–20:00：早班 13:00–16:30、晚班 16:30–20:00；每班最多 4 人。有女僕排班的日子是營業日，沒有的是公休日。
+// 有簽約當女僕的 Coser 帳號（女僕名冊有連到、在店裡）才能排班。店鋪管理、女僕管理兩個帳號都能處理班表。
+// 業績只算拍立得、豪華照片組；每工時業績＝業績 ÷ 實際工時（報到到下班）。超過 4 人想排：業績 60%＋信用分 40%（暫行）。
+// 信用分：初始 100；班前 24 小時內請假 −5、4 小時內 −10、未到 −20（開班 30 分鐘沒報到，管理端按「未到」才扣）。
+const PERIODS = ['早班', '晚班'];
+const PERIOD_MIN = { '早班': [13 * 60, 16 * 60 + 30], '晚班': [16 * 60 + 30, 20 * 60] };
+const periodTime = p => { const [a, b] = PERIOD_MIN[p], t = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; return `${t(a)}–${t(b)}`; };
+const periodHours = p => (PERIOD_MIN[p][1] - PERIOD_MIN[p][0]) / 60;
+const periodAt = mins => PERIODS.find(p => mins >= PERIOD_MIN[p][0] && mins < PERIOD_MIN[p][1]) || null;
+const SHIFT_STATUS = ['草稿', '已排班', '已確認出勤', '已報到', '已下班', '請假', '未到', '已取消'];
+const SHIFT_ACTIVE = ['草稿', '已排班', '已確認出勤', '已報到', '已下班'];
+const CREDIT_KINDS = ['臨時請假（24 小時內）', '臨時請假（4 小時內）', '未到', '預約放鳥', '更正'];
+const SCHED = { version: '2026-11-06 v1（暫行：業績 60%＋信用 40%）', max: 4, credit: 100, leave24: -5, leave4: -10, noShow: -20, wPerf: 0.6, wCredit: 0.4, lookback: 90, k: 7, early: 30 * SEAT_MIN, noShowAfter: 30 * SEAT_MIN, deadlineDay: 25, perfKinds: ['polaroid', 'deluxePhotoSet'] };
+const schedule = () => (S.schedule ||= { availability: [], shifts: [], credits: [] });
+const availID = a => `${a.maidID}|${a.day}|${a.period}`;
+const shiftStart = (day, p) => { const d = dayDate(day); d.setMinutes(PERIOD_MIN[p][0]); return d.getTime(); };
+const shiftEnd = (day, p) => { const d = dayDate(day); d.setMinutes(PERIOD_MIN[p][1]); return d.getTime(); };
+const monthDays = mk => { const [y, m] = mk.split('-').map(Number); return Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => `${mk}-${pad(i + 1)}`); };
+/** 這個月的可上班時段幾點截止：上個月 25 日 23:59:59 */
+const schedDeadline = mk => { const [y, m] = mk.split('-').map(Number); return new Date(y, m - 2, SCHED.deadlineDay, 23, 59, 59).getTime(); };
+/** 現在可以填哪個月：還沒過截止的最近一個月 */
+const fillMonth = (now = nowMs()) => { let mk = shiftMonth(dayKey(new Date(now)).slice(0, 7), 1); if (now > schedDeadline(mk)) mk = shiftMonth(mk, 1); return mk; };
+const isScheduleManager = u => u?.role === 'maidManager' || u?.role === 'shopManager';
+/** 這個 Coser 帳號對到的女僕（女僕名冊有連到、在店裡）；null＝不能用排班 */
+const maidOf = u => u?.role === 'coser' && u.coserID ? seatBoard().maids.find(m => m.active !== false && m.coserID === u.coserID.toLowerCase()) || null : null;
+const shiftByID = id => schedule().shifts.find(x => x.id === id) || null;
+const slotMembers = (day, p, drafts = true) => schedule().shifts.filter(x => x.day === day && x.period === p && SHIFT_ACTIVE.includes(x.status) && (drafts || x.status !== '草稿')).sort((a, b) => cmp(a.maidName, b.maidName));
+const openSeats = (day, p) => Math.max(0, SCHED.max - slotMembers(day, p).length);
+const isBusinessDay = day => schedule().shifts.some(x => x.day === day && SHIFT_ACTIVE.includes(x.status) && x.status !== '草稿');
+const myShifts = maidID => schedule().shifts.filter(x => x.maidID === maidID && x.status !== '草稿').sort((a, b) => cmp(a.day + a.period, b.day + b.period) || (PERIODS.indexOf(a.period) - PERIODS.indexOf(b.period)));
+const availOn = (day, p) => schedule().availability.filter(a => a.day === day && a.period === p);
+const creditEvents = cid => schedule().credits.filter(e => e.coserID === cid).sort((a, b) => b.at - a.at);
+const creditScore = cid => cid ? Math.min(100, Math.max(0, SCHED.credit + schedule().credits.filter(e => e.coserID === cid).reduce((n, e) => n + e.points, 0))) : SCHED.credit;
+const workedHours = (x, now = nowMs()) => { if (!x.checkInAt) return 0; const from = Math.max(x.checkInAt, shiftStart(x.day, x.period)); const to = x.checkOutAt ?? Math.min(now, shiftEnd(x.day, x.period)); return Math.max(0, (to - from) / 3600000); };
+/** 最近 90 天的業績（拍立得、豪華照片組）和實際工時 */
+function maidPerformance(maidID, now = nowMs()) {
+  const since = now - SCHED.lookback * 864e5;
+  const amount = seatBoard().history.filter(r => r.closedAt >= since && r.closedAt <= now).flatMap(r => r.addOns).filter(a => a.maidID === maidID && SCHED.perfKinds.includes(a.kind)).reduce((n, a) => n + a.unitPrice * a.quantity, 0);
+  const hours = schedule().shifts.filter(x => x.maidID === maidID && (x.status === '已報到' || x.status === '已下班') && shiftStart(x.day, x.period) >= since && shiftStart(x.day, x.period) <= now).reduce((n, x) => n + workedHours(x, now), 0);
+  return { amount, hours, rate: hours > 0 ? amount / hours : null };
+}
+const groupRate = (maids, now) => { const all = maids.map(m => maidPerformance(m.id, now)); const h = all.reduce((n, p) => n + p.hours, 0); return h > 0 ? all.reduce((n, p) => n + p.amount, 0) / h : 0; };
+const smoothedRate = (maidID, group, now) => { const p = maidPerformance(maidID, now); return (p.amount + SCHED.k * group) / (p.hours + SCHED.k); };
+/** 時段熱度：最近 90 天同星期、同班別的店內每小時業績 */
+function slotHeat(day, p, now = nowMs()) {
+  const since = now - SCHED.lookback * 864e5, wd = dayDate(day).getDay();
+  return seatBoard().history.filter(r => { const d = new Date(r.startedAt); return r.closedAt >= since && r.closedAt <= now && d.getDay() === wd && periodAt(d.getHours() * 60 + d.getMinutes()) === p; }).reduce((n, r) => n + r.total, 0) / periodHours(p);
+}
+/** 這一班的候選人：有填可以、在店裡、連到 Coser 帳號、還沒在這一班；照優先分數排 */
+function slotCandidates(day, p, now = nowMs()) {
+  const maids = seatBoard().maids, on = new Set(slotMembers(day, p).map(x => x.maidID)), mk = day.slice(0, 7);
+  const group = groupRate(maids, now), rates = Object.fromEntries(maids.map(m => [m.id, smoothedRate(m.id, group, now)])), maxRate = Math.max(0, ...Object.values(rates));
+  return availOn(day, p).flatMap(a => {
+    const m = maids.find(x => x.id === a.maidID && x.active !== false && x.coserID); if (!m || on.has(m.id)) return [];
+    const rate = rates[m.id] || 0, perf = maxRate > 0 ? rate / maxRate : 0, credit = creditScore(m.coserID);
+    const score = SCHED.wPerf * perf + SCHED.wCredit * credit / 100;
+    const assigned = schedule().shifts.filter(x => x.maidID === m.id && x.day.startsWith(mk + '-') && SHIFT_ACTIVE.includes(x.status)).length;
+    return [{ maid: m, preferred: a.preferred, score, perf, rate, credit, assigned, reason: `優先分數 ${score.toFixed(2)}（業績 每小時 NT$${Math.round(rate)} → ${perf.toFixed(2)}、信用 ${credit}）・${SCHED.version}` }];
+  }).sort((a, b) => (Math.abs(a.score - b.score) > 1e-9 ? b.score - a.score : 0) || a.assigned - b.assigned || (b.preferred - a.preferred) || cmp(a.maid.id, b.maid.id));
+}
+const newShiftID = (day, p, maidID) => { const base = `SH-${day}-${p === '早班' ? 'E' : 'L'}-${maidID}`; if (!shiftByID(base)) return base; let n = 2; while (shiftByID(`${base}-${n}`)) n++; return `${base}-${n}`; };
+const checkSchedManager = u => { if (!isScheduleManager(u)) fail('只有店鋪管理、女僕管理帳號可以處理班表。'); };
+function ownShift(id, user, allowManager) {
+  const x = shiftByID(id); if (!x) fail('找不到這個班次。');
+  if (allowManager && isScheduleManager(user)) return x;
+  const m = maidOf(user); if (!m) fail('只有有簽約當女僕的 Coser 帳號可以用女僕店排班。');
+  if (x.maidID !== m.id) fail('這不是你的班。');
+  return x;
+}
+/** 填可以上班的時段（整個月一次送出，取代之前送的） */
+function submitAvailability(mk, entries, user, now = nowMs()) {
+  const m = maidOf(user); if (!m) fail('只有有簽約當女僕的 Coser 帳號可以用女僕店排班。');
+  if (now > schedDeadline(mk)) fail(`${mk} 的可上班時段已經截止，要改請聯絡管理端。`);
+  const days = new Set(monthDays(mk)); if (!entries.every(e => days.has(e.day) && PERIODS.includes(e.period))) fail('日期不在這個月。');
+  const sc = schedule(); sc.availability = sc.availability.filter(a => !(a.maidID === m.id && a.day.startsWith(mk + '-')));
+  const seen = new Set();
+  for (const e of [...entries].sort((a, b) => cmp(a.day, b.day) || PERIODS.indexOf(a.period) - PERIODS.indexOf(b.period))) {
+    if (seen.has(e.day + e.period)) continue; seen.add(e.day + e.period);
+    sc.availability.push({ maidID: m.id, coserID: m.coserID, day: e.day, period: e.period, preferred: !!e.preferred, submittedAt: now, submittedBy: user.id });
+  }
+}
+function shiftConfirm(id, user, now = nowMs()) { const x = ownShift(id, user); if (x.status !== '已排班') fail(`這個班次目前是「${x.status}」，不能這樣操作。`); if (now >= shiftEnd(x.day, x.period)) fail('這一班已經結束了。'); Object.assign(x, { status: '已確認出勤', confirmedAt: now, updatedBy: user.id }); return x; }
+function shiftCheckIn(id, user, now = nowMs()) {
+  const x = ownShift(id, user, true); if (!['已排班', '已確認出勤'].includes(x.status)) fail(`這個班次目前是「${x.status}」，不能這樣操作。`);
+  if (now < shiftStart(x.day, x.period) - SCHED.early) fail('開班前 30 分鐘才能報到。'); if (now >= shiftEnd(x.day, x.period)) fail('這一班已經結束了。');
+  return Object.assign(x, { status: '已報到', checkInAt: now, updatedBy: user.id });
+}
+function shiftCheckOut(id, user, now = nowMs()) { const x = ownShift(id, user, true); if (x.status !== '已報到') fail(`這個班次目前是「${x.status}」，不能這樣操作。`); return Object.assign(x, { status: '已下班', checkOutAt: Math.max(now, x.checkInAt ?? now), updatedBy: user.id }); }
+/** 這時候請假會扣幾分：距開班 4 小時內 −10、24 小時內 −5（剛好等於也算）；不扣是 null */
+const leavePenalty = (x, now = nowMs()) => { const left = shiftStart(x.day, x.period) - now; return left <= 4 * 3600000 ? ['臨時請假（4 小時內）', SCHED.leave4] : left <= 24 * 3600000 ? ['臨時請假（24 小時內）', SCHED.leave24] : null; };
+function addCredit(e) { const sc = schedule(); if (sc.credits.some(c => c.id === e.id)) return null; sc.credits.push({ ruleVersion: SCHED.version, ...e }); return e; }
+function shiftLeave(id, reason, user, now = nowMs()) {
+  const x = ownShift(id, user); if (!['已排班', '已確認出勤'].includes(x.status)) fail(`這個班次目前是「${x.status}」，不能這樣操作。`);
+  const text = (reason || '').trim(); if (!text) fail('請填原因。'); if (now >= shiftStart(x.day, x.period)) fail('已經開班了，不能請假，請直接聯絡管理端。');
+  const pen = leavePenalty(x, now);
+  Object.assign(x, { status: '請假', leaveAt: now, leaveReason: text, updatedBy: user.id });
+  return pen && x.coserID ? addCredit({ id: `CR-${x.id}-leave`, coserID: x.coserID, maidID: x.maidID, at: now, kind: pen[0], points: pen[1], shiftID: x.id, note: text, by: user.id }) : null;
+}
+/** 產生這個月的班表草稿：熱門時段先排，每班最多 4 人；已公布的不動，原本的草稿重排 */
+function generateSchedule(mk, user, now = nowMs()) {
+  checkSchedManager(user); const sc = schedule();
+  sc.shifts = sc.shifts.filter(x => !(x.status === '草稿' && x.day.startsWith(mk + '-')));
+  const slots = [...new Set(sc.availability.filter(a => a.day.startsWith(mk + '-')).map(a => `${a.day}|${a.period}`))].map(k => { const [day, p] = k.split('|'); return { day, p, heat: slotHeat(day, p, now) }; })
+    .sort((a, b) => b.heat - a.heat || cmp(a.day, b.day) || PERIODS.indexOf(a.p) - PERIODS.indexOf(b.p));
+  let n = 0;
+  for (const sl of slots) for (const c of slotCandidates(sl.day, sl.p, now).slice(0, openSeats(sl.day, sl.p))) {
+    sc.shifts.push({ id: newShiftID(sl.day, sl.p, c.maid.id), maidID: c.maid.id, coserID: c.maid.coserID, maidName: c.maid.name, day: sl.day, period: sl.p, status: '草稿', reason: c.reason, createdBy: user.id }); n++;
+  }
+  return n;
+}
+function publishSchedule(mk, user) { checkSchedManager(user); const list = schedule().shifts.filter(x => x.status === '草稿' && x.day.startsWith(mk + '-')); if (!list.length) fail('這個月沒有草稿可以公布。'); list.forEach(x => Object.assign(x, { status: '已排班', updatedBy: user.id })); return list.length; }
+function assignShift(day, p, maidID, replacing, user, now = nowMs()) {
+  checkSchedManager(user); const m = seatBoard().maids.find(x => x.id === maidID && x.active !== false); if (!m) fail('找不到這位女僕。');
+  if (!m.coserID) fail('這位女僕還沒連到 Coser 帳號，請先在女僕名冊填 Coser 帳號。'); if (now >= shiftEnd(day, p)) fail('這一班已經結束了。');
+  if (slotMembers(day, p).some(x => x.maidID === m.id)) fail('她已經在這一班了。'); if (!openSeats(day, p)) fail(`這一班已經 ${SCHED.max} 個人了。`);
+  const x = { id: newShiftID(day, p, m.id), maidID: m.id, coserID: m.coserID, maidName: m.name, day, period: p, status: '已排班', substituteFor: replacing || null, reason: replacing ? `補班（${replacing}）` : '管理端加排', createdBy: user.id };
+  schedule().shifts.push(x); return x;
+}
+function cancelShift(id, user) { checkSchedManager(user); const x = shiftByID(id); if (!x) fail('找不到這個班次。'); if (!['草稿', '已排班', '已確認出勤'].includes(x.status)) fail(`這個班次目前是「${x.status}」，不能這樣操作。`); return Object.assign(x, { status: '已取消', updatedBy: user.id }); }
+function markNoShow(id, user, now = nowMs()) {
+  checkSchedManager(user); const x = shiftByID(id); if (!x) fail('找不到這個班次。');
+  if (!['已排班', '已確認出勤'].includes(x.status)) fail(`這個班次目前是「${x.status}」，不能這樣操作。`);
+  if (now < shiftStart(x.day, x.period) + SCHED.noShowAfter) fail('開班 30 分鐘後還沒報到，才能標記未到。');
+  Object.assign(x, { status: '未到', updatedBy: user.id });
+  return x.coserID ? addCredit({ id: `CR-${x.id}-noshow`, coserID: x.coserID, maidID: x.maidID, at: now, kind: '未到', points: SCHED.noShow, shiftID: x.id, note: '開班 30 分鐘未報到，管理端確認', by: user.id }) : null;
+}
+function adjustCredit(cid, maidID, kind, points, note, user, now = nowMs()) {
+  checkSchedManager(user); if (!Number.isInteger(points) || !points || Math.abs(points) > 100) fail('分數要是 −100 到 100 之間、不是 0 的整數。');
+  const text = (note || '').trim(); if (!text) fail('請填原因。');
+  return addCredit({ id: `CR-${nowMs().toString(36).toUpperCase()}${rid()}`, coserID: cid, maidID, at: now, kind, points, shiftID: null, note: text, by: user.id });
+}
+/** 請假、未到之後還缺人的班（已經補到就不算） */
+const vacancies = from => schedule().shifts.filter(x => (x.status === '請假' || x.status === '未到') && x.day >= from && !schedule().shifts.some(y => y.substituteFor === x.id && SHIFT_ACTIVE.includes(y.status)) && openSeats(x.day, x.period) > 0)
+  .sort((a, b) => cmp(a.day, b.day) || PERIODS.indexOf(a.period) - PERIODS.indexOf(b.period));
+/** 測試資料：小雪（小桃）、小葵、小鈴；這個月有幾個已公布的班，下個月每人填了一些時段；小鈴之前臨時請假扣過 5 分 */
+function demoSchedule() {
+  const t = today(), mk = fillMonth(), sc = { availability: [], shifts: [], credits: [] };
+  const plan = { yuki: [[2, '早班'], [5, '晚班']], aoi: [[2, '早班'], [3, '晚班']], suzu: [[2, '早班'], [5, '晚班']] };
+  for (const m of SHOP_MAIDS) for (const [d, p] of plan[m.id] || []) {
+    const day = addDays(t, d); sc.shifts.push({ id: `SH-${day}-${p === '早班' ? 'E' : 'L'}-${m.id}`, maidID: m.id, coserID: m.coserID, maidName: m.name, day, period: p, status: '已排班', reason: '測試資料', createdBy: 'maid' });
+  }
+  const pick = { yuki: [6, 0], aoi: [6, 0, 3], suzu: [5, 6] };
+  for (const m of SHOP_MAIDS) for (const day of monthDays(mk)) {
+    const wd = dayDate(day).getDay(); if (!pick[m.id].includes(wd)) continue;
+    for (const p of PERIODS) sc.availability.push({ maidID: m.id, coserID: m.coserID, day, period: p, preferred: m.id === 'yuki' && wd === 6, submittedAt: nowMs(), submittedBy: m.coserID });
+  }
+  sc.credits.push({ id: 'CR-demo-suzu', coserID: 'suzu-test', maidID: 'suzu', at: nowMs() - 7 * 864e5, kind: '臨時請假（24 小時內）', points: -5, shiftID: null, note: '測試資料', by: 'suzu-test', ruleVersion: SCHED.version });
+  return sc;
+}
 const role = () => U.user?.role ?? 'coser';
 const selDay = () => U.pickedDay ?? today();
 const isToday = () => selDay() === today();
@@ -3930,31 +4132,32 @@ const qtyInCart = id => U.cart.find(i => i.productID === id)?.quantity ?? 0;
 function sectionsFor() {
   switch (role()) {
     case 'company': return ['home', 'reconcile', 'costumes', 'records', 'cosers', 'more'];
-    case 'maidManager': return ['home', 'reconcile', 'maids', 'more'];
-    case 'shopManager': return ['seats', 'more'];
+    case 'maidManager': return ['home', 'reconcile', 'schedule', 'maids', 'more'];
+    case 'shopManager': return ['seats', 'schedule', 'more'];
     default: return ['home', 'checkout', 'inventory', 'bookings', 'mySales', ...(memberCardOn() ? ['members'] : []), 'more'];
   }
 }
 function tabsFor() {
   switch (role()) {
     case 'company': return ['home', 'reconcile', 'costumes', 'records', 'more'];
-    case 'maidManager': return ['home', 'reconcile', 'maids', 'more'];
-    case 'shopManager': return ['seats', 'more'];
+    case 'maidManager': return ['home', 'reconcile', 'schedule', 'maids', 'more'];
+    case 'shopManager': return ['seats', 'schedule', 'more'];
     default: return ['home', 'checkout', 'inventory', 'bookings', 'more'];
   }
 }
 const moreSectionsFor = () => sectionsFor().filter(s => !tabsFor().includes(s) && s !== 'more');
-const SEC_ICON = { maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
-const SEC_GROUP = { maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
+const SEC_ICON = { schedule: 'calendar', maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
+const SEC_GROUP = { schedule: '女僕', maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
 function secTitle(s) {
   const c = role() === 'coser';
   if (role() === 'maidManager' && s === 'home') return '營業額';
   if (s === 'maids') return '女僕名冊';
+  if (s === 'schedule') return '女僕班表';
   return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', cosers: 'Coser 名冊', seats: '座位圖', more: '更多' }[s];
 }
 function secShort(s) {
   const c = role() === 'coser';
-  return { maids: '名冊', seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
+  return { schedule: '班表', maids: '名冊', seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
 }
 
 // ================= 小元件 =================
@@ -4186,6 +4389,7 @@ function sectionView(s) {
   switch (s) {
     case 'home': return isCompany() ? viewCompanyHome() : isCoserUser() ? viewCoserHome() : role() === 'maidManager' ? viewMaidHome() : viewStaffHome();
     case 'maids': return viewMaidRoster();
+    case 'schedule': return viewSchedule();
     case 'seats': return viewSeats();
     case 'checkout': return viewCheckout();
     case 'reconcile': return role() === 'maidManager' ? viewShopReconcile() : viewReconcile();
@@ -4497,6 +4701,7 @@ function viewBookings() {
   const past = [...finishedLoans(u).map(c => ({ c })), ...visibleBookings(u).filter(b => !vActive(b) || bookingEnded(b)).map(v => ({ v }))].sort((a, b) => cmp(sk(b), sk(a))).slice(0, 30);
   const row = it => it.c ? `<button style="width:100%"${act('pushLoan', it.c.id)}>${loanRow(it.c)}</button>` : `<button style="width:100%"${act('venueDetail', it.v.id)}>${venueRow(it.v)}</button>`;
   const html = [
+    maidScheduleCard(),
     `<div class="bigbtns"><button class="bigbtn" style="--b:var(--pink)"${act('openLend')}>${icon('shirt', 32, 2.2)}預約服裝</button><button class="bigbtn" style="--b:var(--blue)"${act('openVenue')}>${icon('aperture', 32, 2.2)}預約場地</button></div>`,
     card(stitle('接下來', up.length) + (up.length ? up.map(row).join(HR) : empty('calendar', '目前沒有預約'))),
     past.length ? card(`<button class="row" style="width:100%"${act('togglePast')}>${stitle('已結束', past.length, 'var(--ink-soft)')}<span class="soft">${icon(U.showPast ? 'chevron-up' : 'chevron-down', 18, 3)}</span></button>` + (U.showPast ? past.map(row).join(HR) : '')) : ''
@@ -4599,8 +4804,8 @@ const scRow = r => `<div class="row" id="seat-record-${esc(r.id)}" style="align-
 function viewMaidHome() {
   const day = selDay(), s = shopSummary(day), out = shopOutstanding();
   let html = dayPicker('營業日期', false);
-  html += card(`<span class="sub heavy soft">${isToday() ? '今天營業額' : '當天營業額'}</span><b class="num" id="maid-home-total" style="font-size:40px;font-weight:900;color:var(--pink-deep)">${money(s.total)}</b><span class="sub bold soft">座位結帳 ${s.list.length} 筆・加購 ${s.items} 件</span><span class="cap bold soft" id="maid-home-split">座位費 ${money(s.seatFees)}・加購 ${money(s.addOnTotal)}</span>${HR}${info('已收（現金、轉帳、LINE Pay）', money(s.paid))}${info('記成應收（賒帳）', money(s.receivable), s.receivable ? 'var(--orange-deep)' : '')}<div class="cap soft row g8">${icon('info', 14)}營業額是座位加購的合計（不收座位費）。</div>`);
-  html += card(stitle(isToday() ? '各女僕今天業績' : '各女僕當天業績', s.maids.length) + (s.maids.length ? joinRows(s.maids, r => `<div class="row" id="maid-row-${esc(r.maidID)}" style="min-height:52px"><i class="dot" style="background:#${r.colorHex}"></i><div class="grow stack" style="gap:2px"><b>${esc(r.name)}</b><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${r.q[k] || 0}`).join('・')}</span></div><b class="num">${money(r.amount)}</b></div>`) : empty('user-round', '這天還沒有加購')));
+  html += card(`<span class="sub heavy soft">${isToday() ? '今天營業額' : '當天營業額'}</span><b class="num" id="maid-home-total" style="font-size:40px;font-weight:900;color:var(--pink-deep)">${money(s.total)}</b><span class="sub bold soft">座位結帳 ${s.list.length} 筆・加購 ${s.items} 件</span><span class="cap bold soft" id="maid-home-split">座位費 ${money(s.seatFees)}・加購 ${money(s.addOnTotal)}</span>${HR}${info('已收（現金、轉帳、LINE Pay）', money(s.paid))}${info('記成應收（賒帳）', money(s.receivable), s.receivable ? 'var(--orange-deep)' : '')}<div class="cap soft row g8">${icon('info', 14)}營業額＝座位費＋加購。</div>`);
+  html += card(stitle(isToday() ? '各女僕今天業績' : '各女僕當天業績', s.maids.length) + (s.maids.length ? joinRows(s.maids, r => `<div class="row" id="maid-row-${esc(r.maidID)}" style="min-height:52px"><i class="dot" style="background:#${r.colorHex}"></i><div class="grow stack" style="gap:2px"><span class="row g8"><b>${esc(r.name)}</b>${creditPill(maidCoserOf(r.maidID))}</span><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${r.q[k] || 0}`).join('・')}</span></div><b class="num">${money(r.amount)}</b></div>`) : empty('user-round', '這天還沒有加購')));
   if (s.payments.length) html += card(stitle('收款方式') + s.payments.map(x => `<div class="row" style="min-height:40px"><span style="color:${PAY[x.payment].fg};display:flex">${icon(PAY[x.payment].icon, 18)}</span><b class="sub">${x.payment === 'credit' ? '賒帳（記應收）' : PAY[x.payment].label}</b><span class="cap soft">${x.count} 筆</span><span class="grow"></span><b class="num">${money(x.amount)}</b></div>`).join(''));
   html += card(stitle('待處理') + (out.length ? `<button class="row" id="maid-home-outstanding" style="width:100%;min-height:44px;color:var(--orange-deep)"${act('jump', 'reconcile')}>${icon('file-text', 18)}<b class="grow" style="text-align:left">待收款項 ${out.length} 筆（${money(out.reduce((n, r) => n + r.total, 0))}）</b>${icon('chevron-right', 18, 3)}</button>` : empty('circle-check', '沒有待收款項')));
   html += card(stitle('最近座位結帳', s.list.length) + (s.list.length ? s.list.slice(0, 5).map(scRow).join(HR) + (s.list.length > 5 ? link('看全部（收銀對帳）', 'jump', 'reconcile') : '') : empty('armchair', '這天還沒有座位結帳')));
@@ -4623,9 +4828,114 @@ function viewShopReconcile() {
 function viewMaidRoster() {
   const maids = seatBoard().maids;
   let html = btn('新增女僕', 'openMaidForm', '', { ic: 'plus', cls: 'add-maid' });
-  html += card(joinRows(maids, m => { const pr = maidPrices(m.id); return `<button class="row" id="maid-${esc(m.id)}" style="width:100%;min-height:60px;opacity:${m.active === false ? .6 : 1}"${act('openMaidForm', m.id)}><span class="swatch" style="background:#${m.colorHex}"></span><div class="grow stack" style="gap:3px;text-align:left"><span class="row g8"><b>${esc(m.name)}</b>${m.active === false ? '<span class="pill-off">停用</span>' : ''}</span><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${money(pr[k] ?? 0)}`).join('・')}</span></div>${icon('chevron-right', 18, 3)}</button>`; }), 'p12');
+  html += card(joinRows(maids, m => { const pr = maidPrices(m.id); return `<button class="row" id="maid-${esc(m.id)}" style="width:100%;min-height:60px;opacity:${m.active === false ? .6 : 1}"${act('openMaidForm', m.id)}><span class="swatch" style="background:#${m.colorHex}"></span><div class="grow stack" style="gap:3px;text-align:left"><span class="row g8"><b>${esc(m.name)}</b>${m.active === false ? '<span class="pill-off">停用</span>' : ''}${creditPill(m.coserID)}</span><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${money(pr[k] ?? 0)}`).join('・')}</span><span class="cap soft">${m.coserID ? `Coser 帳號：${esc(m.coserID)}` : '還沒連 Coser 帳號（不能排班）'}</span></div>${icon('chevron-right', 18, 3)}</button>`; }), 'p12');
   html += `<div class="cap soft row g8">${icon('info', 14)}停用的女僕不會出現在座位加購裡；改價格只影響之後的加購。</div>`;
   return { title: '女僕名冊', cls: 'narrowcol', html: html + testNotice() };
+}
+
+// ================= 女僕店排班、信用分（2026-11-06） =================
+const maidCoserOf = maidID => seatBoard().maids.find(m => m.id === maidID)?.coserID || null;
+const creditPill = cid => { if (!cid) return ''; const c = creditScore(cid); return `<span class="pill credit-pill" style="background:${c >= 90 ? 'var(--green-pale)' : c >= 70 ? 'var(--orange-pale)' : 'var(--danger-pale, #FDE4E4)'};color:${c >= 90 ? 'var(--green-deep)' : c >= 70 ? 'var(--orange-deep)' : 'var(--danger, #C62828)'}">信用 ${c}</span>`; };
+const SHIFT_TONE = { '草稿': ['var(--gray-pale)', 'var(--ink-soft)'], '已排班': ['var(--blue-pale, #E3EEFB)', 'var(--blue-deep, #2F6DB5)'], '已確認出勤': ['var(--green-pale)', 'var(--green-deep)'], '已報到': ['var(--green-pale)', 'var(--green-deep)'], '已下班': ['var(--gray-pale)', 'var(--ink)'], '請假': ['var(--orange-pale)', 'var(--orange-deep)'], '未到': ['var(--danger-pale, #FDE4E4)', 'var(--danger, #C62828)'], '已取消': ['var(--gray-pale)', 'var(--ink-soft)'] };
+const statusPill = st => `<span class="pill" style="background:${SHIFT_TONE[st][0]};color:${SHIFT_TONE[st][1]}">${esc(st)}</span>`;
+const shiftLabel = x => `${dayText(x.day)} ${x.period} ${periodTime(x.period)}`;
+const monthLabel = mk => { const [y, m] = mk.split('-').map(Number); return `${y}年${m}月`; };
+const deadlineText = mk => { const d = new Date(schedDeadline(mk)); return `${d.getMonth() + 1}/${d.getDate()} 23:59`; };
+
+/** Coser（有簽約的女僕）預約頁上的「女僕店排班」 */
+function maidScheduleCard() {
+  const m = maidOf(U.user); if (!m) return '';
+  const now = nowMs(), t = today(), mk = fillMonth(now), filled = schedule().availability.filter(a => a.maidID === m.id && a.day.startsWith(mk + '-')).length;
+  const mine = myShifts(m.id), next = mine.filter(x => x.day >= t && ['已排班', '已確認出勤', '已報到', '請假'].includes(x.status)).slice(0, 8);
+  const actions = x => {
+    const st = shiftStart(x.day, x.period), en = shiftEnd(x.day, x.period), b = [];
+    if (x.status === '已排班' && now < en) b.push(`<button class="cbtn green" id="shift-confirm-${esc(x.id)}"${act('shiftConfirmNow', x.id)}>確認出勤</button>`);
+    if (['已排班', '已確認出勤'].includes(x.status) && now >= st - SCHED.early && now < en) b.push(`<button class="cbtn" id="shift-checkin-${esc(x.id)}"${act('shiftCheckInNow', x.id)}>報到</button>`);
+    if (x.status === '已報到') b.push(`<button class="cbtn" id="shift-checkout-${esc(x.id)}"${act('shiftCheckOutNow', x.id)}>下班</button>`);
+    if (['已排班', '已確認出勤'].includes(x.status) && now < st) b.push(`<button class="cbtn ghost" id="shift-leave-${esc(x.id)}"${act('openLeave', x.id)}>請假</button>`);
+    return b.length ? `<div class="row g8 wrap" style="justify-content:flex-end">${b.join('')}</div>` : '';
+  };
+  const mates = x => slotMembers(x.day, x.period, false).filter(y => y.maidID !== m.id).map(y => y.maidName);
+  const rows = next.map(x => `<div class="stack g8" id="my-shift-${esc(x.id)}"><div class="row" style="align-items:flex-start"><div class="grow stack" style="gap:2px"><b>${esc(dayText(x.day))}</b><span class="cap soft">${x.period} ${periodTime(x.period)}${mates(x).length ? `・同班：${esc(mates(x).join('、'))}` : ''}</span>${x.status === '請假' ? `<span class="cap" style="color:var(--orange-deep)">請假：${esc(x.leaveReason || '')}</span>` : ''}</div>${statusPill(x.status)}</div>${actions(x)}</div>`).join(HR);
+  const credit = creditScore(m.coserID), ev = creditEvents(m.coserID).slice(0, 3);
+  return card(`<div class="row"><span class="grow">${stitle('女僕店排班')}</span>${creditPill(m.coserID)}</div>`
+    + `<button class="row" id="open-avail" style="width:100%;padding:12px;border-radius:12px;background:var(--pink-pale);min-height:56px"${act('openAvail')}><span style="color:var(--pink-deep);display:flex">${icon('calendar', 22)}</span><span class="grow stack" style="gap:2px;text-align:left"><b>填寫 ${monthLabel(mk)} 可以上班的時間</b><span class="cap soft">${deadlineText(mk)} 截止・${filled ? `已填 ${filled} 個時段` : '還沒填'}</span></span>${icon('chevron-right', 18, 3)}</button>`
+    + `<div class="cap soft">早班 ${periodTime('早班')}、晚班 ${periodTime('晚班')}。填了不代表排到班，管理端公布班表後才算數。</div>`
+    + stitle('我的班表', next.length) + (rows || empty('calendar', '還沒有排到班'))
+    + (ev.length ? `<div class="stack" style="gap:4px" id="my-credit"><b class="sub">信用分 ${credit}</b>${ev.map(e => `<div class="row cap"><span class="grow soft">${esc(dayKey(new Date(e.at)))}・${esc(e.kind)}${e.note ? `・${esc(e.note)}` : ''}</span><b style="color:${e.points < 0 ? 'var(--orange-deep)' : 'var(--green-deep)'}">${e.points > 0 ? '+' : ''}${e.points}</b></div>`).join('')}</div>` : ''), 'maid-sched-card');
+}
+
+function sheetAvail(sh) {
+  const days = monthDays(sh.month), t = today();
+  const mark = { 0: '', 1: '可以', 2: '優先' };
+  const weekBtn = (wd, p) => { const ds = days.filter(d => dayDate(d).getDay() === wd); const on = ds.length && ds.every(d => sh.sel[`${d}|${p}`]); return `<button class="av-wk${on ? ' on' : ''}" id="av-week-${wd}-${p === '早班' ? 'E' : 'L'}"${act('availWeek', wd, p)} aria-pressed="${on}">${WD_SHORT[wd]}</button>`; };
+  let body = `<div class="cap soft">${monthLabel(sh.month)}・${deadlineText(sh.month)} 截止。點一下＝可以上班，再點一下＝優先希望，再點一下取消。</div>`;
+  body += card(`<b class="sub">依星期一次勾選</b>` + PERIODS.map(p => `<div class="row g8"><b style="width:72px" class="sub">${p}</b><div class="av-wks">${[1, 2, 3, 4, 5, 6, 0].map(wd => weekBtn(wd, p)).join('')}</div></div>`).join(''), 'p12');
+  body += `<div class="av-list">${days.map(d => `<div class="av-day${dayDate(d).getDay() % 6 === 0 ? ' wkend' : ''}"><b class="sub" style="min-width:108px">${esc(dayText(d).replace(/^\d+月/, ''))}</b>${PERIODS.map(p => { const v = sh.sel[`${d}|${p}`] || 0; return `<button class="av-btn v${v}" id="av-${d}-${p === '早班' ? 'E' : 'L'}"${act('availToggle', d, p)} aria-label="${esc(`${dayText(d)} ${p} ${['不行', '可以上班', '優先希望'][v]}`)}"><span>${p}</span><small>${mark[v] || '—'}</small></button>`; }).join('')}</div>`).join('')}</div>`;
+  const n = Object.values(sh.sel).filter(Boolean).length;
+  const footer = `<div class="stack g8" style="width:100%"><div class="cap bold soft" id="avail-summary">已選 ${n} 個時段・${n * 3.5} 小時</div>${btn(`送出 ${monthLabel(sh.month)} 可以上班的時間`, 'availSubmit', null, { ic: 'check', cls: 'avail-submit' })}</div>`;
+  return sheetFrame({ title: '填寫可以上班的時間', left: tb('返回', 'closeSheet'), right: tb('清除', 'availClear'), body, footer });
+}
+
+function sheetLeave(sh) {
+  const x = shiftByID(sh.id); if (!x) return sheetFrame({ title: '請假', left: tb('返回', 'closeSheet'), body: empty('calendar', '找不到這個班'), cls: 'short' });
+  const pen = leavePenalty(x);
+  const body = card(`<b>${esc(shiftLabel(x))}</b>` + (pen ? `<div class="row g8" style="color:var(--orange-deep)" id="leave-penalty">${icon('triangle-alert', 16)}<b>距開班不到 ${pen[1] === SCHED.leave4 ? 4 : 24} 小時，請假會扣信用分 ${-pen[1]} 分</b></div>` : `<div class="cap soft" id="leave-penalty">距開班超過 24 小時，不扣信用分。</div>`))
+    + `<div class="field"><label for="f-sheet-reason">請假原因（必填）</label>${inp('sheet.reason', { ph: '例如 生病、家裡有事', area: true })}</div>`
+    + `<div class="cap soft">請假後管理端會找人補班。開班後就不能請假，請直接聯絡管理端。</div>` + btn('確定請假', 'leaveSubmit', null, { ic: 'check', cls: 'leave-submit' });
+  return sheetFrame({ title: '請假', left: tb('返回', 'closeSheet'), body, cls: 'short' });
+}
+
+/** 店鋪管理、女僕管理：女僕班表 */
+function viewSchedule() {
+  const mk = U.schedMonth || fillMonth(), sc = schedule(), t = today(), now = nowMs();
+  const inMonth = sc.shifts.filter(x => x.day.startsWith(mk + '-')), drafts = inMonth.filter(x => x.status === '草稿').length, pub = inMonth.filter(x => x.status !== '草稿' && SHIFT_ACTIVE.includes(x.status)).length;
+  const avail = sc.availability.filter(a => a.day.startsWith(mk + '-'));
+  let html = card(`<div class="row"><button class="icon-btn" id="sched-prev"${act('schedMonth', -1)} aria-label="上個月">${icon('chevron-left', 22, 3)}</button><b class="grow" style="text-align:center;font-size:18px" id="sched-month">${monthLabel(mk)}</b><button class="icon-btn" id="sched-next"${act('schedMonth', 1)} aria-label="下個月">${icon('chevron-right', 22, 3)}</button></div>`, 'p10');
+  html += card(`<div class="row g8 wrap"><span class="cap bold soft">可上班時段 ${avail.length}・${new Set(avail.map(a => a.maidID)).size} 人填</span><span class="cap bold soft">草稿 ${drafts}</span><span class="cap bold soft">已公布 ${pub}</span><span class="cap bold soft">截止 ${deadlineText(mk)}</span></div>`
+    + `<div class="row g8 wrap">${btn('產生班表草稿', 'askGenerate', null, { kind: 'secondary', ic: 'sparkles', cls: 'sched-generate', dis: !avail.length })}${drafts ? btn(`公布 ${drafts} 個班`, 'askPublish', null, { ic: 'check', cls: 'sched-publish' }) : ''}</div>`
+    + `<div class="cap soft">產生：熱門時段先排，每班最多 ${SCHED.max} 人；超過時照優先分數（業績 60%＋信用分 40%，暫行）。已公布的班不會動。公布後女僕才看得到。</div>`);
+  const vac = vacancies(t);
+  if (vac.length) html += card(stitle('要補班', vac.length, 'var(--orange-deep)') + vac.map(x => `<div class="row" id="vacancy-${esc(x.id)}"><div class="grow stack" style="gap:2px"><b class="sub">${esc(shiftLabel(x))}</b><span class="cap" style="color:var(--orange-deep)">${esc(x.maidName)} ${x.status}${x.leaveReason ? `：${esc(x.leaveReason)}` : ''}</span></div><button class="cbtn"${act('openSlot', `${x.day}|${x.period}`, x.id)}>找人補班</button></div>`).join(HR));
+  const days = monthDays(mk).filter(d => sc.shifts.some(x => x.day === d && x.status !== '已取消') || sc.availability.some(a => a.day === d));
+  html += days.length ? days.map(d => {
+    const biz = sc.shifts.some(x => x.day === d && SHIFT_ACTIVE.includes(x.status));
+    return card(`<div class="row"><b class="grow">${esc(dayText(d))}</b>${biz ? (isBusinessDay(d) ? '<span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">營業日</span>' : '<span class="pill-off">草稿</span>') : '<span class="pill-off">公休</span>'}</div>`
+      + PERIODS.map(p => { const mem = slotMembers(d, p), others = sc.shifts.filter(x => x.day === d && x.period === p && ['請假', '未到'].includes(x.status)), av = availOn(d, p).length;
+        return `<button class="slot-row" id="slot-${d}-${p === '早班' ? 'E' : 'L'}"${act('openSlot', `${d}|${p}`)}><span class="stack" style="gap:2px;text-align:left;min-width:92px"><b class="sub">${p}</b><span class="cap soft">${periodTime(p)}</span></span><span class="grow row wrap" style="gap:6px">${mem.map(x => `<span class="mchip" style="background:${SHIFT_TONE[x.status][0]};color:${SHIFT_TONE[x.status][1]}">${esc(x.maidName)}</span>`).join('')}${others.map(x => `<span class="mchip" style="background:${SHIFT_TONE[x.status][0]};color:${SHIFT_TONE[x.status][1]};text-decoration:line-through">${esc(x.maidName)}</span>`).join('')}${!mem.length && !others.length ? `<span class="cap soft">${av ? `${av} 人可以` : '沒人填'}</span>` : ''}</span><b class="num cap">${mem.length}/${SCHED.max}</b>${icon('chevron-right', 16, 3)}</button>`; }).join(''), 'sched-day');
+  }).join('') : card(empty('calendar', `${monthLabel(mk)} 還沒有人填可以上班的時間`));
+  const maids = seatBoard().maids.filter(m => m.coserID);
+  html += card(stitle('信用分', maids.length) + (maids.length ? maids.map(m => { const p = maidPerformance(m.id, now); return `<button class="row" id="credit-${esc(m.id)}" style="width:100%;min-height:52px"${act('openCredit', m.id)}><i class="dot" style="background:#${m.colorHex}"></i><span class="grow stack" style="gap:2px;text-align:left"><b>${esc(m.name)}</b><span class="cap soft">近 90 天：拍立得＋照片組 ${money(p.amount)}・工時 ${p.hours.toFixed(1)} 小時${p.rate != null ? `・每小時 ${money(Math.round(p.rate))}` : ''}</span></span>${creditPill(m.coserID)}${icon('chevron-right', 16, 3)}</button>`; }).join(HR) : empty('user-round', '女僕名冊還沒有連 Coser 帳號的女僕')));
+  return { title: '女僕班表', cls: 'narrowcol', html: html + testNotice() };
+}
+
+function sheetSlot(sh) {
+  const { day, period: p } = sh, now = nowMs(), st = shiftStart(day, p), en = shiftEnd(day, p);
+  const mem = schedule().shifts.filter(x => x.day === day && x.period === p && x.status !== '已取消').sort((a, b) => cmp(a.maidName, b.maidName));
+  const acts = x => {
+    const b = [];
+    if (['已排班', '已確認出勤'].includes(x.status) && now >= st - SCHED.early && now < en) b.push(`<button class="cbtn" id="slot-checkin-${esc(x.id)}"${act('slotCheckIn', x.id)}>幫她報到</button>`);
+    if (x.status === '已報到') b.push(`<button class="cbtn" id="slot-checkout-${esc(x.id)}"${act('slotCheckOut', x.id)}>幫她下班</button>`);
+    if (['已排班', '已確認出勤'].includes(x.status) && now >= st + SCHED.noShowAfter) b.push(`<button class="cbtn" style="--b:var(--danger, #C62828)" id="slot-noshow-${esc(x.id)}"${act('askNoShow', x.id)}>未到</button>`);
+    if (['草稿', '已排班', '已確認出勤'].includes(x.status) && now < en) b.push(`<button class="cbtn ghost" id="slot-cancel-${esc(x.id)}"${act('askCancelShift', x.id)}>取消</button>`);
+    return b.length ? `<div class="row g8 wrap" style="justify-content:flex-end">${b.join('')}</div>` : '';
+  };
+  let body = card(`<div class="row"><b class="grow">${esc(dayText(day))} ${p} ${periodTime(p)}</b><b class="num">${slotMembers(day, p).length}/${SCHED.max}</b></div>`
+    + (mem.length ? mem.map(x => `<div class="stack g8" id="slot-member-${esc(x.id)}"><div class="row"><span class="grow stack" style="gap:2px"><b>${esc(x.maidName)}</b><span class="cap soft">${[x.checkInAt ? `報到 ${clockText(x.checkInAt)}` : '', x.checkOutAt ? `下班 ${clockText(x.checkOutAt)}` : '', x.leaveReason ? `請假：${x.leaveReason}` : '', x.substituteFor ? '補班' : ''].filter(Boolean).map(esc).join('・') || esc(x.reason || '')}</span></span>${creditPill(x.coserID)}${statusPill(x.status)}</div>${acts(x)}</div>`).join(HR) : empty('user-round', '這一班還沒有人')));
+  const cands = slotCandidates(day, p, now), full = !openSeats(day, p);
+  body += card(stitle(sh.replacing ? '找人補班（有填這一班可以的人）' : '可以排的人（有填這一班可以）', cands.length) + (cands.length ? cands.map((c, i) => `<div class="row" id="cand-${esc(c.maid.id)}"><span class="grow stack" style="gap:2px"><span class="row g8"><b>${i + 1}. ${esc(c.maid.name)}</b>${c.preferred ? '<span class="pill" style="background:var(--green-pale);color:var(--green-deep)">優先希望</span>' : ''}</span><span class="cap soft">分數 ${c.score.toFixed(2)}・業績每小時 ${money(Math.round(c.rate))}・信用 ${c.credit}・這個月 ${c.assigned} 班</span></span><button class="cbtn green" id="assign-${esc(c.maid.id)}"${act('slotAssign', c.maid.id)}${full || now >= en ? ' disabled' : ''}>排入</button></div>`).join(HR) : empty('user-round', '沒有其他人填這一班可以')) + (full ? `<div class="cap" style="color:var(--orange-deep)">這一班已經 ${SCHED.max} 個人了。</div>` : ''));
+  return sheetFrame({ title: `${p}・${dayText(day).replace(/^\d+月/, '')}`, left: tb('返回', 'closeSheet'), body });
+}
+
+function sheetCredit(sh) {
+  const m = seatBoard().maids.find(x => x.id === sh.maidID); if (!m) return '';
+  const ev = creditEvents(m.coserID);
+  let body = card(`<div class="row"><b class="grow">${esc(m.name)}</b><b style="font-size:28px" class="num" id="credit-score">${creditScore(m.coserID)}</b></div><div class="cap soft">信用分＝100＋所有紀錄（最低 0、最高 100）。班前 24 小時內請假 −5、4 小時內 −10、未到 −20。</div>`
+    + (ev.length ? ev.map(e => `<div class="row cap" style="min-height:36px"><span class="grow stack" style="gap:2px"><b class="sub">${esc(e.kind)}</b><span class="soft">${esc(dayKey(new Date(e.at)))} ${clockText(e.at)}・${esc(e.note || '')}・${esc(accountName(e.by))}</span></span><b style="color:${e.points < 0 ? 'var(--orange-deep)' : 'var(--green-deep)'}">${e.points > 0 ? '+' : ''}${e.points}</b></div>`).join(HR) : empty('circle-check', '沒有紀錄')));
+  body += card(stitle('更正、預約放鳥') + `<div class="row g8">${['更正', '預約放鳥'].map(k => `<button class="chip${sh.kind === k ? ' on' : ''}"${act('creditKind', k)}>${k}</button>`).join('')}</div>`
+    + `<div class="field"><label for="f-sheet-points">分數（扣分填負數，例如 -20；更正加回填正數）</label>${inp('sheet.points', { ph: '例如 -20 或 20', type: 'text' })}</div>`
+    + `<div class="field"><label for="f-sheet-note">原因（必填，會留紀錄）</label>${inp('sheet.note', { ph: '例如 店方確認是系統錯誤' })}</div>` + btn('登記', 'creditSave', null, { ic: 'check', cls: 'credit-save' }));
+  return sheetFrame({ title: '信用分', left: tb('返回', 'closeSheet'), body });
 }
 
 // ================= 更多 =================
@@ -4684,6 +4994,10 @@ function viewSheet() {
     case 'seatPay': return sheetSeatPay(sh);
     case 'shopCash': return sheetShopCash(sh);
     case 'maidForm': return sheetMaidForm(sh);
+    case 'avail': return sheetAvail(sh);
+    case 'leave': return sheetLeave(sh);
+    case 'slot': return sheetSlot(sh);
+    case 'credit': return sheetCredit(sh);
   }
   return '';
 }
@@ -4757,6 +5071,7 @@ function sheetMaidForm(sh) {
   const f = sh.form;
   let body = `<div class="field"><label for="f-sheet-form-name">名字</label>${inp('sheet.form.name', { ph: '例如 小雪' })}</div>`;
   body += `<div class="stack g8"><b class="sub">顏色（加購資料夾的底色）</b><div class="swatches">${PALETTE.map(h => `<button class="swatch-btn${f.colorHex === h ? ' on' : ''}" style="background:#${h};color:${readableInk(h)}"${act('maidColor', h)} aria-label="顏色 ${h}" aria-pressed="${f.colorHex === h}">${f.colorHex === h ? icon('check', 18, 3) : ''}</button>`).join('')}</div></div>`;
+  body += `<div class="field"><label for="f-sheet-form-coserID">Coser 帳號（排班用）</label>${inp('sheet.form.coserID', { ph: '例如 momo（有簽約當女僕的 Coser 帳號）' })}<div class="cap soft">填了才能用「女僕店排班」：她用這個 Coser 帳號登入，在「預約」頁填可以上班的時間、看自己的班。</div></div>`;
   body += `<div class="stack g8"><b class="sub">價格（台幣）</b>${SHOP_KINDS.map(([k, l]) => `<div class="row"><b style="width:96px">${l}</b><div class="grow">${inp(`sheet.form.prices.${k}`, { ph: 'NT$', num: true })}</div></div>`).join('')}<div class="cap soft">改價格只影響之後的加購，已經加購的照原價。</div></div>`;
   if (sh.id) body += `<button class="switch" role="switch" id="maid-active" aria-checked="${f.active}"${act('maidActive')}><span class="stack" style="gap:2px;text-align:left"><b>在店裡（出現在座位加購）</b><span class="cap soft">關掉＝停用，名冊還看得到，之後可以再打開。</span></span><span class="knob"></span></button>`;
   body += btn(sh.id ? '儲存' : '新增女僕', 'saveMaid', null, { ic: 'check', cls: 'save-maid' });
@@ -5229,6 +5544,7 @@ function liveApply(tables) {
   };
   S.sales.sales.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
   S.seats = shopFromNotion(T);
+  S.schedule = scheduleFromNotion(T);
   COSERS.splice(0, Infinity, ...safe(T('Coser 名冊'), fromNotion.coser));
 }
 function liveSave() {
@@ -5463,6 +5779,36 @@ function shopSyncDiff(b) {
   for (const op of ops) liveEnqueue(op);
 }
 
+// 女僕店排班（2026-11-06）：女僕（Coser）、店鋪管理、女僕管理。操作前後比對 scheduleToNotion()，改了什麼就送什麼（跟 BackendOps.schedule 一樣）
+const SCHED_SELF_SHIFT = ['狀態', '確認時間', '報到時間', '下班時間', '請假時間', '請假原因'];
+const SCHED_SELF_CREDIT = ['事件ID', '女僕ID', '時間', '事件', '分數', '班次ID', '說明', '規則版本'];
+function schedCapture() {
+  const o = scheduleToNotion(), key = { '排班申請': '申請ID', '女僕班表': '班次ID', '信用分紀錄': '事件ID' }, out = {};
+  for (const [name, k] of Object.entries(key)) out[name] = new Map((o[name] || []).map(r => [r[k], r]));
+  return out;
+}
+function schedSyncDiff(b) {
+  const u = U.user;
+  if (!LIVE?.token || !u || !b?.sched || u.id !== b.user || LIVE.gen !== b.gen) return;
+  const isMaid = u.role === 'coser'; if (!isMaid && !isScheduleManager(u)) return;
+  const me = (u.coserID || '').toLowerCase(), a = schedCapture(), was = b.sched, ops = [];
+  const pick = (r, cols) => Object.fromEntries(cols.filter(c => c in r).map(c => [c, r[c]]));
+  if (isMaid) {
+    for (const [k, r] of a['排班申請']) if (r['CoserID'] === me && JSON.stringify(was['排班申請'].get(k)) !== JSON.stringify(r)) ops.push({ kind: 'row', opId: liveOpID('av'), db: 'shiftAvailability', key: k, fields: r });
+    for (const [k, r] of was['排班申請']) if (r['CoserID'] === me && !a['排班申請'].has(k)) ops.push({ kind: 'row', opId: liveOpID('avd'), db: 'shiftAvailability', key: k, trash: true });
+  }
+  for (const [k, r] of a['女僕班表']) {
+    const old = was['女僕班表'].get(k);
+    if (!old) { if (!isMaid) ops.push({ kind: 'row', opId: liveOpID('sh'), db: 'maidShifts', key: k, fields: r }); continue; }
+    if (JSON.stringify(old) === JSON.stringify(r)) continue;
+    if (isMaid) { if (r['CoserID'] !== me) continue; const f = Object.fromEntries(SCHED_SELF_SHIFT.filter(c => old[c] !== r[c]).map(c => [c, r[c]])); if (Object.keys(f).length) ops.push({ kind: 'row', opId: liveOpID('sh'), db: 'maidShifts', key: k, fields: f }); }
+    else ops.push({ kind: 'row', opId: liveOpID('sh'), db: 'maidShifts', key: k, fields: r });
+  }
+  if (!isMaid) for (const k of was['女僕班表'].keys()) if (!a['女僕班表'].has(k)) ops.push({ kind: 'row', opId: liveOpID('shd'), db: 'maidShifts', key: k, trash: true });
+  for (const [k, r] of a['信用分紀錄']) if (!was['信用分紀錄'].has(k)) ops.push({ kind: 'row', opId: liveOpID('cr'), db: 'creditEvents', key: k, fields: isMaid ? pick(r, SCHED_SELF_CREDIT) : r });
+  for (const op of ops) liveEnqueue(op);
+}
+
 function liveBar() {
   if (!LIVE || !U.user) return '';
   const mine = liveMine().length, sync = LIVE.serverSync, isCo = U.user.role === 'company';
@@ -5506,14 +5852,49 @@ const A = {
   openMaidForm(id) {
     const m = id ? seatBoard().maids.find(x => x.id === id) : null;
     const pr = m ? maidPrices(m.id) : SHOP_TEST_PRICE;
-    U.sheet = { type: 'maidForm', id: m ? m.id : null, form: { name: m ? m.name : '', colorHex: m ? m.colorHex : suggestedMaidColor(), active: m ? m.active !== false : true, prices: Object.fromEntries(SHOP_KINDS.map(([k]) => [k, pr[k] != null ? String(pr[k]) : ''])) } };
+    U.sheet = { type: 'maidForm', id: m ? m.id : null, form: { name: m ? m.name : '', coserID: m?.coserID || '', colorHex: m ? m.colorHex : suggestedMaidColor(), active: m ? m.active !== false : true, prices: Object.fromEntries(SHOP_KINDS.map(([k]) => [k, pr[k] != null ? String(pr[k]) : ''])) } };
   },
   maidColor(h) { U.sheet.form.colorHex = h; },
   maidActive() { U.sheet.form.active = !U.sheet.form.active; },
   saveMaid() {
     const sh = U.sheet, f = sh.form, prices = Object.fromEntries(SHOP_KINDS.map(([k]) => [k, f.prices[k] === '' ? NaN : parseInt(f.prices[k], 10)]));
-    const ok = perform(() => sh.id ? maidUpdate(sh.id, f.name, f.colorHex, prices, f.active, U.user) : maidAdd(f.name, f.colorHex, prices, U.user), `${sh.id ? '已儲存' : '已新增女僕'} ${f.name.trim()}`);
+    const ok = perform(() => { const m = sh.id ? maidUpdate(sh.id, f.name, f.colorHex, prices, f.active, U.user) : maidAdd(f.name, f.colorHex, prices, U.user); maidLinkCoser(m.id, f.coserID, U.user); return m; }, `${sh.id ? '已儲存' : '已新增女僕'} ${f.name.trim()}`);
     if (ok) U.sheet = null;
+  },
+  // 女僕店排班（2026-11-06）
+  openAvail() { const m = maidOf(U.user); if (!m) return; const mk = fillMonth(); const sel = {}; for (const a of schedule().availability) if (a.maidID === m.id && a.day.startsWith(mk + '-')) sel[`${a.day}|${a.period}`] = a.preferred ? 2 : 1; U.sheet = { type: 'avail', month: mk, sel }; },
+  availToggle(d, p) { const k = `${d}|${p}`; U.sheet.sel[k] = ((U.sheet.sel[k] || 0) + 1) % 3; },
+  availWeek(wd, p) { const sh = U.sheet, ds = monthDays(sh.month).filter(d => dayDate(d).getDay() === +wd); const on = ds.every(d => sh.sel[`${d}|${p}`]); for (const d of ds) sh.sel[`${d}|${p}`] = on ? 0 : (sh.sel[`${d}|${p}`] || 1); },
+  availClear() { U.sheet.sel = {}; },
+  availSubmit() {
+    const sh = U.sheet, entries = Object.entries(sh.sel).filter(([, v]) => v).map(([k, v]) => { const [day, period] = k.split('|'); return { day, period, preferred: v === 2 }; });
+    if (perform(() => submitAvailability(sh.month, entries, U.user), entries.length ? `已送出 ${monthLabel(sh.month)} ${entries.length} 個時段` : `已清除 ${monthLabel(sh.month)} 的時段`)) U.sheet = null;
+  },
+  shiftConfirmNow(id) { perform(() => shiftConfirm(id, U.user), '已確認出勤'); },
+  shiftCheckInNow(id) { perform(() => shiftCheckIn(id, U.user), x => `已報到 ${clockText(x.checkInAt)}`); },
+  shiftCheckOutNow(id) { perform(() => shiftCheckOut(id, U.user), x => `已下班 ${clockText(x.checkOutAt)}，辛苦了`); },
+  openLeave(id) { U.sheet = { type: 'leave', id, reason: '' }; },
+  leaveSubmit() { const sh = U.sheet; const r = perform(() => ({ e: shiftLeave(sh.id, sh.reason, U.user) }), x => x.e ? `已請假，信用分 ${x.e.points}` : '已請假'); if (r) U.sheet = null; },
+  schedMonth(n) { U.schedMonth = shiftMonth(U.schedMonth || fillMonth(), +n); },
+  askGenerate() {
+    const mk = U.schedMonth || fillMonth(), drafts = schedule().shifts.filter(x => x.status === '草稿' && x.day.startsWith(mk + '-')).length;
+    ask(`產生 ${monthLabel(mk)} 的班表草稿？`, `照大家填的時段排，每班最多 ${SCHED.max} 人。${drafts ? `原本的 ${drafts} 個草稿會重排；` : ''}已公布的班不會動。`, [{ label: '產生草稿', run: () => perform(() => generateSchedule(mk, U.user), n => `已產生 ${n} 個班（草稿）`) }], '取消');
+  },
+  askPublish() {
+    const mk = U.schedMonth || fillMonth(), n = schedule().shifts.filter(x => x.status === '草稿' && x.day.startsWith(mk + '-')).length;
+    ask(`公布 ${monthLabel(mk)} 的 ${n} 個班？`, '公布後女僕看得到自己的班，開始有出勤義務（請假、未到會扣信用分）。', [{ label: '公布', run: () => perform(() => publishSchedule(mk, U.user), k => `已公布 ${k} 個班`) }], '取消');
+  },
+  openSlot(k, replacing) { const [day, period] = k.split('|'); U.sheet = { type: 'slot', day, period, replacing: replacing || null }; },
+  slotAssign(maidID) { const sh = U.sheet; perform(() => assignShift(sh.day, sh.period, maidID, sh.replacing, U.user), x => `已排入 ${x.maidName}${sh.replacing ? '（補班）' : ''}`); sh.replacing = null; },
+  slotCheckIn(id) { perform(() => shiftCheckIn(id, U.user), x => `${x.maidName} 已報到`); },
+  slotCheckOut(id) { perform(() => shiftCheckOut(id, U.user), x => `${x.maidName} 已下班`); },
+  askNoShow(id) { const x = shiftByID(id); ask(`${x.maidName} 未到？`, `${shiftLabel(x)}。開班 30 分鐘還沒報到。確定後扣信用分 ${-SCHED.noShow} 分，這一班會列在「要補班」。`, [{ label: '確定未到', danger: true, run: () => perform(() => markNoShow(id, U.user), `已標記未到，扣 ${-SCHED.noShow} 分`) }], '取消'); },
+  askCancelShift(id) { const x = shiftByID(id); ask(`取消 ${x.maidName} 這一班？`, `${shiftLabel(x)}。店方取消，不扣信用分。`, [{ label: '取消這一班', danger: true, run: () => perform(() => cancelShift(id, U.user), '已取消') }], '不要'); },
+  openCredit(maidID) { U.sheet = { type: 'credit', maidID, kind: '更正', points: '', note: '' }; },
+  creditKind(k) { U.sheet.kind = k; },
+  creditSave() {
+    const sh = U.sheet, m = seatBoard().maids.find(x => x.id === sh.maidID), pts = parseInt(String(sh.points).replace('−', '-'), 10);
+    if (perform(() => adjustCredit(m.coserID, m.id, sh.kind, pts, sh.note, U.user), e => `已登記 ${e.points > 0 ? '+' : ''}${e.points} 分`)) { sh.points = ''; sh.note = ''; }
   },
   seatPayBack() { U.sheet = { type: 'seat', id: U.sheet.id, step: 'menu' }; },
   seatPayMethod(k) { U.sheet.payment = k; },
@@ -5770,8 +6151,9 @@ if (LIVE) for (const k of Object.keys(A)) {
     const r = U.user?.role, shop = !!SHOP_LIVE[r];
     if (liveDepth || !(r === 'coser' || shop) || !LIVE.token) return f.apply(this, args);
     const before = shop ? shopCapture() : liveCapture();
+    const sched = { user: U.user.id, gen: LIVE.gen, sched: schedCapture() };
     liveDepth++;
-    try { return f.apply(this, args); } finally { liveDepth--; if (shop) shopSyncDiff(before); else liveSyncDiff(before); }
+    try { return f.apply(this, args); } finally { liveDepth--; if (shop) shopSyncDiff(before); else liveSyncDiff(before); schedSyncDiff(sched); }
   };
 }
 
@@ -5781,9 +6163,9 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 8; // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
+const STATE_VERSION = 9; // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
-const KEEP_UI = ['user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
+const KEEP_UI = ['schedMonth', 'user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
 function snapshotState() {
   const ui = {}; for (const k of KEEP_UI) ui[k] = U[k];
