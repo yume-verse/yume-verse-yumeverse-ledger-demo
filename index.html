@@ -2793,7 +2793,7 @@ const NOTION_SCHEMA = {
   // 店鋪・女僕（2026-11-05 在「App 資料（正式）」新建；照 NotionSchema.swift 的 shop）
   '女僕名冊': { id: '19f8d004-680b-4869-8c65-9fa70184ed2a', props: [['名字', 'title'], ['女僕ID', 'text'], ['狀態', 'select', ['在店裡', '停用']], ['顏色', 'text'], ['表演價格', 'number'], ['拍立得價格', 'number'], ['豪華照片組價格', 'number'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n']] },
   '店鋪每日錢箱': { id: '649b77a8-bb35-4fb0-a9b4-1efafcf7a392', props: [['日期文字', 'title'], ['日期', 'date'], ['起始現金', 'number'], ['收攤實點現金', 'number'], ['備註', 'text', null, 'n']] },
-  '座位紀錄': { id: 'c7587ac4-70bf-41d5-b014-881a1ea8e079', props: [['座位紀錄編號', 'title'], ['座位', 'select', ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']], ['狀態', 'select', ['使用中', '已結帳']], ['入座時間', 'date'], ['到期時間', 'date'], ['續座紀錄', 'text'], ['結帳時間', 'date'], ['營業日', 'date'], ['合計', 'number'], ['收款方式', 'select', ['現金', '轉帳', 'LINE Pay', '賒帳']], ['賒帳客人', 'text'], ['已收時間', 'date'], ['收回方式', 'select', ['現金', '轉帳', 'LINE Pay']], ['超時秒數', 'number'], ['入座帳號', 'text'], ['結帳帳號', 'text'], ['登記已收帳號', 'text'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n'], ['加購小計加總', 'rollup']] },
+  '座位紀錄': { id: 'c7587ac4-70bf-41d5-b014-881a1ea8e079', props: [['座位紀錄編號', 'title'], ['座位', 'select', ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']], ['狀態', 'select', ['使用中', '已結帳']], ['入座時間', 'date'], ['到期時間', 'date'], ['續座紀錄', 'text'], ['結帳時間', 'date'], ['營業日', 'date'], ['座位費', 'number'], ['合計', 'number'], ['收款方式', 'select', ['現金', '轉帳', 'LINE Pay', '賒帳']], ['賒帳客人', 'text'], ['已收時間', 'date'], ['收回方式', 'select', ['現金', '轉帳', 'LINE Pay']], ['超時秒數', 'number'], ['入座帳號', 'text'], ['結帳帳號', 'text'], ['登記已收帳號', 'text'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n'], ['加購小計加總', 'rollup']] },
   '座位加購明細': { id: '8299663c-a1fa-469e-8c62-8d6085830815', props: [['明細', 'title'], ['座位紀錄', 'relation'], ['女僕', 'relation'], ['明細ID', 'text'], ['女僕ID', 'text'], ['女僕名字', 'text'], ['品項', 'select', ['表演', '拍立得', '豪華照片組']], ['單價', 'number'], ['數量', 'number'], ['小計', 'formula', null, 'r'], ['加購時間', 'date']] }
 };
 const nprop = (db, name) => NOTION_SCHEMA[db].props.find(p => p[0] === name) || null;
@@ -3111,7 +3111,7 @@ const fromNotion = {
 };
 
 // ================= 畫面用的資料 → 正式資料庫的列（之後接 Notion 用；測試逐欄檢查） =================
-/** 店鋪・女僕 → Notion 4 個資料庫（照 NotionMapping.exportShop；還沒接，只對齊格式） */
+/** 店鋪・女僕 → Notion 4 個資料庫（照 NotionMapping.exportShop；2026-11-06 接資料庫時用來比對改了什麼） */
 function shopToNotion() {
   const b = seatBoard(), out = {};
   const pay = k => k ? PAY[k].label : null;
@@ -3121,14 +3121,53 @@ function shopToNotion() {
   out['店鋪每日錢箱'] = Object.values(b.cashBoxes || {}).sort((x, y) => cmp(x.day, y.day)).map(c => ({ '日期文字': c.day, '日期': c.day, '起始現金': c.opening ?? null, '收攤實點現金': c.actual ?? null }));
   const sessions = Object.values(b.sessions).sort((x, y) => x.startedAt - y.startedAt);
   out['座位紀錄'] = sessions.map(ss => ({ '座位紀錄編號': ss.id, '座位': ss.seatID, '狀態': '使用中', '入座時間': isoTime(ss.startedAt), '到期時間': isoTime(ss.endsAt), '續座紀錄': ext(ss.extensions),
-    '結帳時間': null, '營業日': null, '合計': seatTotal(ss), '收款方式': null, '賒帳客人': null, '已收時間': null, '收回方式': null, '超時秒數': null, '入座帳號': ss.openedBy, '結帳帳號': null, '登記已收帳號': null }))
+    '結帳時間': null, '營業日': null, '座位費': seatFee(ss), '合計': seatTotal(ss), '收款方式': null, '賒帳客人': null, '已收時間': null, '收回方式': null, '超時秒數': null, '入座帳號': ss.openedBy, '結帳帳號': null, '登記已收帳號': null }))
     .concat(b.history.map(r => ({ '座位紀錄編號': r.id, '座位': r.seatID, '狀態': '已結帳', '入座時間': isoTime(r.startedAt), '到期時間': isoTime(r.endsAt), '續座紀錄': ext(r.extensions),
-      '結帳時間': isoTime(r.closedAt), '營業日': scDay(r), '合計': r.total, '收款方式': pay(r.payment), '賒帳客人': r.debtor || null, '已收時間': isoTime(r.settledAt ?? null), '收回方式': pay(r.settledPayment),
-      '超時秒數': r.overtimeSeconds, '入座帳號': null, '結帳帳號': r.closedBy, '登記已收帳號': r.settledBy || null })));
+      '結帳時間': isoTime(r.closedAt), '營業日': scDay(r), '座位費': r.seatFee ?? 0, '合計': r.total, '收款方式': pay(r.payment), '賒帳客人': r.debtor || null, '已收時間': isoTime(r.settledAt ?? null), '收回方式': pay(r.settledPayment),
+      '超時秒數': r.overtimeSeconds, '入座帳號': r.openedBy ?? null, '結帳帳號': r.closedBy, '登記已收帳號': r.settledBy || null })));
   const line = (a, recordID) => ({ '明細': `${a.maidName}・${a.name}`, '座位紀錄': [recordID], '女僕': [a.maidID], '明細ID': a.id, '女僕ID': a.maidID, '女僕名字': a.maidName,
     '品項': kindLabel(a.kind), '單價': a.unitPrice, '數量': a.quantity, '加購時間': isoTime(a.addedAt) });
   out['座位加購明細'] = sessions.flatMap(ss => ss.addOns.map(a => line(a, ss.id))).concat(b.history.flatMap(r => r.addOns.map(a => line(a, r.id))));
   return out;
+}
+/** Notion 4 個資料庫 → 店鋪・女僕（接資料庫用；照 NotionMapping.shopBoard） */
+function shopFromNotion(T) {
+  const kindOf = label => (SHOP_KINDS.find(x => x[1] === label) || [null])[0];
+  const PRICE_COL = { performance: '表演價格', polaroid: '拍立得價格', deluxePhotoSet: '豪華照片組價格' };
+  const maids = [], items = [];
+  for (const r of T('女僕名冊')) {
+    const id = trimOrNull(r['女僕ID']); if (!id || !r['名字']) continue;
+    maids.push({ id, name: r['名字'], colorHex: r['顏色'] || PALETTE[maids.length % PALETTE.length], active: r['狀態'] !== '停用' });
+    for (const [k, label] of SHOP_KINDS) if (r[PRICE_COL[k]] != null) items.push({ id: `${id}-${k}`, maidID: id, kind: k, name: label, price: r[PRICE_COL[k]], active: true });
+  }
+  const cashBoxes = {};
+  for (const r of T('店鋪每日錢箱')) { const day = (r['日期'] || r['日期文字'] || '').slice(0, 10); if (day) cashBoxes[day] = { day, opening: r['起始現金'] ?? null, actual: r['收攤實點現金'] ?? null }; }
+  const lines = new Map();
+  for (const r of T('座位加購明細')) {
+    const rec = (r['座位紀錄'] || [])[0], kind = kindOf(r['品項']); if (!rec || !kind) continue;
+    const a = { id: r['明細ID'] || r._id, itemID: `${r['女僕ID']}-${kind}`, kind, maidID: r['女僕ID'], maidName: r['女僕名字'] || '', name: r['品項'], unitPrice: r['單價'] ?? 0, quantity: r['數量'] ?? 0, addedAt: parseTime(r['加購時間']) ?? 0 };
+    if (!lines.has(rec)) lines.set(rec, []); lines.get(rec).push(a);
+  }
+  // 續座紀錄「30 分鐘 NT$100（14:55）、60 分鐘 NT$200（15:25）」：時間只有時分，接在入座那天（跨午夜就加一天）
+  const exts = (text, startedAt) => (text || '').split('、').flatMap(t => {
+    const m = t.match(/^(\d+) 分鐘(?: NT\$(\d+))?（(\d\d):(\d\d)）$/); if (!m) return [];
+    const d = new Date(startedAt); d.setHours(+m[3], +m[4], 0, 0); let at = d.getTime(); if (at < startedAt - SEAT_MIN) at += 24 * 60 * SEAT_MIN;
+    return [{ minutes: +m[1], at, price: m[2] ? +m[2] : 0 }];
+  });
+  const sessions = {}, history = [];
+  for (const r of T('座位紀錄')) {
+    const id = r['座位紀錄編號'], seatID = r['座位'], startedAt = parseTime(r['入座時間']);
+    if (!id || !seatID || startedAt == null) continue;
+    const extensions = exts(r['續座紀錄'], startedAt), addOns = (lines.get(id) || []).sort((a, b) => a.addedAt - b.addedAt);
+    const fee = r['座位費'] ?? 0, openFee = Math.max(0, fee - extensions.reduce((n, e) => n + e.price, 0));
+    const base = { id, seatID, startedAt, endsAt: parseTime(r['到期時間']) ?? startedAt + SEAT_LEN, openFee, extensions, addOns, openedBy: r['入座帳號'] || null };
+    if (r['狀態'] === '使用中') { if (!sessions[seatID] || sessions[seatID].startedAt < startedAt) sessions[seatID] = base; continue; }
+    const addTotal = addOns.reduce((n, a) => n + a.unitPrice * a.quantity, 0);
+    history.push({ ...base, closedAt: parseTime(r['結帳時間']) ?? base.endsAt, seatFee: fee, total: r['合計'] ?? fee + addTotal, payment: payKey(r['收款方式']), debtor: trimOrNull(r['賒帳客人']),
+      overtimeSeconds: r['超時秒數'] ?? 0, closedBy: r['結帳帳號'] || null, settledAt: parseTime(r['已收時間']), settledPayment: payKey(r['收回方式']), settledBy: r['登記已收帳號'] || null });
+  }
+  history.sort((a, b) => a.closedAt - b.closedAt);
+  return { sessions, history, cashBoxes, maids, items, serial: 0 };
 }
 function toNotion() {
   const out = {};
@@ -3765,7 +3804,7 @@ function seatCheck(id, user) {
   if (user?.role !== 'shopManager') fail('只有店鋪管理帳號可以操作座位。');
   if (!SEAT_LAYOUT.flat().includes(id)) fail('找不到這個座位。');
 }
-const seatNext = p => `${p}-${++seatBoard().serial}`;
+const seatNext = p => LIVE ? `${p}-${nowMs().toString(36).toUpperCase()}${rid()}` : `${p}-${++seatBoard().serial}`;
 function seatOpen(id, user, now = nowMs()) {
   seatCheck(id, user);
   if (seatSession(id)) fail('這個座位已經有人入座。');
@@ -3855,7 +3894,7 @@ function maidAdd(name, colorHex, prices, user) {
   checkMaidManager(user);
   const n = maidValidate(name, prices, null), b = seatBoard();
   let k = b.maids.length + 1; while (b.maids.some(m => m.id === `maid-${k}`)) k++;
-  const m = { id: `maid-${k}`, name: n, colorHex, active: true }; b.maids.push(m);
+  const m = { id: LIVE ? `maid-${nowMs().toString(36)}` : `maid-${k}`, name: n, colorHex, active: true }; b.maids.push(m);
   for (const [kind, label] of SHOP_KINDS) b.items.push({ id: `${m.id}-${kind}`, maidID: m.id, kind, name: label, price: prices[kind], active: true });
   return m;
 }
@@ -3876,7 +3915,7 @@ function seatCheckout(id, payment, user, debtor = '', now = nowMs()) {
   const total = seatTotal(ss), name = (debtor || '').trim();
   if (total > 0) { if (!payment) fail('請選收款方式。'); if (!SEAT_PAY.includes(payment)) fail('找不到這個收款方式。'); if (payment === 'credit' && !name) fail('賒帳要填客人名字或聯絡方式。'); }
   // 結帳沿用入座編號：Notion「座位紀錄」一次入座一筆（2026-11-05）
-  const rec = { id: ss.id, seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, openFee: ss.openFee ?? 0, extensions: ss.extensions, addOns: ss.addOns, seatFee: seatFee(ss), total, payment: total > 0 ? payment : null, debtor: total > 0 && payment === 'credit' ? name : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id };
+  const rec = { id: ss.id, seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, openFee: ss.openFee ?? 0, extensions: ss.extensions, addOns: ss.addOns, seatFee: seatFee(ss), total, openedBy: ss.openedBy ?? null, payment: total > 0 ? payment : null, debtor: total > 0 && payment === 'credit' ? name : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id };
   seatBoard().history.push(rec); delete seatBoard().sessions[id];
   return rec;
 }
@@ -4667,7 +4706,7 @@ function sheetSeat(sh) {
     ${ss.extensions.length ? info('續座', ss.extensions.map(e => extLabel(e.minutes)).join('、')) : ''}${info('座位費', money(fee))}${info('加購', ss.addOns.length ? money(addOnTotal) : '沒有')}<div class="row" id="seat-running-total"><b class="grow">目前合計</b><b class="num" style="font-size:20px;color:var(--pink-deep)">${money(fee + addOnTotal)}</b></div>`, 'seat-head');
   if (sh.step === 'menu') {
     const tools = card(`<b class="row g8" style="color:var(--orange-deep)">${icon('puzzle', 18)}測試工具：調整剩餘時間</b><div class="seat-test">${SEAT_TEST.map(([sec, t, h]) => `<button class="seat-test-btn" id="seat-test-${sec}"${act('seatTest', sec)}><b>${t}</b><small>${h}</small></button>`).join('')}</div><div class="cap soft">只有測試版會出現。不算續座、不留紀錄。</div>`);
-    body += `<div class="stack g8">${[['addOn', '加購', 'shopping-bag'], ['extend', '續座', 'history'], ['checkout', '結帳', 'circle-check']].map(([k, t, ic]) => btn(t, k === 'checkout' ? 'seatAskCheckout' : 'seatStep', k, { kind: 'secondary', ic, cls: `seat-act-${k}`, style: '--b:var(--pink-deep)' })).join('')}</div>` + tools;
+    body += `<div class="stack g8">${[['addOn', '加購', 'shopping-bag'], ['extend', '續座', 'history'], ['checkout', '結帳', 'circle-check']].map(([k, t, ic]) => btn(t, k === 'checkout' ? 'seatAskCheckout' : 'seatStep', k, { kind: 'secondary', ic, cls: `seat-act-${k}`, style: '--b:var(--pink-deep)' })).join('')}</div>` + (LIVE ? '' : tools); // 接資料庫時不顯示測試工具
   } else if (sh.step === 'addOn') {
     // 跟 Coser 記帳畫面一樣：一位女僕一個資料夾，點開是色塊格子；點格子 +1，下方「已加購」清單用 －／＋ 調整
     const folders = maidFolders();
@@ -5150,12 +5189,11 @@ const LIVE = (() => {
   const api = lsGet(LIVE_KEY.api);
   return api ? { api, gen: 0, token: null, outbox: [], rejected: [], sending: false, lastError: null, notionLabel: '', refreshedAt: null, serverSync: null, refreshing: false } : null;
 })();
-// 第一版只接 Coser 結帳、賒帳收款、每日錢箱；其他會改資料的先擋下來，請直接在 Notion 改
-// 已接：結帳、收款、錢箱、今日幣別（第一批）；商品、作品・角色、補貨盤點、會員、會員卡（第二批）
-const LIVE_BLOCKED = new Set(['tapSeat', 'seatExtend', 'seatAddItem', 'seatRemoveItem', 'seatAskCheckout', 'seatDoCheckout', 'seatTest', 'openShopCash', 'saveShopCash',
-  'askShopSettle', 'openMaidForm', 'saveMaid', 'openRegister', 'regSubmit', 'profDelPhoto', 'retryLogin',
+// 還沒接的會改資料的先擋下來，請直接在 Notion 改
+// 已接：結帳、收款、錢箱、今日幣別（第一批）；商品、作品・角色、補貨盤點、會員、會員卡（第二批）；店鋪座位、女僕名冊、店鋪錢箱、座位賒帳登記已收（第三批）
+const LIVE_BLOCKED = new Set(['seatTest', 'openRegister', 'regSubmit', 'profDelPhoto', 'retryLogin',
   'openLend', 'doLend', 'openReturn', 'doReturn', 'askCancelLoan', 'askResume', 'openVenue', 'doVenue', 'askCancelVenue', 'askReset']);
-const LIVE_BLOCKED_TEXT = '服裝、場地、座位、Coser 名冊的修改還沒接資料庫，請先直接在 Notion 改，大約 5 分鐘內會更新到這裡。';
+const LIVE_BLOCKED_TEXT = '服裝、場地、Coser 名冊的修改（和座位測試工具）還沒接資料庫，請先直接在 Notion 改，大約 5 分鐘內會更新到這裡。';
 
 function liveMessage(e) {
   if (e && e.status) return e.message;
@@ -5192,7 +5230,7 @@ function liveApply(tables) {
     lowStock: 5, roster: [], newCosers: [], newAccounts: []
   };
   S.sales.sales.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
-  S.seats = freshSeats();
+  S.seats = shopFromNotion(T);
   COSERS.splice(0, Infinity, ...safe(T('Coser 名冊'), fromNotion.coser));
 }
 function liveSave() {
@@ -5382,6 +5420,48 @@ function liveSyncDiff(b) {
   if (a.card !== b.card) ops.push({ kind: 'row', opId: liveOpID('card'), db: 'coserRoster', key: u.coserID, fields: { '會員卡': a.card } });
   for (const id of b.products.keys()) if (!a.products.has(id)) ops.push({ kind: 'row', opId: liveOpID('pd'), db: 'products', key: id, trash: true });
   for (const id of b.themes.keys()) if (!a.themes.has(id)) ops.push({ kind: 'row', opId: liveOpID('td'), db: 'series', key: id, trash: true });
+  for (const op of ops) liveEnqueue(op);
+}
+
+// 第三批：店鋪管理（座位紀錄、加購明細）、女僕管理（女僕名冊、店鋪錢箱、座位賒帳登記已收）
+const SHOP_LIVE = {
+  shopManager: [['座位紀錄', 'seatRecords', '座位紀錄編號'], ['座位加購明細', 'seatAddOns', '明細ID']],
+  maidManager: [['女僕名冊', 'maids', '女僕ID'], ['店鋪每日錢箱', 'shopCashBoxes', '日期文字'], ['座位紀錄', 'seatRecords', '座位紀錄編號']]
+};
+const SHOP_SETTLE_COLS = ['已收時間', '收回方式'];
+function shopLiveRows(role) {
+  const all = shopToNotion(), out = {};
+  for (const [name, , key] of SHOP_LIVE[role]) out[name] = new Map((all[name] || []).map(r => [r[key], r]));
+  return out;
+}
+function shopCapture() {
+  const rows = shopLiveRows(U.user.role), tables = {};
+  for (const [name, m] of Object.entries(rows)) tables[name] = new Map([...m].map(([k, r]) => [k, JSON.stringify(r)]));
+  return { user: U.user.id, gen: LIVE.gen, shop: tables };
+}
+function shopSyncDiff(b) {
+  const u = U.user;
+  if (!LIVE?.token || !u || u.id !== b.user || LIVE.gen !== b.gen || !b.shop) return;
+  const now = shopLiveRows(u.role), ops = [];
+  for (const [name, db] of SHOP_LIVE[u.role]) {
+    const before = b.shop[name], after = now[name];
+    for (const [key, row] of after) {
+      const was = before.get(key);
+      if (was === JSON.stringify(row)) continue;
+      let fields = { ...row }, relations;
+      if (db === 'seatAddOns') { relations = { '座位紀錄': row['座位紀錄'], '女僕': row['女僕'] }; delete fields['座位紀錄']; delete fields['女僕']; }
+      if (db === 'seatRecords') {
+        if (u.role === 'maidManager') {
+          // 女僕管理只登記已收：只送有變的已收時間、收回方式（登記已收帳號後端填）
+          const old = was ? JSON.parse(was) : {};
+          fields = Object.fromEntries(SHOP_SETTLE_COLS.filter(c => old[c] !== row[c]).map(c => [c, row[c]]));
+          if (!was || !Object.keys(fields).length) continue;
+        } else for (const c of [...SHOP_SETTLE_COLS, '登記已收帳號']) delete fields[c];
+      }
+      ops.push({ kind: 'row', opId: liveOpID(db), db, key, fields, ...(relations ? { relations } : {}) });
+    }
+    if (db === 'seatAddOns') for (const key of before.keys()) if (!after.has(key)) ops.push({ kind: 'row', opId: liveOpID('add-del'), db, key, trash: true });
+  }
   for (const op of ops) liveEnqueue(op);
 }
 
@@ -5684,15 +5764,16 @@ const A = {
   }
 };
 
-// 接資料庫：Coser 的每個操作（含確認視窗裡的按鈕）前後比對，改了什麼就送到後端；只算最外層那一次
+// 接資料庫：Coser、店鋪管理、女僕管理的每個操作（含確認視窗裡的按鈕）前後比對，改了什麼就送到後端；只算最外層那一次
 let liveDepth = 0;
 if (LIVE) for (const k of Object.keys(A)) {
   const f = A[k];
   A[k] = function (...args) {
-    if (liveDepth || U.user?.role !== 'coser' || !LIVE.token) return f.apply(this, args);
-    const before = liveCapture();
+    const r = U.user?.role, shop = !!SHOP_LIVE[r];
+    if (liveDepth || !(r === 'coser' || shop) || !LIVE.token) return f.apply(this, args);
+    const before = shop ? shopCapture() : liveCapture();
     liveDepth++;
-    try { return f.apply(this, args); } finally { liveDepth--; liveSyncDiff(before); }
+    try { return f.apply(this, args); } finally { liveDepth--; if (shop) shopSyncDiff(before); else liveSyncDiff(before); }
   };
 }
 
