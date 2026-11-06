@@ -5127,14 +5127,14 @@ const LIVE = (() => {
   if (q === 'off') lsSet(LIVE_KEY.api, null);
   else if (q && (/^https:\/\/[^\s/]+/.test(q) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(q))) lsSet(LIVE_KEY.api, q.replace(/\/+$/, ''));
   const api = lsGet(LIVE_KEY.api);
-  return api ? { api, token: null, outbox: [], rejected: [], sending: false, lastError: null, notionLabel: '', refreshedAt: null, serverSync: null, refreshing: false } : null;
+  return api ? { api, gen: 0, token: null, outbox: [], rejected: [], sending: false, lastError: null, notionLabel: '', refreshedAt: null, serverSync: null, refreshing: false } : null;
 })();
 // 第一版只接 Coser 結帳、賒帳收款、每日錢箱；其他會改資料的先擋下來，請直接在 Notion 改
+// 已接：結帳、收款、錢箱、今日幣別（第一批）；商品、作品・角色、補貨盤點、會員、會員卡（第二批）
 const LIVE_BLOCKED = new Set(['tapSeat', 'seatExtend', 'seatAddItem', 'seatRemoveItem', 'seatAskCheckout', 'seatDoCheckout', 'seatTest', 'openShopCash', 'saveShopCash',
-  'askShopSettle', 'openMaidForm', 'saveMaid', 'openRegister', 'regSubmit', 'profDelPhoto', 'retryLogin', 'openProduct', 'pfSave', 'pfDiscontinue', 'askDeleteProduct',
-  'resumeSale', 'openRestock', 'doRestock', 'openCount', 'doCount', 'openSeries', 'saveSeries', 'askDeleteSeries', 'toggleMemberCard', 'openMember', 'saveMember',
+  'askShopSettle', 'openMaidForm', 'saveMaid', 'openRegister', 'regSubmit', 'profDelPhoto', 'retryLogin',
   'openLend', 'doLend', 'openReturn', 'doReturn', 'askCancelLoan', 'askResume', 'openVenue', 'doVenue', 'askCancelVenue', 'askReset']);
-const LIVE_BLOCKED_TEXT = '接資料庫的第一版只做結帳、賒帳收款、錢箱。這個請先直接在 Notion 改，大約 5 分鐘內會更新到這裡。';
+const LIVE_BLOCKED_TEXT = '服裝、場地、座位、Coser 名冊的修改還沒接資料庫，請先直接在 Notion 改，大約 5 分鐘內會更新到這裡。';
 
 function liveMessage(e) {
   if (e && e.status) return e.message;
@@ -5152,6 +5152,7 @@ async function liveFetch(path, body) {
 
 /** 後端給的 Notion 資料 → 畫面用的資料（跟測試資料用同一套轉換） */
 function liveApply(tables) {
+  LIVE.gen++;
   const T = name => tables[name] || [];
   const safe = (rows, fn) => rows.flatMap(r => { try { return [fn(r)]; } catch (e) { console.warn('略過讀不懂的一列', r, e); return []; } });
   for (const k of Object.keys(NOTION_SEED)) NOTION_SEED[k] = T(k);
@@ -5181,6 +5182,7 @@ function liveSave() {
 function liveRestore(userID) {
   const o = lsJSON(LIVE_KEY.data);
   if (!o || o.user !== userID || !o.S?.sales) return false;
+  LIVE.gen++;
   Object.assign(S, o.S);
   S.sales.memberCard = new Set(o.S.sales.memberCard || []);
   COSERS.splice(0, Infinity, ...(o.cosers || []));
@@ -5319,6 +5321,48 @@ function liveSaleOp(s) {
   };
 }
 const liveOpID = tag => `op-${tag}-${nowMs().toString(36)}${rid()}`;
+
+// 第二批：Coser 的作品・角色、商品、補貨盤點、會員、會員卡。每個操作前後比一次，改了什麼就送什麼
+const liveThemeRow = t => ({ '名稱': themeName(t), '作品': trimOrNull(t.work), '角色': trimOrNull(t.character), '底色': t.tintHex });
+function liveProductRow(p) {
+  const row = { '名稱': p.name, '類型': KIND[p.kind].label };
+  for (const c of CURRENCIES) row[CUR_PRICE_COL[c]] = priceIn(p, c);
+  return Object.assign(row, { '電子檔': !!p.digital, '停售': !!p.discontinued, '價格說明': trimOrNull(p.note) });
+}
+const liveMemberRow = m => ({ '暱稱': trimOrNull(m.nickname), '等級': m.level || '尚未分級', '備註': m.note ?? null });
+function liveCapture() {
+  const u = U.user, cid = u.coserID;
+  return {
+    user: u.id, gen: LIVE.gen,
+    themes: new Map(SB().themes.filter(t => t.coserID === cid).map(t => [t.id, JSON.stringify(liveThemeRow(t))])),
+    products: new Map(SB().products.filter(p => coserOfProduct(p) === cid).map(p => [p.id, JSON.stringify([liveProductRow(p), p.themeID])])),
+    moves: new Set(SB().movements.map(m => m.id)),
+    members: new Map(SB().members.filter(m => m.coserID === cid).map(m => [m.id, JSON.stringify(liveMemberRow(m))])),
+    card: isMemberCardOn(cid)
+  };
+}
+function liveSyncDiff(b) {
+  const u = U.user;
+  if (!LIVE?.token || !u || u.id !== b.user || LIVE.gen !== b.gen) return; // 登出、換人、剛換成 Notion 資料：不算
+  const a = liveCapture(), ops = [];
+  for (const [id, j] of a.themes) if (b.themes.get(id) !== j) ops.push({ kind: 'row', opId: liveOpID('t'), db: 'series', key: id, fields: liveThemeRow(themeByID(id)) });
+  for (const [id, j] of a.products) if (b.products.get(id) !== j) {
+    const p = productByID(id);
+    ops.push({ kind: 'row', opId: liveOpID('p'), db: 'products', key: id, fields: liveProductRow(p), relations: { '作品・角色': [p.themeID] } });
+  }
+  for (const m of SB().movements) if (!b.moves.has(m.id) && (m.kind === '補貨' || m.kind === '盤點') && m.coserID === u.coserID) {
+    ops.push({ kind: 'stock', opId: 'op-mv-' + m.id, '商品ID': m.productID, mode: m.kind === '補貨' ? 'add' : 'set', amount: m.quantity,
+      movement: { '異動ID': m.id, '時間': isoTime(m.at), '商品名稱': m.productName, '原因': trimOrNull(m.reason) } });
+  }
+  for (const [id, j] of a.members) if (b.members.get(id) !== j) {
+    const m = SB().members.find(x => x.id === id);
+    ops.push({ kind: 'row', opId: liveOpID('m'), db: 'members', key: m.fanID, fields: liveMemberRow(m) });
+  }
+  if (a.card !== b.card) ops.push({ kind: 'row', opId: liveOpID('card'), db: 'coserRoster', key: u.coserID, fields: { '會員卡': a.card } });
+  for (const id of b.products.keys()) if (!a.products.has(id)) ops.push({ kind: 'row', opId: liveOpID('pd'), db: 'products', key: id, trash: true });
+  for (const id of b.themes.keys()) if (!a.themes.has(id)) ops.push({ kind: 'row', opId: liveOpID('td'), db: 'series', key: id, trash: true });
+  for (const op of ops) liveEnqueue(op);
+}
 
 function liveBar() {
   if (!LIVE || !U.user) return '';
@@ -5619,6 +5663,18 @@ const A = {
       .finally(() => { sh.sending = false; render(); });
   }
 };
+
+// 接資料庫：Coser 的每個操作（含確認視窗裡的按鈕）前後比對，改了什麼就送到後端；只算最外層那一次
+let liveDepth = 0;
+if (LIVE) for (const k of Object.keys(A)) {
+  const f = A[k];
+  A[k] = function (...args) {
+    if (liveDepth || U.user?.role !== 'coser' || !LIVE.token) return f.apply(this, args);
+    const before = liveCapture();
+    liveDepth++;
+    try { return f.apply(this, args); } finally { liveDepth--; liveSyncDiff(before); }
+  };
+}
 
 // ================= 畫面更新 =================
 const APP = document.getElementById('app');
