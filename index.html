@@ -3972,19 +3972,19 @@ function seatCheckout(id, payment, user, debtor = '', now = nowMs()) {
   return rec;
 }
 // ===== 女僕店排班、信用分（照 MaidSchedule.swift，2026-11-06 第一階段） =====
-// 營業時間 13:00–20:00：早班 13:00–16:30、晚班 16:30–20:00；每班最多 4 人。有女僕排班的日子是營業日，沒有的是公休日。
+// 營業時間 13:00–22:00：早班 13:00–17:30、晚班 17:30–22:00；每班最多 2 人（2026-11-09 改，原本 13:00–20:00、每班 4 人）。有女僕排班的日子是營業日，沒有的是公休日。
 // 有簽約當女僕的 Coser 帳號（女僕名冊有連到、在店裡）才能排班。店鋪管理、女僕管理兩個帳號都能處理班表。
-// 業績只算拍立得、豪華照片組；每工時業績＝業績 ÷ 實際工時（報到到下班）。超過 4 人想排：業績 60%＋信用分 40%（暫行）。
+// 業績只算拍立得、豪華照片組；每工時業績＝業績 ÷ 實際工時（報到到下班）。超過 2 人想排：業績 60%＋信用分 40%（暫行）。
 // 信用分：初始 100；班前 24 小時內請假 −5、4 小時內 −10、未到 −20（開班 30 分鐘沒報到，管理端按「未到」才扣）。
 const PERIODS = ['早班', '晚班'];
-const PERIOD_MIN = { '早班': [13 * 60, 16 * 60 + 30], '晚班': [16 * 60 + 30, 20 * 60] };
+const PERIOD_MIN = { '早班': [13 * 60, 17 * 60 + 30], '晚班': [17 * 60 + 30, 22 * 60] };
 const periodTime = p => { const [a, b] = PERIOD_MIN[p], t = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; return `${t(a)}–${t(b)}`; };
 const periodHours = p => (PERIOD_MIN[p][1] - PERIOD_MIN[p][0]) / 60;
 const periodAt = mins => PERIODS.find(p => mins >= PERIOD_MIN[p][0] && mins < PERIOD_MIN[p][1]) || null;
 const SHIFT_STATUS = ['草稿', '已排班', '已確認出勤', '已報到', '已下班', '請假', '未到', '已取消'];
 const SHIFT_ACTIVE = ['草稿', '已排班', '已確認出勤', '已報到', '已下班'];
 const CREDIT_KINDS = ['臨時請假（24 小時內）', '臨時請假（4 小時內）', '未到', '預約放鳥', '更正'];
-const SCHED = { version: '2026-11-06 v1（暫行：業績 60%＋信用 40%）', max: 4, credit: 100, leave24: -5, leave4: -10, noShow: -20, wPerf: 0.6, wCredit: 0.4, lookback: 90, k: 7, early: 30 * SEAT_MIN, noShowAfter: 30 * SEAT_MIN, deadlineDay: 25, perfKinds: ['polaroid', 'deluxePhotoSet'] };
+const SCHED = { version: '2026-11-09 v2（暫行：業績 60%＋信用 40%）', max: 2, credit: 100, leave24: -5, leave4: -10, noShow: -20, wPerf: 0.6, wCredit: 0.4, lookback: 90, k: 7, early: 30 * SEAT_MIN, noShowAfter: 30 * SEAT_MIN, deadlineDay: 25, perfKinds: ['polaroid', 'deluxePhotoSet'] };
 const schedule = () => (S.schedule ||= { availability: [], shifts: [], credits: [] });
 const availID = a => `${a.maidID}|${a.day}|${a.period}`;
 const shiftStart = (day, p) => { const d = dayDate(day); d.setMinutes(PERIOD_MIN[p][0]); return d.getTime(); };
@@ -4070,7 +4070,7 @@ function shiftLeave(id, reason, user, now = nowMs()) {
   Object.assign(x, { status: '請假', leaveAt: now, leaveReason: text, updatedBy: user.id });
   return pen && x.coserID ? addCredit({ id: `CR-${x.id}-leave`, coserID: x.coserID, maidID: x.maidID, at: now, kind: pen[0], points: pen[1], shiftID: x.id, note: text, by: user.id }) : null;
 }
-/** 產生這個月的班表草稿：熱門時段先排，每班最多 4 人；已公布的不動，原本的草稿重排 */
+/** 產生這個月的班表草稿：熱門時段先排，每班最多 SCHED.max（2）人；已公布的不動，原本的草稿重排 */
 function generateSchedule(mk, user, now = nowMs()) {
   checkSchedManager(user); const sc = schedule();
   sc.shifts = sc.shifts.filter(x => !(x.status === '草稿' && x.day.startsWith(mk + '-')));
@@ -4109,7 +4109,7 @@ const vacancies = from => schedule().shifts.filter(x => (x.status === '請假' |
 /** 測試資料：小雪（小桃）、小葵、小鈴；這個月有幾個已公布的班，下個月每人填了一些時段；小鈴之前臨時請假扣過 5 分 */
 function demoSchedule() {
   const t = today(), mk = fillMonth(), sc = { availability: [], shifts: [], credits: [] };
-  const plan = { yuki: [[2, '早班'], [5, '晚班']], aoi: [[2, '早班'], [3, '晚班']], suzu: [[2, '早班'], [5, '晚班']] };
+  const plan = { yuki: [[2, '早班'], [5, '晚班']], aoi: [[2, '早班'], [3, '晚班']], suzu: [[3, '晚班'], [5, '晚班']] };
   for (const m of SHOP_MAIDS) for (const [d, p] of plan[m.id] || []) {
     const day = addDays(t, d); sc.shifts.push({ id: `SH-${day}-${p === '早班' ? 'E' : 'L'}-${m.id}`, maidID: m.id, coserID: m.coserID, maidName: m.name, day, period: p, status: '已排班', reason: '測試資料', createdBy: 'maid' });
   }
