@@ -234,6 +234,8 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .folder{background:#fff;border:2px solid var(--tint);border-radius:14px;overflow:hidden;min-width:0}
 .folder-h{width:100%;min-height:60px;display:flex;align-items:center;gap:8px;padding:8px 12px 8px 14px;background:var(--tint);color:var(--tink);text-align:left}
 .folder-h:active{filter:brightness(.95)}
+.ptile .pser{position:relative;z-index:1;padding:8px 10px 0;font-size:12px;font-weight:900;opacity:.85;line-height:1.2;color:var(--pink-on);max-width:100%;text-align:left}
+.ptile .pser + .pn{padding-top:2px}
 .folder-h .w{font-size:12px;font-weight:800;opacity:.85}
 .folder-h .c{font-size:18px;font-weight:900;line-height:1.25}
 .shell.wide .folder-h{min-height:68px}
@@ -4290,9 +4292,10 @@ function currencySwitch(cid = null) {
 function viewCheckout() {
   const u = U.user, cid = activeCheckoutCoser();
   const themes = cid ? visibleThemes(u).filter(t => t.coserID === cid) : [];
-  // 一個系列一個資料夾（2026-10-27）：系列裡先寫真集、再周邊；停售的不顯示；沒有可賣商品的系列不列
-  const groups = themes.map(t => ({ t, list: ['photobook', 'goods'].flatMap(k => sellableIn(t.id, k)) })).filter(g => g.list.length);
-  const body = groups.length ? `<div class="folders">${groups.map(g => seriesFolder(g.t, g.list, groups.length === 1)).join('')}</div>`
+  // 2026-11-09 實戰後改：大選項＝類型（寫真集、周邊），裡面是每個商品（花火寫真書・單書、芙莉蓮寫真書・單書…）。
+  // 格子照作品・角色的底色、照作品順序排；停售的不顯示；沒有可賣商品的類型不列
+  const groups = ['photobook', 'goods'].map(k => ({ k, list: themes.flatMap(t => sellableIn(t.id, k).map(p => ({ p, t }))) })).filter(g => g.list.length);
+  const body = groups.length ? `<div class="folders">${groups.map(g => kindFolder(g.k, g.list)).join('')}</div>`
     : card(`<div class="stack center" style="padding:20px 0;gap:10px"><span style="color:var(--pink-light)">${icon('shopping-bag', 44)}</span><b style="font-size:18px">還沒有商品</b><span class="sub soft">先到「商品」新增你的寫真集或周邊，就可以在這裡記帳。</span><button class="cbtn"${act('tab', 'inventory')}>去新增商品</button></div>`);
   const left = `<div class="stack g8" style="min-width:0">${compactDay()}${testNotice()}${body}</div>`;
   // 寬螢幕：購物車空的時候不顯示，加入商品後才出現
@@ -4303,7 +4306,18 @@ function viewCheckout() {
   const after = cartCount() > 0 ? `<div class="cartbar"><button class="btn primary"${act('openPayment')}><span class="n num">${cartCount()} 件</span><span class="num grow" style="text-align:left">${mmoney(cartTotal(U.cart))}</span><span>前往收款</span>${icon('chevron-right', 20, 3)}</button></div>` : '';
   return { title: '記帳', html: left, after };
 }
-/** 記帳畫面的系列資料夾（2026-10-27）：一條系列底色的長條，點了展開成商品格子、再點收起。
+/** 記帳畫面的類型資料夾（2026-11-09）：寫真集、周邊各一條，預設展開；點了收起、再點展開，開合狀態在登出前都記得。
+ *  收起時長條上也看得到這個類型已選幾件。 */
+const KIND_TINT = { photobook: 'F9C8DB', goods: 'C3D88E' };
+/** 品名沒寫到作品・角色時（例如原創的「寫真書・單書」），格子上面小字標出是哪個作品・角色 */
+const seriesHint = (p, t) => { const keys = [t.character, t.work].filter(Boolean).flatMap(k => k.split(/[／\/]/)).map(k => k.trim()).filter(Boolean); return keys.some(k => p.name.includes(k)) ? '' : themeName(t); };
+function kindFolder(k, list) {
+  const id = `kind-${k}`, open = folderOpen(id, true), ids = new Set(list.map(x => x.p.id));
+  const picked = U.cart.reduce((n, i) => n + (ids.has(i.productID) ? i.quantity : 0), 0);
+  const label = [KIND[k].label, `${list.length} 項`, picked ? `已選 ${picked} 件` : '', open ? '已展開' : '已收起'].filter(Boolean).join('，');
+  return `<section class="folder${open ? ' open' : ''}" style="${tintVars(KIND_TINT[k])}" data-flip="folder-${id}"><button class="folder-h" id="folder-${id}"${act('toggleFolder', id, 1)} aria-expanded="${open}" aria-label="${esc(label)}"><span style="display:flex">${icon(KIND[k].icon, 22)}</span><span class="grow stack" style="min-width:0"><span class="c ellip">${esc(KIND[k].label)}</span></span>${picked ? `<span class="sel num">已選 ${picked}</span>` : ''}<span class="cnt">${list.length} 項</span><span class="chev">${icon('chevron-down', 22, 3)}</span></button>${open ? `<div class="folder-b${U.justOpened === id ? ' in' : ''}"><div class="tile-grid">${list.map(x => productTile(x.p, x.t, true)).join('')}</div></div>` : ''}</section>`;
+}
+/** 記帳畫面的系列資料夾（2026-10-27；2026-11-09 起記帳改用類型資料夾，這個留著備用）：一條系列底色的長條，點了展開成商品格子、再點收起。
  *  一進來全部收起；只有一個系列時直接展開。可以同時開好幾個，開合狀態在登出前都記得。
  *  收起時長條上也看得到這個系列已選幾件。 */
 const folderOpen = (id, only) => U.openFolders[id] ?? only;
@@ -4315,7 +4329,7 @@ function seriesFolder(t, list, only) {
   return `<section class="folder${open ? ' open' : ''}" style="${tintVars(t.tintHex)}" data-flip="folder-${esc(t.id)}"><button class="folder-h" id="folder-${esc(t.id)}"${act('toggleFolder', t.id, only ? 1 : 0)} aria-expanded="${open}" aria-label="${esc(label)}"><span class="grow stack" style="min-width:0">${name}</span>${picked ? `<span class="sel num">已選 ${picked}</span>` : ''}<span class="cnt">${list.length} 項</span><span class="chev">${icon('chevron-down', 22, 3)}</span></button>${open ? `<div class="folder-b${U.justOpened === t.id ? ' in' : ''}"><div class="tile-grid">${list.map(p => productTile(p, t)).join('')}</div></div>` : ''}</section>`;
 }
 /** 一格商品：上面品名、下面深色條寫價格；點格子 +1，右上角數量圓點 -1 */
-function productTile(p, t) {
+function productTile(p, t, withSeries) {
   const cur = menuCurrency(), unit = priceIn(p, cur);
   const qty = qtyInCart(p.id), sold = !p.digital && p.stock != null && p.stock <= 0, locked = unit == null || sold;
   const hex = locked ? 'CFC7BF' : t.tintHex, bar = shadeHex(hex);
@@ -4323,7 +4337,7 @@ function productTile(p, t) {
   // 未盤點（庫存空白）不當成 0，也不顯示庫存數字；格子空間小，「未盤點」標在「我的商品」與提示裡
   const status = sold ? '已售完' : (isLowStock(p) && p.stock != null ? `剩 ${p.stock}` : '');
   const price = money(unit, cur);
-  return `<div class="ptile-wrap${qty ? ' has' : ''}" id="tile-${esc(p.id)}" data-flip="${esc(p.id)}"><button class="ptile${qty ? ' has' : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('addCart', p.id)}${locked ? ' disabled' : ''} aria-label="${esc([p.name, price, status].filter(Boolean).join('，'))}"><span class="pn">${esc(p.name)}</span><span class="pb">${status ? `<i>${status}</i>` : ''}<b>${price}</b></span></button>${qty ? `<button class="pbadge"${act('qty', p.id, -1)} aria-label="減少 1 件 ${esc(p.name)}，目前 ${qty} 件">${qty}</button>` : ''}</div>`;
+  return `<div class="ptile-wrap${qty ? ' has' : ''}" id="tile-${esc(p.id)}" data-flip="${esc(p.id)}"><button class="ptile${qty ? ' has' : ''}" style="--pbg:#${hex};--pink-on:${readableInk(hex)};--pbar:#${bar};--pbar-on:${readableInk(bar)}"${act('addCart', p.id)}${locked ? ' disabled' : ''} aria-label="${esc([p.name, price, status].filter(Boolean).join('，'))}">${withSeries && seriesHint(p, t) ? `<span class="pser ellip">${esc(seriesHint(p, t))}</span>` : ''}<span class="pn">${esc(p.name)}</span><span class="pb">${status ? `<i>${status}</i>` : ''}<b>${price}</b></span></button>${qty ? `<button class="pbadge"${act('qty', p.id, -1)} aria-label="減少 1 件 ${esc(p.name)}，目前 ${qty} 件">${qty}</button>` : ''}</div>`;
 }
 function shadeHex(hex, f = 0.78) {
   const v = parseInt(hex, 16); const c = x => Math.round(x * f).toString(16).padStart(2, '0');
