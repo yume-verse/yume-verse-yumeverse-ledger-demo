@@ -3830,6 +3830,27 @@ function coserMemberHint(look, owner, pickAction) {
   if (look.st === 'error') h = `<div class="cap bold" id="member-no-bad" style="color:var(--danger)">${esc(look.msg)}，請改輸入會員編號。</div>`;
   return h;
 }
+/**
+ * 一位會員在店裡和各 Coser 身上的消費（Coser 管理帳號的「會員消費」頁，2026-11-10）。台幣：
+ * - 店裡＝座位結帳合計（座位費＋加購，賒帳也算，另外列待收）
+ * - Coser＝交易紀錄（已收，外幣用當天匯率換台幣；沒有匯率的外幣不算、另外提示）
+ */
+function memberOverview(id) {
+  const visits = shopMemberVisits(id);
+  const shop = { total: visits.reduce((n, r) => n + (r.total || 0), 0), count: visits.length, outstanding: visits.filter(r => r.payment === 'credit' && !r.settledAt).reduce((n, r) => n + r.total, 0) };
+  const by = new Map();
+  for (const sl of SB().sales) {
+    if (sl.memberID !== id) continue;
+    const row = by.get(sl.coserID) || { coserID: sl.coserID, twd: 0, count: 0, outstanding: 0, noRate: 0 };
+    row.count++;
+    if (sl.status !== 'paid') row.outstanding += sl.rate != null ? sl.total * sl.rate : 0;
+    else if (sl.rate != null) row.twd += sl.total * sl.rate; else row.noRate++;
+    by.set(sl.coserID, row);
+  }
+  const cosers = [...by.values()].map(r => ({ ...r, twd: Math.round(r.twd), outstanding: Math.round(r.outstanding) })).sort((a, b) => b.twd - a.twd);
+  const coserTotal = cosers.reduce((n, r) => n + r.twd, 0);
+  return { shop, cosers, coserTotal, total: shop.total + coserTotal };
+}
 /** 店裡（座位結帳）的消費：店鋪管理帳號看得到 */
 const shopMemberVisits = id => seatBoard().history.filter(r => r.memberID === id).sort((a, b) => b.closedAt - a.closedAt);
 const shopMemberSpend = id => shopMemberVisits(id).reduce((n, r) => n + (r.total || 0), 0);
@@ -3917,7 +3938,7 @@ const U = {
   user: null, dataset: 'scenario', section: 'home', stack: [], sheet: null, confirm: null, toast: null, pickedDay: null,
   cart: [], cartMember: '', cartMemberPick: null, cartDebtor: '', homeCoserID: null,
   costumeFilter: 'all', locationFilter: null, costumeSearch: '', recordsKind: 'costume', recordsTab: 'active', recordsSearch: '',
-  venueDay: null, showPast: false, themeFilter: null, memberSearch: '', shopMemberSearch: '',
+  venueDay: null, showPast: false, themeFilter: null, memberSearch: '', shopMemberSearch: '', memberSpendSearch: '',
   // 首頁、對帳要看哪個幣別（一天有好幾種幣別時）；null＝這天的預設幣別
   reportCur: null,
   // 記帳畫面哪些系列資料夾是打開的（themeID → true/false；沒記錄＝預設），登出才清掉
@@ -4272,7 +4293,7 @@ const qtyInCart = id => U.cart.find(i => i.productID === id)?.quantity ?? 0;
 
 function sectionsFor() {
   switch (role()) {
-    case 'company': return ['home', 'reconcile', 'costumes', 'records', 'cosers', 'more'];
+    case 'company': return ['home', 'reconcile', 'costumes', 'records', 'cosers', 'memberSpend', 'more'];
     case 'maidManager': return ['home', 'reconcile', 'schedule', 'maids', 'more'];
     case 'shopManager': return ['seats', 'shopMembers', 'schedule', 'more'];
     default: return ['home', 'checkout', 'inventory', 'bookings', 'mySales', ...(memberCardOn() ? ['members'] : []), 'more'];
@@ -4287,19 +4308,20 @@ function tabsFor() {
   }
 }
 const moreSectionsFor = () => sectionsFor().filter(s => !tabsFor().includes(s) && s !== 'more');
-const SEC_ICON = { shopMembers: 'heart', schedule: 'calendar', maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
-const SEC_GROUP = { shopMembers: '店鋪', schedule: '女僕', maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
+const SEC_ICON = { memberSpend: 'heart', shopMembers: 'heart', schedule: 'calendar', maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
+const SEC_GROUP = { memberSpend: 'Coser', shopMembers: '店鋪', schedule: '女僕', maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
 function secTitle(s) {
   const c = role() === 'coser';
   if (role() === 'maidManager' && s === 'home') return '營業額';
   if (s === 'maids') return '女僕名冊';
   if (s === 'schedule') return '女僕班表';
   if (s === 'shopMembers') return '店鋪會員';
+  if (s === 'memberSpend') return '會員消費';
   return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', cosers: 'Coser 名冊', seats: '座位圖', more: '更多' }[s];
 }
 function secShort(s) {
   const c = role() === 'coser';
-  return { shopMembers: '會員', schedule: '班表', maids: '名冊', seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
+  return { memberSpend: '會員', shopMembers: '會員', schedule: '班表', maids: '名冊', seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
 }
 
 // ================= 小元件 =================
@@ -4514,6 +4536,7 @@ function entryTitle(e) {
   if (e.type === 'loan') return '借用明細';
   if (e.type === 'member') return '會員';
   if (e.type === 'shopMember') return '會員';
+  if (e.type === 'memberSpend') return '會員消費';
   return '';
 }
 function currentContent() {
@@ -4524,6 +4547,7 @@ function currentContent() {
   else if (top.type === 'costume') r = viewCostumeDetail(top.id);
   else if (top.type === 'loan') r = viewLoanDetail(top.id);
   else if (top.type === 'shopMember') r = viewShopMemberDetail(top.id);
+  else if (top.type === 'memberSpend') r = viewMemberSpendDetail(top.id);
   else r = viewMemberDetail(top.id);
   r.key = top ? `${top.type}-${top.id || top.section}` : U.section;
   if (top) r.backLabel = entryTitle(U.stack[U.stack.length - 2]);
@@ -4536,6 +4560,7 @@ function sectionView(s) {
     case 'schedule': return viewSchedule();
     case 'seats': return viewSeats();
     case 'shopMembers': return viewShopMembers();
+    case 'memberSpend': return viewMemberSpend();
     case 'checkout': return viewCheckout();
     case 'reconcile': return role() === 'maidManager' ? viewShopReconcile() : viewReconcile();
     case 'costumes': return viewCostumes();
@@ -4931,6 +4956,31 @@ function viewMemberDetail(id) {
   const m = SB().members.find(x => x.id === id); if (!m) return { title: '會員', html: empty('search', '找不到這位會員') };
   const hist = memberSales(m);
   return { title: '會員', cls: 'narrowcol', html: card(`<div class="t-big">${esc(memberName(m))}</div>${info('會員編號', memberNoText(m.fanID))}${info('加入日期', dayText(dayKey(new Date(m.createdAt))))}${info('累積消費', spendText(memberSpend(m)))}${m.note ? info('備註', m.note) : ''}${btn('編輯資料', 'openMember', m.id, { kind: 'secondary', ic: 'pencil' })}`) + card(stitle('消費紀錄', hist.length) + (hist.length ? joinRows(hist, s => saleRow(s, true)) : empty('inbox', '還沒有消費紀錄'))) };
+}
+
+// ================= 會員消費（Coser 管理帳號，2026-11-10） =================
+// 一位客人在店裡（座位結帳）和每位 Coser 身上各花多少。只能看；登記、修改會員是店鋪管理帳號的事。
+function viewMemberSpend() {
+  const kw = (U.memberSpendSearch || '').trim(), digits = normalizeMemberNo(kw);
+  const rows = shopMembers().filter(m => !kw || (digits && (m.id.includes(digits) || (m.phone || '').includes(digits))) || (m.name || '').includes(kw))
+    .map(m => ({ m, o: memberOverview(m.id) })).sort((a, b) => b.o.total - a.o.total || cmp(a.m.id, b.m.id));
+  const intro = `<div class="cap soft" id="member-spend-intro">店鋪現場登記的會員，在店裡（座位結帳）和各 Coser 身上的消費（台幣）。只有 Coser 管理帳號看得到。</div>`;
+  let body;
+  if (!shopMembers().length) body = card(empty('heart', '還沒有店鋪會員（店鋪管理帳號在店裡登記）'));
+  else if (!rows.length) body = card(empty('search', '找不到符合的會員'));
+  else body = card(rows.map(({ m, o }) => `<button class="row" id="member-spend-${m.id}" style="width:100%;padding:10px 0"${act('pushMemberSpend', m.id)}><span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--pink-pale);color:var(--pink)">${icon('heart', 20)}</span><span class="grow"><b style="display:block;font-size:16px">${esc(m.name || '（沒有稱呼）')}</b><span class="cap soft num">${esc(memberNoText(m.id))}・店裡 ${money(o.shop.total)}・Coser ${money(o.coserTotal)}</span></span><b class="num">${money(o.total)}</b><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`).join(HR), 'p10');
+  return { title: '會員消費', html: card(intro) + `<div class="search">${icon('search', 18)}${inp('memberSpendSearch', { ph: '搜尋電話、會員編號或稱呼' })}</div>${body}`, cls: 'narrowcol' };
+}
+function viewMemberSpendDetail(id) {
+  const m = shopMemberByID(id); if (!m) return { title: '會員消費', html: empty('search', '找不到這位會員') };
+  const o = memberOverview(id);
+  const head = card(`<div class="cap heavy soft">會員編號</div><div class="num" style="font-size:28px;font-weight:900;letter-spacing:2px;color:var(--pink-deep)">${esc(memberNoText(m.id))}</div>
+    ${info('稱呼', m.name || '（沒有）')}${info('生日', birthdayText(m.birthday))}${info('電話', m.phone || '')}
+    <div class="row" id="member-spend-total" style="padding-top:6px"><b class="grow" style="font-size:17px">消費合計</b><b class="num" style="font-size:26px;color:var(--pink-deep)">${money(o.total)}</b></div>`);
+  const shop = card(stitle('店裡（座位結帳）') + `<div id="member-spend-shop">${info('合計', money(o.shop.total))}${info('來店次數', `${o.shop.count} 次`)}${o.shop.outstanding ? info('其中待收', money(o.shop.outstanding)) : ''}</div>`);
+  const coserRows = o.cosers.length ? o.cosers.map(r => { const c = coser(r.coserID); return `<div class="row" id="member-spend-coser-${esc(r.coserID)}" style="padding:8px 0">${c ? avatar(c, 36) : ''}<div class="grow"><div class="bold">${esc(c?.shortName || r.coserID)}</div><div class="cap soft">${r.count} 筆${r.outstanding ? `・待收 ${money(r.outstanding)}` : ''}${r.noRate ? `・${r.noRate} 筆外幣沒有匯率沒算` : ''}</div></div><b class="num">${money(r.twd)}</b></div>`; }).join(HR) : empty('inbox', '還沒有在 Coser 身上的消費');
+  const cosers = card(stitle('各 Coser', o.cosers.length) + coserRows + (o.cosers.length ? HR + info('Coser 合計', money(o.coserTotal)) : '') + `<div class="cap soft">只算已收的（待收的另外列）；外幣照當天匯率換成台幣。</div>`);
+  return { title: '會員消費', cls: 'narrowcol', html: head + shop + cosers };
 }
 
 // ================= 店鋪會員（店鋪管理帳號，2026-11-10） =================
@@ -6185,6 +6235,7 @@ const A = {
   pushLoan(id) { push({ type: 'loan', id }); },
   pushMember(id) { push({ type: 'member', id }); },
   pushShopMember(id) { push({ type: 'shopMember', id }); },
+  pushMemberSpend(id) { push({ type: 'memberSpend', id }); },
   cartMemberPick(id) { U.cartMemberPick = id; },
   memberSheetPick(id) { U.sheet.pick = id; },
   openShopMember(id) { const m = id ? shopMemberByID(id) : null; U.sheet = { type: 'shopMember', id: m?.id ?? null, name: m?.name ?? '', birthday: m ? m.birthday.replace('-', '') : '', phone: m?.phone ?? '', note: m?.note ?? '' }; },
@@ -6401,7 +6452,7 @@ const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
 const STATE_VERSION = 10; // 11/10 加店鋪會員 +1 // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
 const KEEP_UI = ['schedMonth', 'user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartMemberPick', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
-  'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch', 'shopMemberSearch'];
+  'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch', 'shopMemberSearch', 'memberSpendSearch'];
 function snapshotState() {
   const ui = {}; for (const k of KEEP_UI) ui[k] = U[k];
   if (ui.sheet?.type === 'feedback') ui.sheet = null;
