@@ -3775,6 +3775,19 @@ function memberNoState(raw) {
   if (n.length < 8) return 'typing'; if (n.length > 8) return 'bad';
   return shopMemberByID(n) ? 'ok' : 'bad';
 }
+/** 店鋪：用客人的電話（完整號碼）或會員編號找會員（2026-11-10：現場通常問電話）。同一支電話可能有好幾位（家人） */
+function findShopMembers(raw) {
+  const n = normalizeMemberNo(raw); if (n.length < 8) return [];
+  return shopMembers().filter(m => m.id === n || m.phone === n).sort((a, b) => cmp(a.id, b.id));
+}
+/** 座位收款的會員欄：none＝沒填、typing＝還沒打完、ok＝找到一位（id）、pick＝這支電話有好幾位要選、bad＝找不到 */
+function seatMemberLookup(raw, picked) {
+  const n = normalizeMemberNo(raw); if (!n) return { st: 'none', id: null, list: [] };
+  const list = findShopMembers(n);
+  if (list.length === 1) return { st: 'ok', id: list[0].id, list };
+  if (list.length > 1) { const p = list.find(m => m.id === picked); return { st: p ? 'ok' : 'pick', id: p?.id ?? null, list }; }
+  return { st: n.length < 10 ? 'typing' : 'bad', id: null, list };
+}
 /** 店裡（座位結帳）的消費：店鋪管理帳號看得到 */
 const shopMemberVisits = id => seatBoard().history.filter(r => r.memberID === id).sort((a, b) => b.closedAt - a.closedAt);
 const shopMemberSpend = id => shopMemberVisits(id).reduce((n, r) => n + (r.total || 0), 0);
@@ -5208,10 +5221,16 @@ function sheetSeatPay(sh) {
       body += `<div class="field"><label for="f-sheet-cashGiven">客人給多少？（選填，幫你算找零）</label>${inp('sheet.cashGiven', { ph: '例如 1000（NT$）', num: true, cls: 'big num' })}${given > 0 ? `<b id="seat-change" style="font-size:20px;color:${change >= 0 ? 'var(--green-deep)' : 'var(--danger)'}">${change >= 0 ? `找零 ${money(change)}` : `還差 ${money(-change)}`}</b>` : ''}</div>`;
     }
     if (sh.payment === 'credit') body += `<div class="field"><label for="f-sheet-debtor">客人名字或聯絡方式（必填）</label>${inp('sheet.debtor', { ph: '例如 小雪・IG @snow', cls: needsName ? 'bad' : '' })}</div>`;
-    // 2026-11-10：店鋪會員（選填），消費記在這位會員名下
-    body += `<div class="field"><label for="f-sheet-member">會員編號（選填）</label>${inp('sheet.member', { ph: '例如 03010891', num: true, cls: memberNoState(sh.member) === 'bad' ? 'bad num' : 'num' })}${memberNoHint(sh.member, true)}</div>`;
+    // 2026-11-10：店鋪會員（選填），消費記在這位會員名下。現場通常問客人電話：輸入電話（完整號碼）或會員編號都可以
+    const look = seatMemberLookup(sh.member, sh.memberPick);
+    let hint = '';
+    if (look.st === 'ok') { const m = shopMemberByID(look.id); hint = `<div class="row g8 cap bold" id="member-no-ok" style="color:var(--green-deep)">${icon('heart', 14)}會員：${esc(m.name || '（沒有稱呼）')}・${esc(memberNoText(m.id))}</div>`; }
+    if (look.st === 'pick' || (look.st === 'ok' && look.list.length > 1)) hint += `<div class="stack g8" id="member-pick"><div class="cap bold soft">這支電話有 ${look.list.length} 位會員，請選一位：</div>${look.list.map(m => `<button class="paybtn${look.id === m.id ? ' on' : ''}" id="member-pick-${m.id}" style="--fg:var(--pink-deep)"${act('seatMemberPick', m.id)} aria-pressed="${look.id === m.id}">${icon('heart', 18)}${esc(m.name || '（沒有稱呼）')}・${esc(birthdayText(m.birthday))}生・${esc(memberNoText(m.id))}</button>`).join('')}</div>`;
+    if (look.st === 'bad') hint = `<div class="cap bold" id="member-no-bad" style="color:var(--danger)">找不到這支電話或會員編號的會員。還不是會員的話，可以先到「會員」登記。</div>`;
+    if (look.st === 'typing') hint = `<div class="cap soft">請輸入客人的完整電話（或 8 碼會員編號）。</div>`;
+    body += `<div class="field"><label for="f-sheet-member">會員（選填，輸入客人電話或會員編號）</label>${inp('sheet.member', { ph: '例如 0912345089', num: true, cls: look.st === 'bad' ? 'bad num' : 'num' })}${hint}</div>`;
   }
-  const memberBad = total > 0 && ['bad', 'typing'].includes(memberNoState(sh.member));
+  const memberBad = total > 0 && !['none', 'ok'].includes(seatMemberLookup(sh.member, sh.memberPick).st);
   body += btn(total === 0 ? '確認結帳（不用收錢）' : sh.payment === 'credit' ? `記成應收 ${money(total)}` : `確認收款 ${money(total)}`, 'seatDoCheckout', null, { ic: 'check', dis: needsName || memberBad, cls: 'seat-confirm' })
     + `<div class="cap soft">座位費：${SEAT_PRICE_TEXT}。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>` + testNotice();
   return sheetFrame({ title: '收款', left: tb('返回', 'seatPayBack'), body });
@@ -6004,7 +6023,7 @@ const A = {
   // 結帳防呆：先問一次，確定才開收款畫面（2026-11-03）
   seatAskCheckout() {
     const id = U.sheet.id, ss = seatSession(id), fee = seatFee(ss), add = seatAddOnTotal(ss);
-    ask('你確定要結帳嗎><', `${id}・座位費 ${money(fee)}${add ? `＋加購 ${money(add)}` : ''}＝合計 ${money(fee + add)}`, [{ label: '確定結帳', run: () => { U.sheet = { type: 'seatPay', id, payment: 'cash', cashGiven: '', debtor: '', member: '', finished: null }; } }], '取消');
+    ask('你確定要結帳嗎><', `${id}・座位費 ${money(fee)}${add ? `＋加購 ${money(add)}` : ''}＝合計 ${money(fee + add)}`, [{ label: '確定結帳', run: () => { U.sheet = { type: 'seatPay', id, payment: 'cash', cashGiven: '', debtor: '', member: '', memberPick: null, finished: null }; } }], '取消');
   },
   // 女僕管理帳號（2026-11-05）
   openShopCash(kind) { const v = shopCashBox(selDay())[kind]; U.sheet = { type: 'shopCash', kind, amount: v == null ? '' : String(v) }; },
@@ -6062,9 +6081,10 @@ const A = {
   },
   seatPayBack() { U.sheet = { type: 'seat', id: U.sheet.id, step: 'menu' }; },
   seatPayMethod(k) { U.sheet.payment = k; },
+  seatMemberPick(id) { U.sheet.memberPick = id; },
   seatDoCheckout() {
     const sh = U.sheet, total = seatTotal(seatSession(sh.id));
-    const r = perform(() => seatCheckout(sh.id, total > 0 ? sh.payment : null, U.user, sh.debtor, undefined, total > 0 ? sh.member : ''));
+    const r = perform(() => seatCheckout(sh.id, total > 0 ? sh.payment : null, U.user, sh.debtor, undefined, total > 0 ? (seatMemberLookup(sh.member, sh.memberPick).id || sh.member) : ''));
     if (r) sh.finished = r;
   },
   seatTest(sec) { const id = U.sheet.id, t = SEAT_TEST.find(x => x[0] === +sec); perform(() => seatTestSetRemaining(id, +sec, U.user), `測試：${id} ${t[1]}`); },
