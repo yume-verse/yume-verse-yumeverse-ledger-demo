@@ -3786,7 +3786,49 @@ function seatMemberLookup(raw, picked) {
   const list = findShopMembers(n);
   if (list.length === 1) return { st: 'ok', id: list[0].id, list };
   if (list.length > 1) { const p = list.find(m => m.id === picked); return { st: p ? 'ok' : 'pick', id: p?.id ?? null, list }; }
-  return { st: n.length < 10 ? 'typing' : 'bad', id: null, list };
+  return { st: n.length < 10 ? 'typing' : 'bad', id: null, list, notNumber: n.length === 8 ? n : null };
+}
+// Coser：現場一樣問客人電話（2026-11-10）。Coser 的資料裡沒有電話：接資料庫時每次問後端，只拿到會員編號；測試資料直接在這台查
+const MEMBER_LOOKUP = {};   // 電話 → { st: 'loading'|'done'|'error', ids, msg }
+function startMemberLookup(n) {
+  MEMBER_LOOKUP[n] = { st: 'loading' };
+  liveFetch('/shop-members/lookup', { phone: n }).then(r => {
+    const ids = (r?.members || []).map(normalizeMemberNo).filter(x => x.length === 8);
+    // 剛在店裡登記、這台還沒更新到的編號：先記下來，記帳檢查才找得到
+    for (const id of ids) if (!shopMemberByID(id)) shopMembers().push({ id, name: '', birthday: null, phone: null, registeredAt: null, registeredBy: null, note: null });
+    MEMBER_LOOKUP[n] = { st: 'done', ids }; render();
+  }).catch(e => { MEMBER_LOOKUP[n] = { st: 'error', msg: e.message || '查不到' }; render(); });
+}
+/** Coser 記帳、新增會員的會員欄：輸入客人電話或會員編號。回傳 st（none/typing/loading/ok/pick/bad/error）、id、list（會員編號） */
+function coserMemberLookup(raw, picked) {
+  const n = normalizeMemberNo(raw); if (!n) return { st: 'none', id: null, list: [] };
+  if (n.length === 8 && shopMemberByID(n)) return { st: 'ok', id: n, list: [n], byNumber: true };
+  if (n.length < 8) return { st: 'typing', id: null, list: [] };
+  let ids;
+  if (LIVE?.token) {
+    const c = MEMBER_LOOKUP[n];
+    if (!c) { if (n.length < 9) return { st: 'typing', id: null, list: [], notNumber: n.length === 8 ? n : null }; startMemberLookup(n); return { st: 'loading', id: null, list: [] }; }
+    if (c.st === 'loading') return { st: 'loading', id: null, list: [] };
+    if (c.st === 'error') return { st: 'error', id: null, list: [], msg: c.msg };
+    ids = c.ids;
+  } else ids = shopMembers().filter(m => m.phone === n).map(m => m.id).sort();
+  if (ids.length === 1) return { st: 'ok', id: ids[0], list: ids };
+  if (ids.length > 1) return ids.includes(picked) ? { st: 'ok', id: picked, list: ids } : { st: 'pick', id: null, list: ids };
+  return { st: n.length < 10 ? 'typing' : 'bad', id: null, list: [], notNumber: n.length === 8 ? n : null };
+}
+/** 會員欄下面的提示（Coser 只看得到會員編號；生日從編號看得出來） */
+function coserMemberHint(look, owner, pickAction) {
+  let h = '';
+  if (look.st === 'ok') {
+    const mine = memberByFan(look.id, owner);
+    h = `<div class="row g8 cap bold" id="member-no-ok" style="color:var(--green-deep)">${icon('heart', 14)}${mine ? `你的會員：${esc(memberName(mine))}` : `店鋪會員 ${esc(memberNoText(look.id))}・記帳後加入你的會員`}</div>`;
+  }
+  if (look.list.length > 1) h += `<div class="stack g8" id="member-pick"><div class="cap bold soft">這支電話有 ${look.list.length} 位會員，請選一位：</div>${look.list.map(id => `<button class="paybtn${look.id === id ? ' on' : ''}" id="member-pick-${id}" style="--fg:var(--pink-deep)"${act(pickAction, id)} aria-pressed="${look.id === id}">${icon('heart', 18)}${esc(memberNoText(id))}（${esc(birthdayText(id.slice(0, 2) + '-' + id.slice(2, 4)))}生）</button>`).join('')}</div>`;
+  if (look.st === 'bad') h = `<div class="cap bold" id="member-no-bad" style="color:var(--danger)">找不到這支電話或會員編號的會員（客人要先在店裡登記會員）。</div>`;
+  if (look.st === 'typing') h = look.notNumber ? `<div class="cap bold" id="member-no-typing8" style="color:var(--orange-deep)">找不到會員編號 ${esc(memberNoText(look.notNumber))}；如果是電話，請繼續輸入完整號碼。</div>` : `<div class="cap soft">請輸入客人的完整電話（或 8 碼會員編號）。</div>`;
+  if (look.st === 'loading') h = `<div class="cap soft" id="member-no-loading">查詢中…</div>`;
+  if (look.st === 'error') h = `<div class="cap bold" id="member-no-bad" style="color:var(--danger)">${esc(look.msg)}，請改輸入會員編號。</div>`;
+  return h;
 }
 /** 店裡（座位結帳）的消費：店鋪管理帳號看得到 */
 const shopMemberVisits = id => seatBoard().history.filter(r => r.memberID === id).sort((a, b) => b.closedAt - a.closedAt);
@@ -3873,7 +3915,7 @@ function removeContractPhoto(id, photoID, user) {
 // ================= 畫面狀態 =================
 const U = {
   user: null, dataset: 'scenario', section: 'home', stack: [], sheet: null, confirm: null, toast: null, pickedDay: null,
-  cart: [], cartMember: '', cartDebtor: '', homeCoserID: null,
+  cart: [], cartMember: '', cartMemberPick: null, cartDebtor: '', homeCoserID: null,
   costumeFilter: 'all', locationFilter: null, costumeSearch: '', recordsKind: 'costume', recordsTab: 'active', recordsSearch: '',
   venueDay: null, showPast: false, themeFilter: null, memberSearch: '', shopMemberSearch: '',
   // 首頁、對帳要看哪個幣別（一天有好幾種幣別時）；null＝這天的預設幣別
@@ -5227,7 +5269,7 @@ function sheetSeatPay(sh) {
     if (look.st === 'ok') { const m = shopMemberByID(look.id); hint = `<div class="row g8 cap bold" id="member-no-ok" style="color:var(--green-deep)">${icon('heart', 14)}會員：${esc(m.name || '（沒有稱呼）')}・${esc(memberNoText(m.id))}</div>`; }
     if (look.st === 'pick' || (look.st === 'ok' && look.list.length > 1)) hint += `<div class="stack g8" id="member-pick"><div class="cap bold soft">這支電話有 ${look.list.length} 位會員，請選一位：</div>${look.list.map(m => `<button class="paybtn${look.id === m.id ? ' on' : ''}" id="member-pick-${m.id}" style="--fg:var(--pink-deep)"${act('seatMemberPick', m.id)} aria-pressed="${look.id === m.id}">${icon('heart', 18)}${esc(m.name || '（沒有稱呼）')}・${esc(birthdayText(m.birthday))}生・${esc(memberNoText(m.id))}</button>`).join('')}</div>`;
     if (look.st === 'bad') hint = `<div class="cap bold" id="member-no-bad" style="color:var(--danger)">找不到這支電話或會員編號的會員。還不是會員的話，可以先到「會員」登記。</div>`;
-    if (look.st === 'typing') hint = `<div class="cap soft">請輸入客人的完整電話（或 8 碼會員編號）。</div>`;
+    if (look.st === 'typing') hint = look.notNumber ? `<div class="cap bold" id="member-no-typing8" style="color:var(--orange-deep)">找不到會員編號 ${esc(memberNoText(look.notNumber))}；如果是電話，請繼續輸入完整號碼。</div>` : `<div class="cap soft">請輸入客人的完整電話（或 8 碼會員編號）。</div>`;
     body += `<div class="field"><label for="f-sheet-member">會員（選填，輸入客人電話或會員編號）</label>${inp('sheet.member', { ph: '例如 0912345089', num: true, cls: look.st === 'bad' ? 'bad num' : 'num' })}${hint}</div>`;
   }
   const memberBad = total > 0 && !['none', 'ok'].includes(seatMemberLookup(sh.member, sh.memberPick).st);
@@ -5284,7 +5326,7 @@ function sheetPayment(sh) {
   }
   if (!U.cart.length) return sheetFrame({ title: '收款', left: tb('返回', 'closeSheet'), body: empty('shopping-bag', '購物車是空的，回到結帳畫面選商品。'), cls: 'short' });
   const total = cartTotal(U.cart), owner = activeCheckoutCoser(), mc = isMemberCardOn(owner), cur = menuCurrency();
-  const needsName = sh.payment === 'credit' && !(mc && memberNoState(U.cartMember) === 'ok') && !U.cartDebtor.trim();
+  const needsName = sh.payment === 'credit' && !(mc && coserMemberLookup(U.cartMember, U.cartMemberPick).st === 'ok') && !U.cartDebtor.trim();
   let body = card(`<div class="row g8 heavy sub" style="color:${isToday() ? 'var(--ink-soft)' : 'var(--orange-deep)'}">${icon('calendar', 16)}${esc(isToday() ? `記在今天・${dayText(selDay())}` : `補記在 ${dayText(selDay())}`)}</div><div class="row g8 heavy sub" id="pay-currency" style="color:${cur === 'TWD' ? 'var(--ink-soft)' : 'var(--pink-deep)'}">${icon('coins', 16)}幣別：${CUR[cur].label}（${CUR[cur].symbol}）</div>${cartLines()}${HR}<div class="row"><b class="grow">應收</b><b class="num" style="font-size:34px;font-weight:900;color:var(--pink-deep)">${mmoney(total)}</b></div>`);
   body += `<div class="stack g8"><b style="font-size:17px">收款方式</b><div class="paygrid">${['cash', 'transfer', 'linePay', 'credit'].map(k => `<button class="paybtn${sh.payment === k ? ' on' : ''}" style="--fg:${PAY[k].fg}"${act('payMethod', k)} aria-pressed="${sh.payment === k}">${icon(PAY[k].icon, 22)}${k === 'credit' ? '賒帳（記應收）' : PAY[k].label}</button>`).join('')}</div></div>`;
   if (sh.payment === 'cash') {
@@ -5293,12 +5335,11 @@ function sheetPayment(sh) {
   }
   if (sh.payment === 'credit') body += `<div class="field"><label for="f-cartDebtor">${mc ? '客人名字或聯絡方式（沒有會員編號時必填）' : '客人名字或聯絡方式（必填）'}</label>${inp('cartDebtor', { ph: '例如 小雪・IG @snow', cls: needsName ? 'bad' : '' })}</div>`;
   if (mc) {
-    // 2026-11-10：輸入店鋪會員編號（店鋪登記過的才行）；第一次在你這裡消費會自動加入你的會員
-    const st = memberNoState(U.cartMember), m = st === 'ok' ? memberByFan(normalizeMemberNo(U.cartMember), owner) : null;
-    const hint = m ? `<div class="row g8 cap bold" id="member-no-ok" style="color:var(--green-deep)">${icon('heart', 14)}你的會員：${esc(memberName(m))}</div>` : st === 'ok' ? `<div class="row g8 cap bold" id="member-no-ok" style="color:var(--green-deep)">${icon('heart', 14)}店鋪會員 ${esc(memberNoText(normalizeMemberNo(U.cartMember)))}・記帳後加入你的會員</div>` : memberNoHint(U.cartMember, false);
-    body += `<div class="field"><label for="f-cartMember">會員編號（選填）</label>${inp('cartMember', { ph: '例如 03010891', num: true, cls: st === 'bad' ? 'bad num' : 'num' })}${hint}</div>`;
+    // 2026-11-10：輸入客人電話或店鋪會員編號（店鋪登記過的才行）；第一次在你這裡消費會自動加入你的會員
+    const look = coserMemberLookup(U.cartMember, U.cartMemberPick);
+    body += `<div class="field"><label for="f-cartMember">會員（選填，輸入客人電話或會員編號）</label>${inp('cartMember', { ph: '例如 0912345089', num: true, cls: look.st === 'bad' ? 'bad num' : 'num' })}${coserMemberHint(look, owner, 'cartMemberPick')}</div>`;
   }
-  const memberBad = mc && ['bad', 'typing'].includes(memberNoState(U.cartMember));
+  const memberBad = mc && !['none', 'ok'].includes(coserMemberLookup(U.cartMember, U.cartMemberPick).st);
   body += btn(sh.payment === 'credit' ? `記成應收 ${mmoney(total)}` : `確認收款 ${mmoney(total)}`, 'doCheckout', null, { ic: 'check', dis: needsName || memberBad }) + testNotice();
   return sheetFrame({ title: '收款', left: tb('返回', 'closeSheet'), body });
 }
@@ -5527,13 +5568,13 @@ function sheetSeries(sh) {
   return sheetFrame({ title: '改名／換顏色', left: tb('取消', 'closeSheet'), body });
 }
 function sheetMember(sh) {
-  // 2026-11-10：會員編號＝店鋪會員編號（店鋪登記過的才能加）
-  const editing = !!sh.memberID, st = editing ? 'ok' : memberNoState(sh.fanID);
-  const exists = !editing && st === 'ok' && !!memberByFan(normalizeMemberNo(sh.fanID), U.user.coserID);
-  const can = editing || (st === 'ok' && !exists);
-  const field = editing ? `<div class="input num" style="display:flex;align-items:center;opacity:.6">${esc(memberNoText(sh.fanID))}</div>` : inp('sheet.fanID', { ph: '例如 03010891', num: true, cls: st === 'bad' ? 'bad num' : 'num' });
-  const hint = editing ? '' : exists ? `<div class="cap bold" style="color:var(--danger)">這位已經是你的會員了。</div>` : memberNoHint(sh.fanID, false);
-  const body = `<div class="field"><label for="f-sheet-fanID">會員編號（必填）</label>${field}${hint}${editing ? '' : `<div class="cap soft">客人要先在店裡登記會員，拿到 8 碼的會員編號。</div>`}</div><div class="field"><label for="f-sheet-nickname">暱稱（選填）</label>${inp('sheet.nickname', { ph: '例如 小雪' })}</div><div class="field"><label for="f-sheet-note">備註（選填）</label>${inp('sheet.note', { ph: '例如 喜歡芙莉蓮' })}</div>${btn(editing ? '儲存' : '新增會員', 'saveMember', null, { ic: 'check', dis: !can })}`;
+  // 2026-11-10：輸入客人電話或店鋪會員編號（店鋪登記過的才能加）
+  const editing = !!sh.memberID, look = editing ? { st: 'ok', id: sh.fanID, list: [] } : coserMemberLookup(sh.fanID, sh.pick);
+  const exists = !editing && look.st === 'ok' && !!memberByFan(look.id, U.user.coserID);
+  const can = editing || (look.st === 'ok' && !exists);
+  const field = editing ? `<div class="input num" style="display:flex;align-items:center;opacity:.6">${esc(memberNoText(sh.fanID))}</div>` : inp('sheet.fanID', { ph: '例如 0912345089', num: true, cls: look.st === 'bad' ? 'bad num' : 'num' });
+  const hint = editing ? '' : exists ? `<div class="cap bold" style="color:var(--danger)">這位已經是你的會員了。</div>` : coserMemberHint(look, U.user.coserID, 'memberSheetPick');
+  const body = `<div class="field"><label for="f-sheet-fanID">${editing ? '會員編號' : '會員（輸入客人電話或會員編號，必填）'}</label>${field}${hint}${editing ? '' : `<div class="cap soft">客人要先在店裡登記會員。</div>`}</div><div class="field"><label for="f-sheet-nickname">暱稱（選填）</label>${inp('sheet.nickname', { ph: '例如 小雪' })}</div><div class="field"><label for="f-sheet-note">備註（選填）</label>${inp('sheet.note', { ph: '例如 喜歡芙莉蓮' })}</div>${btn(editing ? '儲存' : '新增會員', 'saveMember', null, { ic: 'check', dis: !can })}`;
   return sheetFrame({ title: editing ? '編輯會員' : '新增會員', left: tb('取消', 'closeSheet'), body, cls: 'short' });
 }
 
@@ -5639,7 +5680,7 @@ let wantScrollTop = false;
 function scrollTop() { wantScrollTop = true; }
 function signIn(acc) {
   U.user = { ...acc }; U.section = acc.role === 'shopManager' ? 'seats' : 'home'; U.stack = []; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
-  U.cart = []; U.cartMember = ''; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null; U.openFolders = {}; U.justOpened = null; U.cashCoserID = null;
+  U.cart = []; U.cartMember = ''; U.cartMemberPick = null; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null; U.openFolders = {}; U.justOpened = null; U.cashCoserID = null;
   // 2026-11-05：登入、登出都不重設測試資料（換帳號測試時資料都在）；要從頭開始用「重設測試資料」
   scrollTop();
 }
@@ -5657,7 +5698,7 @@ function changeQty(id, d) {
   if (i >= 0) { U.cart[i].quantity += d; if (U.cart[i].quantity <= 0) U.cart.splice(i, 1); }
   else if (d > 0) U.cart.push({ productID: id, quantity: d });
 }
-const resetCart = () => { U.cart = []; U.cartMember = ''; U.cartDebtor = ''; };
+const resetCart = () => { U.cart = []; U.cartMember = ''; U.cartMemberPick = null; U.cartDebtor = ''; };
 function openProductForm(pid, tid) {
   const themes = visibleThemes(U.user);
   const used = new Set(themes.map(t => t.tintHex));
@@ -6144,6 +6185,8 @@ const A = {
   pushLoan(id) { push({ type: 'loan', id }); },
   pushMember(id) { push({ type: 'member', id }); },
   pushShopMember(id) { push({ type: 'shopMember', id }); },
+  cartMemberPick(id) { U.cartMemberPick = id; },
+  memberSheetPick(id) { U.sheet.pick = id; },
   openShopMember(id) { const m = id ? shopMemberByID(id) : null; U.sheet = { type: 'shopMember', id: m?.id ?? null, name: m?.name ?? '', birthday: m ? m.birthday.replace('-', '') : '', phone: m?.phone ?? '', note: m?.note ?? '' }; },
   saveShopMember() {
     const sh = U.sheet, form = { name: sh.name, birthday: sh.birthday, phone: sh.phone, note: sh.note };
@@ -6173,7 +6216,7 @@ const A = {
   payMethod(m) { U.sheet.payment = m; },
   doCheckout() {
     const sh = U.sheet; const owner = activeCheckoutCoser();
-    const sale = perform(() => checkout(U.cart, selDay(), sh.payment, isMemberCardOn(owner) ? U.cartMember : '', U.cartDebtor, U.user, menuCurrency(), 0));
+    const sale = perform(() => checkout(U.cart, selDay(), sh.payment, isMemberCardOn(owner) ? (coserMemberLookup(U.cartMember, U.cartMemberPick).id || U.cartMember) : '', U.cartDebtor, U.user, menuCurrency(), 0));
     if (sale) { resetCart(); sh.finished = sale; if (LIVE) liveEnqueue(liveSaleOp(sale)); }
   },
 
@@ -6320,7 +6363,7 @@ const A = {
   // 會員
   toggleMemberCard() { const on = !memberCardOn(); if (on) SB().memberCard.add(U.user.coserID); else SB().memberCard.delete(U.user.coserID); show('success', on ? '已打開會員卡，「會員」在「更多」裡' : '已關閉會員卡，會員資料會保留'); if (!on && U.stack.some(e => e.section === 'members')) U.stack = []; },
   openMember(id) { const m = id ? SB().members.find(x => x.id === id) : null; U.sheet = { type: 'member', memberID: m?.id ?? null, fanID: m?.fanID ?? '', nickname: m?.nickname ?? '', note: m?.note ?? '' }; },
-  saveMember() { const sh = U.sheet; const ok = sh.memberID ? perform(() => updateMember(sh.memberID, sh.nickname, sh.note, U.user), '已更新會員資料') : perform(() => addMember(sh.fanID, sh.nickname, sh.note, U.user), `已新增會員 ${memberNoText(normalizeMemberNo(sh.fanID))}`); if (ok) U.sheet = null; },
+  saveMember() { const sh = U.sheet; const ok = sh.memberID ? perform(() => updateMember(sh.memberID, sh.nickname, sh.note, U.user), '已更新會員資料') : perform(() => addMember(coserMemberLookup(sh.fanID, sh.pick).id || sh.fanID, sh.nickname, sh.note, U.user), r => `已新增會員 ${memberNoText(normalizeMemberNo(coserMemberLookup(sh.fanID, sh.pick).id || sh.fanID))}`); if (ok) U.sheet = null; },
 
   // 意見回饋
   openFeedback() { U.sheet = { type: 'feedback', text: '', sending: false, sent: false, error: null }; },
@@ -6357,7 +6400,7 @@ let composing = false, focusAfter = null;
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
 const STATE_VERSION = 10; // 11/10 加店鋪會員 +1 // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
-const KEEP_UI = ['schedMonth', 'user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
+const KEEP_UI = ['schedMonth', 'user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartMemberPick', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch', 'shopMemberSearch'];
 function snapshotState() {
   const ui = {}; for (const k of KEEP_UI) ui[k] = U[k];
