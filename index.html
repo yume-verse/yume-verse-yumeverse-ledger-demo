@@ -2808,12 +2808,14 @@ const NOTION_SCHEMA = {
   // 店鋪・女僕（2026-11-05 在「App 資料（正式）」新建；照 NotionSchema.swift 的 shop）
   '女僕名冊': { id: '19f8d004-680b-4869-8c65-9fa70184ed2a', props: [['名字', 'title'], ['女僕ID', 'text'], ['CoserID', 'text'], ['狀態', 'select', ['在店裡', '停用']], ['顏色', 'text'], ['表演價格', 'number'], ['拍立得價格', 'number'], ['豪華照片組價格', 'number'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n']] },
   '店鋪每日錢箱': { id: '649b77a8-bb35-4fb0-a9b4-1efafcf7a392', props: [['日期文字', 'title'], ['日期', 'date'], ['起始現金', 'number'], ['收攤實點現金', 'number'], ['備註', 'text', null, 'n']] },
-  '座位紀錄': { id: 'c7587ac4-70bf-41d5-b014-881a1ea8e079', props: [['座位紀錄編號', 'title'], ['座位', 'select', ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']], ['狀態', 'select', ['使用中', '已結帳']], ['入座時間', 'date'], ['到期時間', 'date'], ['續座紀錄', 'text'], ['結帳時間', 'date'], ['營業日', 'date'], ['座位費', 'number'], ['合計', 'number'], ['收款方式', 'select', ['現金', '轉帳', 'LINE Pay', '賒帳']], ['賒帳客人', 'text'], ['已收時間', 'date'], ['收回方式', 'select', ['現金', '轉帳', 'LINE Pay']], ['超時秒數', 'number'], ['入座帳號', 'text'], ['結帳帳號', 'text'], ['登記已收帳號', 'text'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n'], ['加購小計加總', 'rollup']] },
+  '座位紀錄': { id: 'c7587ac4-70bf-41d5-b014-881a1ea8e079', props: [['座位紀錄編號', 'title'], ['座位', 'select', ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']], ['狀態', 'select', ['使用中', '已結帳']], ['入座時間', 'date'], ['到期時間', 'date'], ['續座紀錄', 'text'], ['結帳時間', 'date'], ['營業日', 'date'], ['座位費', 'number'], ['合計', 'number'], ['收款方式', 'select', ['現金', '轉帳', 'LINE Pay', '賒帳']], ['賒帳客人', 'text'], ['已收時間', 'date'], ['收回方式', 'select', ['現金', '轉帳', 'LINE Pay']], ['超時秒數', 'number'], ['入座帳號', 'text'], ['結帳帳號', 'text'], ['登記已收帳號', 'text'], ['備註', 'text', null, 'n'], ['加購明細', 'relation', null, 'n'], ['加購小計加總', 'rollup'], ['會員編號', 'text']] },
   '座位加購明細': { id: '8299663c-a1fa-469e-8c62-8d6085830815', props: [['明細', 'title'], ['座位紀錄', 'relation'], ['女僕', 'relation'], ['明細ID', 'text'], ['女僕ID', 'text'], ['女僕名字', 'text'], ['品項', 'select', ['表演', '拍立得', '豪華照片組']], ['單價', 'number'], ['數量', 'number'], ['小計', 'formula', null, 'r'], ['加購時間', 'date']] },
   // 女僕店排班、信用分（2026-11-06 新建；照 NotionSchema.swift 的 schedule）
   '排班申請': { id: '7d13abb3-488b-44c1-8c39-952f5328d962', props: [['申請ID', 'title'], ['女僕ID', 'text'], ['CoserID', 'text'], ['日期', 'date'], ['班別', 'select', ['早班', '晚班']], ['偏好', 'select', ['可上班', '優先希望']], ['提交時間', 'date'], ['提交帳號', 'text']] },
   '女僕班表': { id: '9a246fc8-019e-47e4-b191-79e98eb6eb0e', props: [['班次ID', 'title'], ['女僕ID', 'text'], ['CoserID', 'text'], ['女僕名字', 'text'], ['日期', 'date'], ['班別', 'select', ['早班', '晚班']], ['狀態', 'select', ['草稿', '已排班', '已確認出勤', '已報到', '已下班', '請假', '未到', '已取消']], ['確認時間', 'date'], ['報到時間', 'date'], ['下班時間', 'date'], ['請假時間', 'date'], ['請假原因', 'text'], ['補班對象', 'text'], ['排班原因', 'text'], ['排班帳號', 'text'], ['更新帳號', 'text']] },
-  '信用分紀錄': { id: 'b35b8db5-7132-420d-bf6c-c901c3f007fb', props: [['事件ID', 'title'], ['CoserID', 'text'], ['女僕ID', 'text'], ['時間', 'date'], ['事件', 'select', ['臨時請假（24 小時內）', '臨時請假（4 小時內）', '未到', '預約放鳥', '更正']], ['分數', 'number'], ['班次ID', 'text'], ['說明', 'text'], ['登記帳號', 'text'], ['規則版本', 'text']] }
+  '信用分紀錄': { id: 'b35b8db5-7132-420d-bf6c-c901c3f007fb', props: [['事件ID', 'title'], ['CoserID', 'text'], ['女僕ID', 'text'], ['時間', 'date'], ['事件', 'select', ['臨時請假（24 小時內）', '臨時請假（4 小時內）', '未到', '預約放鳥', '更正']], ['分數', 'number'], ['班次ID', 'text'], ['說明', 'text'], ['登記帳號', 'text'], ['規則版本', 'text']] },
+  // 店鋪會員（2026-11-10 新建；照 NotionSchema.swift 的 shopMembers）：店鋪現場登記，會員編號＝生日月日 4 碼＋電話末 3 碼＋流水號 1 碼
+  '店鋪會員': { id: 'dd3028bb-da62-49f3-bcc8-c1310c124ce2', props: [['會員編號', 'title'], ['稱呼', 'text'], ['生日', 'text'], ['電話', 'text'], ['登記時間', 'date'], ['登記帳號', 'text'], ['備註', 'text']] },
 };
 const nprop = (db, name) => NOTION_SCHEMA[db].props.find(p => p[0] === name) || null;
 const nAccess = p => p[3] || (['formula', 'rollup', 'createdTime'].includes(p[1]) ? 'r' : 'rw');
@@ -2952,7 +2954,12 @@ const NOTION_SEED = {
     { '借用單號': 'L261019-132955-6EC', '服裝': ['C-2'], '服裝編號': 'C-2', '服裝名稱': '月刊少女 - 佐倉千代', '借用CoserID': 'cocoa', '借用人姓名': '111', '聯絡方式': '222', '借用日期': '2026-10-19', '約定歸還日期': '2026-10-26', '實際歸還日期': null, '狀態': '借出中', '借用用途': '拍攝', '活動名稱': null, '經手人': 'cocoa', '歸還狀況': null, '狀況說明': null },
     { '借用單號': 'L261008-153601-983', '服裝': ['C-4'], '服裝編號': 'C-4', '服裝名稱': '我的英雄學院 - 高校體育服(女)', '借用CoserID': 'cocoa', '借用人姓名': 'Acoco', '聯絡方式': 'acoco54acoco', '借用日期': '2026-10-22', '約定歸還日期': '2026-10-25', '實際歸還日期': null, '狀態': '已登記', '借用用途': '拍攝', '活動名稱': 'Ff30', '經手人': 'cocoa', '歸還狀況': null, '狀況說明': null }
   ],
-  '交易紀錄': [], '交易明細': [], '每日錢箱': [], '會員': [], '庫存異動': [], '場地預約': [], 'Coser 社群帳號': []
+  '交易紀錄': [], '交易明細': [], '每日錢箱': [], '會員': [], '庫存異動': [], '場地預約': [], 'Coser 社群帳號': [],
+  // 店鋪會員（2026-11-10）：測試資料 2 位（店鋪管理帳號在現場登記）
+  '店鋪會員': [
+    { '會員編號': '03010891', '稱呼': '阿明（測試）', '生日': '03-01', '電話': '0912345089', '登記時間': '2026-11-01T14:00:00+08:00', '登記帳號': 'shop', '備註': '喜歡芙莉蓮' },
+    { '會員編號': '12250311', '稱呼': '小美（測試）', '生日': '12-25', '電話': '0987654031', '登記時間': '2026-11-02T15:30:00+08:00', '登記帳號': 'shop', '備註': null }
+  ]
 };
 // 營運總表基線（更新至 2026-08-24）：每日錢箱與歷史交易，格式照正式資料庫
 (function () {
@@ -3128,6 +3135,12 @@ const fromNotion = {
   movement: r => ({ id: r['異動ID'], at: parseTime(r['時間']), productID: r['商品ID'], productName: r['商品名稱'] || '', kind: r['類型'], quantity: r['數量'] ?? 0,
     reason: r['原因'] || '', coserID: r['CoserID'] || '', byAccount: r['操作帳號'] || '' })
 };
+// 店鋪會員（2026-11-10）：Coser 帳號從後端只拿到會員編號，其他欄位是空的
+fromNotion.shopMember = r => ({ id: normalizeMemberNo(r['會員編號']), name: r['稱呼'] || '', birthday: r['生日'] || null, phone: r['電話'] || null,
+  registeredAt: parseTime(r['登記時間'] ?? null), registeredBy: r['登記帳號'] || null, note: trimOrNull(r['備註']) });
+/** 店鋪會員 → Notion「店鋪會員」（照 ShopMembers.swift 的 exportShopMembers） */
+const shopMembersToNotion = () => shopMembers().slice().sort((a, b) => (a.registeredAt ?? 0) - (b.registeredAt ?? 0) || cmp(a.id, b.id))
+  .map(m => ({ '會員編號': m.id, '稱呼': trimOrNull(m.name), '生日': m.birthday, '電話': m.phone, '登記時間': isoTime(m.registeredAt ?? null), '登記帳號': m.registeredBy, '備註': m.note || null }));
 
 // ================= 畫面用的資料 → 正式資料庫的列（之後接 Notion 用；測試逐欄檢查） =================
 /** 店鋪・女僕 → Notion 4 個資料庫（照 NotionMapping.exportShop；2026-11-06 接資料庫時用來比對改了什麼） */
@@ -3140,10 +3153,10 @@ function shopToNotion() {
   out['店鋪每日錢箱'] = Object.values(b.cashBoxes || {}).sort((x, y) => cmp(x.day, y.day)).map(c => ({ '日期文字': c.day, '日期': c.day, '起始現金': c.opening ?? null, '收攤實點現金': c.actual ?? null }));
   const sessions = Object.values(b.sessions).sort((x, y) => x.startedAt - y.startedAt);
   out['座位紀錄'] = sessions.map(ss => ({ '座位紀錄編號': ss.id, '座位': ss.seatID, '狀態': '使用中', '入座時間': isoTime(ss.startedAt), '到期時間': isoTime(ss.endsAt), '續座紀錄': ext(ss.extensions),
-    '結帳時間': null, '營業日': null, '座位費': seatFee(ss), '合計': seatTotal(ss), '收款方式': null, '賒帳客人': null, '已收時間': null, '收回方式': null, '超時秒數': null, '入座帳號': ss.openedBy, '結帳帳號': null, '登記已收帳號': null }))
+    '結帳時間': null, '營業日': null, '座位費': seatFee(ss), '合計': seatTotal(ss), '收款方式': null, '賒帳客人': null, '已收時間': null, '收回方式': null, '超時秒數': null, '入座帳號': ss.openedBy, '結帳帳號': null, '登記已收帳號': null, '會員編號': null }))
     .concat(b.history.map(r => ({ '座位紀錄編號': r.id, '座位': r.seatID, '狀態': '已結帳', '入座時間': isoTime(r.startedAt), '到期時間': isoTime(r.endsAt), '續座紀錄': ext(r.extensions),
       '結帳時間': isoTime(r.closedAt), '營業日': scDay(r), '座位費': r.seatFee ?? 0, '合計': r.total, '收款方式': pay(r.payment), '賒帳客人': r.debtor || null, '已收時間': isoTime(r.settledAt ?? null), '收回方式': pay(r.settledPayment),
-      '超時秒數': r.overtimeSeconds, '入座帳號': r.openedBy ?? null, '結帳帳號': r.closedBy, '登記已收帳號': r.settledBy || null })));
+      '超時秒數': r.overtimeSeconds, '入座帳號': r.openedBy ?? null, '結帳帳號': r.closedBy, '登記已收帳號': r.settledBy || null, '會員編號': r.memberID || null })));
   const line = (a, recordID) => ({ '明細': `${a.maidName}・${a.name}`, '座位紀錄': [recordID], '女僕': [a.maidID], '明細ID': a.id, '女僕ID': a.maidID, '女僕名字': a.maidName,
     '品項': kindLabel(a.kind), '單價': a.unitPrice, '數量': a.quantity, '加購時間': isoTime(a.addedAt) });
   out['座位加購明細'] = sessions.flatMap(ss => ss.addOns.map(a => line(a, ss.id))).concat(b.history.flatMap(r => r.addOns.map(a => line(a, r.id))));
@@ -3183,7 +3196,8 @@ function shopFromNotion(T) {
     if (r['狀態'] === '使用中') { if (!sessions[seatID] || sessions[seatID].startedAt < startedAt) sessions[seatID] = base; continue; }
     const addTotal = addOns.reduce((n, a) => n + a.unitPrice * a.quantity, 0);
     history.push({ ...base, closedAt: parseTime(r['結帳時間']) ?? base.endsAt, seatFee: fee, total: r['合計'] ?? fee + addTotal, payment: payKey(r['收款方式']), debtor: trimOrNull(r['賒帳客人']),
-      overtimeSeconds: r['超時秒數'] ?? 0, closedBy: r['結帳帳號'] || null, settledAt: parseTime(r['已收時間']), settledPayment: payKey(r['收回方式']), settledBy: r['登記已收帳號'] || null });
+      overtimeSeconds: r['超時秒數'] ?? 0, closedBy: r['結帳帳號'] || null, settledAt: parseTime(r['已收時間']), settledPayment: payKey(r['收回方式']), settledBy: r['登記已收帳號'] || null,
+      memberID: normalizeMemberNo(r['會員編號']) || null });
   }
   history.sort((a, b) => a.closedAt - b.closedAt);
   return { sessions, history, cashBoxes, maids, items, serial: 0 };
@@ -3289,6 +3303,7 @@ function resetData(dataset) {
   S.sales = salesFromSeed();
   S.seats = freshSeats();
   S.schedule = demoSchedule();
+  S.shopMembers = NOTION_SEED['店鋪會員'].map(fromNotion.shopMember);
   syncPeople();
 }
 
@@ -3574,7 +3589,8 @@ function checkout(cart, day, payment, rawMember, rawDebtor, user, currency = 'TW
   const subtotal = lines.reduce((n, l) => n + l.unitPrice * l.quantity, 0);
   if (!(discount >= 0)) fail('請輸入 0 以上的整數。');
   if (discount > subtotal) fail('折扣不能大於品項合計。');
-  const memberKey = isMemberCardOn(owner) ? (normalizeFan(rawMember) || null) : null;
+  // 2026-11-10：會員＝店鋪會員編號（店鋪登記過的才行）
+  const memberKey = isMemberCardOn(owner) ? checkMemberNo(rawMember) : null;
   const debtor = trimOrNull(rawDebtor);
   if (payment === 'credit' && !memberKey && !debtor) fail('賒帳要填客人的名字或聯絡方式，之後才追得到。');
   const id = 'S-' + nowMs().toString(36) + rid();
@@ -3679,8 +3695,9 @@ function deleteTheme(id, user) {
 function addMember(fan, nickname, note, user) {
   if (user.role !== 'coser' || !user.coserID) fail('這個帳號不能做這個操作。');
   if (!isMemberCardOn(user.coserID)) fail('會員卡還沒打開，請到「更多」打開會員卡。');
-  const key = normalizeFan(fan); if (!key) fail('請輸入粉絲 ID。');
-  if (memberByFan(key, user.coserID)) fail('這個粉絲 ID 已經是會員了。');
+  if (!String(fan ?? '').trim()) fail('請輸入會員編號。');
+  const key = checkMemberNo(fan);
+  if (memberByFan(key, user.coserID)) fail('這位已經是你的會員了。');
   SB().members.push({ id: `${user.coserID}|${key}`, coserID: user.coserID, fanID: key, nickname: (nickname || '').trim(), note: trimOrNull(note), level: '尚未分級', discountRate: null, createdAt: nowMs() });
 }
 function updateMember(id, nickname, note, user) {
@@ -3695,6 +3712,72 @@ const memberSpendTWD = m => Math.round(memberSales(m).filter(s => s.status === '
 function memberSpend(m) { const r = {}; for (const s of memberSales(m)) if (s.status === 'paid') r[s.currency] = (r[s.currency] || 0) + s.total; return r; }
 function spendText(sp) { const p = CURRENCIES.filter(c => sp[c] != null).map(c => money(sp[c], c)); return p.length ? '累積 ' + p.join('＋') : '尚無消費'; }
 const memberName = m => m.nickname ? `${m.nickname}（${m.fanID}）` : m.fanID;
+
+// ================= 店鋪會員（2026-11-10；照 ShopMembers.swift） =================
+// 店鋪管理帳號在女僕店現場登記（問生日、電話）。會員編號 8 碼＝生日月日 4 碼＋電話末 3 碼＋流水號 1 碼，例如 3/1 生、電話末三碼 089 → 0301 089 1；
+// 流水號從 1 開始（1～9，第 10 位用 0），同一組前 7 碼已經有人就往下一號。編號發了就不改（之後改生日、電話，編號不變）。
+// Coser 打開會員卡後，記帳時輸入同一個會員編號（只能用店鋪登記過的編號）。看得到的消費：店鋪只看店裡（座位結帳），Coser 只看自己身上的。
+const shopMembers = () => (S.shopMembers ||= []);
+const shopMemberByID = id => shopMembers().find(m => m.id === id) || null;
+function normalizeMemberNo(s) { return String(s ?? '').replace(/\D/g, ''); }
+/** 0301 089 1 */
+const memberNoText = id => id && id.length === 8 ? `${id.slice(0, 4)} ${id.slice(4, 7)} ${id.slice(7)}` : (id || '');
+const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+/** 生日（月日）→ 'MM-DD'；接受 0301、3/1、3-1、3月1日 */
+function parseBirthday(raw) {
+  const t = String(raw ?? '').trim(); if (!t) fail('請輸入生日（月日 4 碼，例如 3 月 1 日輸入 0301）。');
+  let mo, d; const g = t.match(/^(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})\s*日?$/);
+  if (g) { mo = +g[1]; d = +g[2]; } else if (/^\d{4}$/.test(t)) { mo = +t.slice(0, 2); d = +t.slice(2); } else fail('生日請輸入月日 4 碼，例如 3 月 1 日輸入 0301。');
+  if (!(mo >= 1 && mo <= 12 && d >= 1 && d <= MONTH_DAYS[mo - 1])) fail('生日不是正確的日期，請再確認。');
+  return `${pad(mo)}-${pad(d)}`;
+}
+const birthdayText = b => b ? `${+b.slice(0, 2)} 月 ${+b.slice(3, 5)} 日` : '';
+/** 電話：只留數字，8～15 碼（完整號碼） */
+function parsePhone(raw) {
+  const t = normalizeMemberNo(raw); if (!t) fail('請輸入電話（完整號碼）。');
+  if (t.length < 8 || t.length > 15) fail('電話號碼長度不對，請輸入完整號碼。');
+  return t;
+}
+/** 下一個會員編號：前 7 碼＋流水號（1～9、0），用掉的跳過 */
+function nextMemberNo(birthday, phone) {
+  const prefix = birthday.replace('-', '') + phone.slice(-3);
+  for (const c of '1234567890') if (!shopMemberByID(prefix + c)) return prefix + c;
+  fail('這組生日＋電話末三碼的會員已經有 10 位，請截圖給巧。');
+}
+const sameShopMember = (birthday, phone, exceptID = null) => shopMembers().find(m => m.id !== exceptID && m.phone === phone && m.birthday === birthday) || null;
+function registerShopMember(form, user, now = nowMs()) {
+  if (user?.role !== 'shopManager') fail('只有店鋪管理帳號可以登記會員。');
+  const birthday = parseBirthday(form.birthday), phone = parsePhone(form.phone);
+  const dup = sameShopMember(birthday, phone); if (dup) fail(`這位客人已經是會員了：${memberNoText(dup.id)}`);
+  const m = { id: nextMemberNo(birthday, phone), name: (form.name || '').trim(), birthday, phone, registeredAt: Math.floor(now / 1000) * 1000, registeredBy: user.id, note: trimOrNull(form.note) };
+  shopMembers().push(m);
+  return m;
+}
+function updateShopMember(id, form, user) {
+  if (user?.role !== 'shopManager') fail('只有店鋪管理帳號可以改會員資料。');
+  const m = shopMemberByID(id); if (!m) fail('找不到這位會員。');
+  const birthday = parseBirthday(form.birthday), phone = parsePhone(form.phone);
+  const dup = sameShopMember(birthday, phone, id); if (dup) fail(`這個生日和電話已經是另一位會員：${memberNoText(dup.id)}`);
+  Object.assign(m, { name: (form.name || '').trim(), birthday, phone, note: trimOrNull(form.note) });
+  return m;
+}
+/** 記帳、座位結帳輸入的會員編號：空的＝不是會員；要是店鋪登記過的 8 碼編號 */
+function checkMemberNo(raw) {
+  const t = String(raw ?? '').trim(); if (!t) return null;
+  const n = normalizeMemberNo(t);
+  if (n.length !== 8) fail('會員編號是 8 個數字，例如 03010891。');
+  if (!shopMemberByID(n)) fail(`找不到會員編號 ${memberNoText(n)}，請再確認；剛在店裡登記的請重新整理。`);
+  return n;
+}
+/** 輸入框旁邊的提示：none＝沒填、typing＝還沒打完、ok＝找到、bad＝找不到 */
+function memberNoState(raw) {
+  const n = normalizeMemberNo(raw); if (!n) return 'none';
+  if (n.length < 8) return 'typing'; if (n.length > 8) return 'bad';
+  return shopMemberByID(n) ? 'ok' : 'bad';
+}
+/** 店裡（座位結帳）的消費：店鋪管理帳號看得到 */
+const shopMemberVisits = id => seatBoard().history.filter(r => r.memberID === id).sort((a, b) => b.closedAt - a.closedAt);
+const shopMemberSpend = id => shopMemberVisits(id).reduce((n, r) => n + (r.total || 0), 0);
 // ================= Coser 名冊（公司登記新 Coser，2026-10-27；照 CoserRoster.swift） =================
 const PLANS = [['10%方案', '10% 方案'], ['40%方案', '40% 方案'], ['女僕方案', '女僕方案'], ['特殊方案', '特殊方案']];
 const planLabel = v => PLANS.find(p => p[0] === v)?.[1] ?? v;
@@ -3779,7 +3862,7 @@ const U = {
   user: null, dataset: 'scenario', section: 'home', stack: [], sheet: null, confirm: null, toast: null, pickedDay: null,
   cart: [], cartMember: '', cartDebtor: '', homeCoserID: null,
   costumeFilter: 'all', locationFilter: null, costumeSearch: '', recordsKind: 'costume', recordsTab: 'active', recordsSearch: '',
-  venueDay: null, showPast: false, themeFilter: null, memberSearch: '',
+  venueDay: null, showPast: false, themeFilter: null, memberSearch: '', shopMemberSearch: '',
   // 首頁、對帳要看哪個幣別（一天有好幾種幣別時）；null＝這天的預設幣別
   reportCur: null,
   // 記帳畫面哪些系列資料夾是打開的（themeID → true/false；沒記錄＝預設），登出才清掉
@@ -3961,13 +4044,14 @@ function maidUpdate(id, name, colorHex, prices, active, user) {
   }
   return m;
 }
-function seatCheckout(id, payment, user, debtor = '', now = nowMs()) {
+function seatCheckout(id, payment, user, debtor = '', now = nowMs(), member = '') {
   seatCheck(id, user);
   const ss = seatSession(id); if (!ss) fail('這個座位目前是空位。');
+  const memberID = checkMemberNo(member); // 2026-11-10：店鋪會員（選填）
   const total = seatTotal(ss), name = (debtor || '').trim();
   if (total > 0) { if (!payment) fail('請選收款方式。'); if (!SEAT_PAY.includes(payment)) fail('找不到這個收款方式。'); if (payment === 'credit' && !name) fail('賒帳要填客人名字或聯絡方式。'); }
   // 結帳沿用入座編號：Notion「座位紀錄」一次入座一筆（2026-11-05）
-  const rec = { id: ss.id, seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, openFee: ss.openFee ?? 0, extensions: ss.extensions, addOns: ss.addOns, seatFee: seatFee(ss), total, openedBy: ss.openedBy ?? null, payment: total > 0 ? payment : null, debtor: total > 0 && payment === 'credit' ? name : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id };
+  const rec = { id: ss.id, seatID: id, startedAt: ss.startedAt, endsAt: ss.endsAt, closedAt: now, openFee: ss.openFee ?? 0, extensions: ss.extensions, addOns: ss.addOns, seatFee: seatFee(ss), total, openedBy: ss.openedBy ?? null, payment: total > 0 ? payment : null, debtor: total > 0 && payment === 'credit' ? name : null, overtimeSeconds: Math.max(0, Math.round((now - ss.endsAt) / 1000)), closedBy: user.id, memberID };
   seatBoard().history.push(rec); delete seatBoard().sessions[id];
   return rec;
 }
@@ -4135,7 +4219,7 @@ function sectionsFor() {
   switch (role()) {
     case 'company': return ['home', 'reconcile', 'costumes', 'records', 'cosers', 'more'];
     case 'maidManager': return ['home', 'reconcile', 'schedule', 'maids', 'more'];
-    case 'shopManager': return ['seats', 'schedule', 'more'];
+    case 'shopManager': return ['seats', 'shopMembers', 'schedule', 'more'];
     default: return ['home', 'checkout', 'inventory', 'bookings', 'mySales', ...(memberCardOn() ? ['members'] : []), 'more'];
   }
 }
@@ -4143,23 +4227,24 @@ function tabsFor() {
   switch (role()) {
     case 'company': return ['home', 'reconcile', 'costumes', 'records', 'more'];
     case 'maidManager': return ['home', 'reconcile', 'schedule', 'maids', 'more'];
-    case 'shopManager': return ['seats', 'schedule', 'more'];
+    case 'shopManager': return ['seats', 'shopMembers', 'schedule', 'more'];
     default: return ['home', 'checkout', 'inventory', 'bookings', 'more'];
   }
 }
 const moreSectionsFor = () => sectionsFor().filter(s => !tabsFor().includes(s) && s !== 'more');
-const SEC_ICON = { schedule: 'calendar', maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
-const SEC_GROUP = { schedule: '女僕', maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
+const SEC_ICON = { shopMembers: 'heart', schedule: 'calendar', maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
+const SEC_GROUP = { shopMembers: '店鋪', schedule: '女僕', maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
 function secTitle(s) {
   const c = role() === 'coser';
   if (role() === 'maidManager' && s === 'home') return '營業額';
   if (s === 'maids') return '女僕名冊';
   if (s === 'schedule') return '女僕班表';
+  if (s === 'shopMembers') return '店鋪會員';
   return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', cosers: 'Coser 名冊', seats: '座位圖', more: '更多' }[s];
 }
 function secShort(s) {
   const c = role() === 'coser';
-  return { schedule: '班表', maids: '名冊', seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
+  return { shopMembers: '會員', schedule: '班表', maids: '名冊', seats: '座位', cosers: '名冊', checkout: '記帳', reconcile: '對帳', inventory: c ? '商品' : '庫存', members: '會員', records: '紀錄', costumes: '服裝', bookings: '預約', mySales: '銷售' }[s] || secTitle(s);
 }
 
 // ================= 小元件 =================
@@ -4373,6 +4458,7 @@ function entryTitle(e) {
   if (e.type === 'costume') return costumeByID(e.id)?.code ?? '服裝';
   if (e.type === 'loan') return '借用明細';
   if (e.type === 'member') return '會員';
+  if (e.type === 'shopMember') return '會員';
   return '';
 }
 function currentContent() {
@@ -4382,6 +4468,7 @@ function currentContent() {
   else if (top.type === 'section') r = sectionView(top.section);
   else if (top.type === 'costume') r = viewCostumeDetail(top.id);
   else if (top.type === 'loan') r = viewLoanDetail(top.id);
+  else if (top.type === 'shopMember') r = viewShopMemberDetail(top.id);
   else r = viewMemberDetail(top.id);
   r.key = top ? `${top.type}-${top.id || top.section}` : U.section;
   if (top) r.backLabel = entryTitle(U.stack[U.stack.length - 2]);
@@ -4393,6 +4480,7 @@ function sectionView(s) {
     case 'maids': return viewMaidRoster();
     case 'schedule': return viewSchedule();
     case 'seats': return viewSeats();
+    case 'shopMembers': return viewShopMembers();
     case 'checkout': return viewCheckout();
     case 'reconcile': return role() === 'maidManager' ? viewShopReconcile() : viewReconcile();
     case 'costumes': return viewCostumes();
@@ -4778,16 +4866,65 @@ function viewMembers() {
   const list = mine.filter(m => !kw || m.fanID.includes(kw) || m.nickname.toUpperCase().includes(kw)).sort((a, b) => b.createdAt - a.createdAt);
   let body;
   if (!memberCardOn()) body = card(empty('heart-off', '會員卡已關閉。到「更多」打開後才能使用。'));
-  else if (!mine.length) body = card(`<div class="stack center" style="gap:12px"><span style="color:var(--pink-light)">${icon('heart', 40)}</span><b style="font-size:17px">還沒有會員</b><span class="sub soft">記帳收款時輸入粉絲 ID 會自動加入，也可以直接新增。只有你看得到自己的會員。</span>${btn('新增會員', 'openMember', '', { ic: 'plus' })}</div>`, 'p24');
+  else if (!mine.length) body = card(`<div class="stack center" style="gap:12px"><span style="color:var(--pink-light)">${icon('heart', 40)}</span><b style="font-size:17px">還沒有會員</b><span class="sub soft">會員編號由店鋪現場登記。記帳收款時輸入會員編號會自動加入，也可以直接新增。只有你看得到自己的會員和在你這裡的消費。</span>${btn('新增會員', 'openMember', '', { ic: 'plus' })}</div>`, 'p24');
   else if (!list.length) body = card(empty('search', '找不到符合的會員'));
   else body = card(list.map(m => { const out = memberSales(m).filter(s => s.status === 'outstanding'); return `<button class="row" style="width:100%;padding:10px 0"${act('pushMember', m.id)}><span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--pink-pale);color:var(--pink)">${icon('heart', 20)}</span><span class="grow"><b style="display:block;font-size:16px">${esc(memberName(m))}</b><span class="cap soft">${esc(spendText(memberSpend(m)))}</span></span>${out.length ? pill(`待收 ${out.length}`, 'var(--orange-deep)', 'var(--orange-pale)') : ''}<span class="soft">${icon('chevron-right', 16, 3)}</span></button>`; }).join(HR), 'p10');
   const right = `<button class="icon-btn"${act('openMember', '')} aria-label="新增會員"${memberCardOn() ? '' : ' disabled'}>${icon('circle-plus', 24)}</button>`;
-  return { title: '會員', right, html: `<div class="search">${icon('search', 18)}${inp('memberSearch', { ph: '搜尋粉絲 ID 或暱稱' })}</div>${body}`, cls: 'narrowcol' };
+  return { title: '會員', right, html: `<div class="search">${icon('search', 18)}${inp('memberSearch', { ph: '搜尋會員編號或暱稱' })}</div>${body}`, cls: 'narrowcol' };
 }
 function viewMemberDetail(id) {
   const m = SB().members.find(x => x.id === id); if (!m) return { title: '會員', html: empty('search', '找不到這位會員') };
   const hist = memberSales(m);
-  return { title: '會員', cls: 'narrowcol', html: card(`<div class="t-big">${esc(memberName(m))}</div>${info('粉絲 ID', m.fanID)}${info('加入日期', dayText(dayKey(new Date(m.createdAt))))}${info('累積消費', spendText(memberSpend(m)))}${m.note ? info('備註', m.note) : ''}${btn('編輯資料', 'openMember', m.id, { kind: 'secondary', ic: 'pencil' })}`) + card(stitle('消費紀錄', hist.length) + (hist.length ? joinRows(hist, s => saleRow(s, true)) : empty('inbox', '還沒有消費紀錄'))) };
+  return { title: '會員', cls: 'narrowcol', html: card(`<div class="t-big">${esc(memberName(m))}</div>${info('會員編號', memberNoText(m.fanID))}${info('加入日期', dayText(dayKey(new Date(m.createdAt))))}${info('累積消費', spendText(memberSpend(m)))}${m.note ? info('備註', m.note) : ''}${btn('編輯資料', 'openMember', m.id, { kind: 'secondary', ic: 'pencil' })}`) + card(stitle('消費紀錄', hist.length) + (hist.length ? joinRows(hist, s => saleRow(s, true)) : empty('inbox', '還沒有消費紀錄'))) };
+}
+
+// ================= 店鋪會員（店鋪管理帳號，2026-11-10） =================
+/** 輸入會員編號時的提示（showName：店鋪看得到稱呼；Coser 只看到編號） */
+function memberNoHint(raw, showName) {
+  const st = memberNoState(raw), n = normalizeMemberNo(raw), m = st === 'ok' ? shopMemberByID(n) : null;
+  if (st === 'ok') return `<div class="row g8 cap bold" id="member-no-ok" style="color:var(--green-deep)">${icon('heart', 14)}店鋪會員 ${esc(memberNoText(n))}${showName && m.name ? `・${esc(m.name)}` : ''}</div>`;
+  if (st === 'bad') return `<div class="cap bold" id="member-no-bad" style="color:var(--danger)">找不到這個會員編號，請再確認（客人要先在店裡登記會員）。</div>`;
+  if (st === 'typing') return `<div class="cap soft">會員編號是 8 個數字（生日月日＋電話末 3 碼＋流水號）。</div>`;
+  return '';
+}
+const maskPhone = p => p && p.length > 6 ? `${p.slice(0, 4)}••${p.slice(-3)}` : (p || '');
+function viewShopMembers() {
+  const kw = (U.shopMemberSearch || '').trim(), digits = normalizeMemberNo(kw);
+  const all = shopMembers().slice().sort((a, b) => (b.registeredAt ?? 0) - (a.registeredAt ?? 0));
+  const list = all.filter(m => !kw || (digits && (m.id.includes(digits) || (m.phone || '').endsWith(digits))) || (m.name || '').includes(kw));
+  const intro = `<div class="cap soft" id="shop-member-intro">會員編號 8 碼＝生日月日 4 碼＋電話末 3 碼＋流水號 1 碼（例如 3/1 生、電話末三碼 089 → 0301 089 1）。Coser 打開會員卡後，記帳輸入同一個編號。</div>`;
+  let body;
+  if (!all.length) body = card(`<div class="stack center" style="gap:12px"><span style="color:var(--pink-light)">${icon('heart', 40)}</span><b style="font-size:17px">還沒有會員</b><span class="sub soft">在店裡問客人的生日和電話登記，系統會自動給會員編號。</span>${btn('登記會員', 'openShopMember', '', { ic: 'user-plus' })}</div>`, 'p24');
+  else if (!list.length) body = card(empty('search', '找不到符合的會員'));
+  else body = card(list.map(m => { const v = shopMemberVisits(m.id); return `<button class="row" id="shop-member-${m.id}" style="width:100%;padding:10px 0"${act('pushShopMember', m.id)}><span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--pink-pale);color:var(--pink)">${icon('heart', 20)}</span><span class="grow"><b style="display:block;font-size:16px">${esc(m.name || '（沒有稱呼）')}</b><span class="cap soft num">${esc(memberNoText(m.id))}・${esc(maskPhone(m.phone))}</span></span><span class="stack" style="align-items:flex-end;gap:2px"><b class="num">${money(shopMemberSpend(m.id))}</b><span class="cap soft">來店 ${v.length} 次</span></span><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`; }).join(HR), 'p10');
+  const right = `<button class="icon-btn" id="shop-member-add"${act('openShopMember', '')} aria-label="登記會員">${icon('user-plus', 24)}</button>`;
+  return { title: '店鋪會員', right, html: card(intro) + `<div class="search">${icon('search', 18)}${inp('shopMemberSearch', { ph: '搜尋編號、稱呼或電話末碼' })}</div>${body}`, cls: 'narrowcol' };
+}
+function viewShopMemberDetail(id) {
+  const m = shopMemberByID(id); if (!m) return { title: '會員', html: empty('search', '找不到這位會員') };
+  const v = shopMemberVisits(id);
+  const head = card(`<div class="cap heavy soft">會員編號</div><div class="num" id="shop-member-no" style="font-size:32px;font-weight:900;letter-spacing:2px;color:var(--pink-deep)">${esc(memberNoText(m.id))}</div>
+    ${info('稱呼', m.name || '（沒有）')}${info('生日', birthdayText(m.birthday))}${info('電話', m.phone || '')}${info('登記', m.registeredAt ? `${dayText(dayKey(new Date(m.registeredAt)))}・${m.registeredBy || ''}` : '')}
+    ${info('店內累積消費', money(shopMemberSpend(id)))}${info('來店次數', `${v.length} 次`)}${m.note ? info('備註', m.note) : ''}
+    ${btn('編輯資料', 'openShopMember', m.id, { kind: 'secondary', ic: 'pencil' })}<div class="cap soft">這裡只算店裡（座位結帳）的消費；在各 Coser 身上的消費只有那位 Coser 看得到。</div>`);
+  const rows = v.length ? v.map(r => `<div class="row" style="padding:8px 0"><div class="grow"><div class="bold sub">${esc(dayText(scDay(r)))} ${esc(clockText(r.closedAt))}・座位 ${esc(r.seatID)}</div><div class="cap soft">${r.payment ? esc(PAY[r.payment].label) : '不用收錢'}${r.payment === 'credit' ? (r.settledAt ? '・已收' : '・待收') : ''}</div></div><b class="num">${money(r.total)}</b></div>`).join(HR) : empty('inbox', '還沒有店內消費紀錄');
+  return { title: '會員', cls: 'narrowcol', html: head + card(stitle('店內消費紀錄', v.length) + rows) };
+}
+function sheetShopMember(sh) {
+  const editing = !!sh.id;
+  let preview = '', can = true;
+  try {
+    const b = parseBirthday(sh.birthday), ph = parsePhone(sh.phone), dup = sameShopMember(b, ph, sh.id);
+    if (dup) { preview = `<div class="cap bold" id="shop-member-dup" style="color:var(--danger)">這位客人已經是會員了：${esc(memberNoText(dup.id))}${dup.name ? `（${esc(dup.name)}）` : ''}</div>`; can = false; }
+    else if (!editing) preview = `<div class="row g8 bold" id="shop-member-preview" style="color:var(--green-deep)">${icon('heart', 16)}會員編號會是 <span class="num" style="font-size:20px">${esc(memberNoText(nextMemberNo(b, ph)))}</span></div>`;
+  } catch (e) { if (!(e instanceof AppError)) throw e; can = false; if ((sh.birthday || '').length >= 4 || (sh.phone || '').length >= 8) preview = `<div class="cap bold" style="color:var(--danger)">${esc(e.message)}</div>`; }
+  const no = editing ? `<div class="field"><label>會員編號</label><div class="input num" style="display:flex;align-items:center;opacity:.7">${esc(memberNoText(sh.id))}</div><div class="cap soft">會員編號發了就不改；改生日或電話，編號也不會變。</div></div>` : '';
+  const body = no + `<div class="field"><label for="f-sheet-name">稱呼（選填）</label>${inp('sheet.name', { ph: '例如 阿明' })}</div>
+    <div class="field"><label for="f-sheet-birthday">生日（月日 4 碼，必填）</label>${inp('sheet.birthday', { ph: '例如 3 月 1 日 → 0301', num: true, cls: 'num' })}</div>
+    <div class="field"><label for="f-sheet-phone">電話（完整號碼，必填）</label>${inp('sheet.phone', { ph: '例如 0912345089', num: true, cls: 'num' })}</div>
+    <div class="field"><label for="f-sheet-note">備註（選填）</label>${inp('sheet.note', { ph: '例如 喜歡芙莉蓮' })}</div>${preview}
+    ${btn(editing ? '儲存' : '登記會員', 'saveShopMember', null, { ic: 'check', dis: !can, cls: 'shop-member-save' })}<div class="cap soft">生日和電話是個資，只有店鋪管理帳號看得到；Coser 只看得到會員編號。</div>`;
+  return sheetFrame({ title: editing ? '編輯會員' : '登記會員', left: tb('取消', 'closeSheet'), body });
 }
 
 // ================= 女僕管理、店鋪管理帳號（2026-11-02） =================
@@ -4956,7 +5093,7 @@ function sheetCredit(sh) {
 function viewMore() {
   const u = U.user, extra = moreSectionsFor();
   let html = card(`<div class="t-title">${esc(u.displayName)}</div>${info('帳號', u.id)}${info('身分', ROLE[u.role].label)}<div class="cap soft">${ROLE[u.role].summary}</div>`);
-  if (isCoserUser()) html += card(`<button class="switch" role="switch" aria-checked="${memberCardOn()}"${act('toggleMemberCard')}><span class="row g8 heavy" style="font-size:17px"><span style="color:var(--pink)">${icon('heart', 20)}</span>會員卡</span><span class="knob"></span></button><div class="cap soft">${memberCardOn() ? '已打開：記帳收款時可以輸入粉絲 ID，會員清單在下方「會員」。只有你看得到自己的會員。' : '關閉中：記帳畫面不會出現會員欄位。需要累積粉絲消費時再打開。'}</div>`);
+  if (isCoserUser()) html += card(`<button class="switch" role="switch" aria-checked="${memberCardOn()}"${act('toggleMemberCard')}><span class="row g8 heavy" style="font-size:17px"><span style="color:var(--pink)">${icon('heart', 20)}</span>會員卡</span><span class="knob"></span></button><div class="cap soft">${memberCardOn() ? '已打開：記帳收款時可以輸入店鋪會員編號（8 碼，客人在店裡登記），會員清單在下方「會員」。只有你看得到自己的會員和在你這裡的消費。' : '關閉中：記帳畫面不會出現會員欄位。需要累積粉絲消費時再打開。'}</div>`);
   if (extra.length) html += card(extra.map(s => `<button class="row" style="width:100%;min-height:56px;gap:14px"${act('pushSection', s)}><span style="color:var(--pink);width:32px;display:grid;place-items:center">${icon(SEC_ICON[s], 22)}</span><b class="grow" style="font-size:16px">${esc(secTitle(s))}</b><span class="soft">${icon('chevron-right', 18, 3)}</span></button>`).join(HR), 'p10');
   if (LIVE) {
     const m = LIVE.refreshedAt ? Math.max(0, Math.round((nowMs() - LIVE.refreshedAt) / 60000)) : null;
@@ -5000,6 +5137,7 @@ function viewSheet() {
     case 'count': return sheetCount(sh);
     case 'series': return sheetSeries(sh);
     case 'member': return sheetMember(sh);
+    case 'shopMember': return sheetShopMember(sh);
     case 'feedback': return sheetFeedback(sh);
     case 'menuCur': return sheetMenuCurrency(sh);
     case 'register': return sheetRegister(sh);
@@ -5050,7 +5188,7 @@ function sheetSeat(sh) {
 function sheetSeatPay(sh) {
   if (sh.finished) {
     const r = sh.finished, paid = r.payment !== 'credit', n = r.addOns.reduce((k, a) => k + a.quantity, 0);
-    let d = `座位 ${r.seatID}`; if (r.payment) d += `・${PAY[r.payment].label}`; if (n) d += `・加購 ${n} 件`; if (r.debtor) d += `・${r.debtor}`;
+    let d = `座位 ${r.seatID}`; if (r.payment) d += `・${PAY[r.payment].label}`; if (n) d += `・加購 ${n} 件`; if (r.debtor) d += `・${r.debtor}`; if (r.memberID) d += `・會員 ${memberNoText(r.memberID)}`;
     const title = r.total === 0 ? '結帳完成' : paid ? '收款完成' : '已記成應收';
     const body = `<div class="success" id="seat-pay-done"><span class="mark" style="--b:${paid ? 'var(--green)' : 'var(--orange)'}">${icon(paid ? 'check' : 'file-text', 40, 3)}</span><div class="t-big" style="font-size:28px">${title}</div><div class="num" style="font-size:40px;font-weight:900;color:var(--pink-deep)">${money(r.total)}</div><div class="sub bold soft">${esc(d)}</div><div class="cap soft">座位已經空出來了。</div></div>`;
     return sheetFrame({ title: '完成', body, footer: btn('完成', 'closeSheet', null, { ic: 'arrow-right', cls: 'seat-pay-finish' }), cls: 'short' });
@@ -5069,8 +5207,11 @@ function sheetSeatPay(sh) {
       body += `<div class="field"><label for="f-sheet-cashGiven">客人給多少？（選填，幫你算找零）</label>${inp('sheet.cashGiven', { ph: '例如 1000（NT$）', num: true, cls: 'big num' })}${given > 0 ? `<b id="seat-change" style="font-size:20px;color:${change >= 0 ? 'var(--green-deep)' : 'var(--danger)'}">${change >= 0 ? `找零 ${money(change)}` : `還差 ${money(-change)}`}</b>` : ''}</div>`;
     }
     if (sh.payment === 'credit') body += `<div class="field"><label for="f-sheet-debtor">客人名字或聯絡方式（必填）</label>${inp('sheet.debtor', { ph: '例如 小雪・IG @snow', cls: needsName ? 'bad' : '' })}</div>`;
+    // 2026-11-10：店鋪會員（選填），消費記在這位會員名下
+    body += `<div class="field"><label for="f-sheet-member">會員編號（選填）</label>${inp('sheet.member', { ph: '例如 03010891', num: true, cls: memberNoState(sh.member) === 'bad' ? 'bad num' : 'num' })}${memberNoHint(sh.member, true)}</div>`;
   }
-  body += btn(total === 0 ? '確認結帳（不用收錢）' : sh.payment === 'credit' ? `記成應收 ${money(total)}` : `確認收款 ${money(total)}`, 'seatDoCheckout', null, { ic: 'check', dis: needsName, cls: 'seat-confirm' })
+  const memberBad = total > 0 && ['bad', 'typing'].includes(memberNoState(sh.member));
+  body += btn(total === 0 ? '確認結帳（不用收錢）' : sh.payment === 'credit' ? `記成應收 ${money(total)}` : `確認收款 ${money(total)}`, 'seatDoCheckout', null, { ic: 'check', dis: needsName || memberBad, cls: 'seat-confirm' })
     + `<div class="cap soft">座位費：${SEAT_PRICE_TEXT}。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>` + testNotice();
   return sheetFrame({ title: '收款', left: tb('返回', 'seatPayBack'), body });
 }
@@ -5117,25 +5258,28 @@ function sheetPayment(sh) {
   if (sh.finished) {
     const s = sh.finished; const paid = s.status === 'paid';
     let d = `${payOf(s).label}・${saleItems(s)} 件`;
-    if (s.day !== today()) d += `・記在 ${dayText(s.day)}`; if (s.debtor) d += `・${s.debtor}`; if (s.memberID) d += `・會員 ${s.memberID}`;
+    if (s.day !== today()) d += `・記在 ${dayText(s.day)}`; if (s.debtor) d += `・${s.debtor}`; if (s.memberID) d += `・會員 ${memberNoText(s.memberID)}`;
     const body = `<div class="success"><span class="mark" style="--b:${paid ? 'var(--green)' : 'var(--orange)'}">${icon(paid ? 'check' : 'file-text', 40, 3)}</span><div class="t-big" style="font-size:28px">${paid ? '收款完成' : '已記成應收'}</div><div class="num" style="font-size:40px;font-weight:900;color:var(--pink-deep)">${money(s.total, s.currency)}</div><div class="sub bold soft">${esc(d)}</div></div>`;
     return sheetFrame({ title: '完成', body, footer: btn('下一位客人', 'closeSheet', null, { ic: 'arrow-right' }), cls: 'short' });
   }
   if (!U.cart.length) return sheetFrame({ title: '收款', left: tb('返回', 'closeSheet'), body: empty('shopping-bag', '購物車是空的，回到結帳畫面選商品。'), cls: 'short' });
   const total = cartTotal(U.cart), owner = activeCheckoutCoser(), mc = isMemberCardOn(owner), cur = menuCurrency();
-  const needsName = sh.payment === 'credit' && !(mc && normalizeFan(U.cartMember)) && !U.cartDebtor.trim();
+  const needsName = sh.payment === 'credit' && !(mc && memberNoState(U.cartMember) === 'ok') && !U.cartDebtor.trim();
   let body = card(`<div class="row g8 heavy sub" style="color:${isToday() ? 'var(--ink-soft)' : 'var(--orange-deep)'}">${icon('calendar', 16)}${esc(isToday() ? `記在今天・${dayText(selDay())}` : `補記在 ${dayText(selDay())}`)}</div><div class="row g8 heavy sub" id="pay-currency" style="color:${cur === 'TWD' ? 'var(--ink-soft)' : 'var(--pink-deep)'}">${icon('coins', 16)}幣別：${CUR[cur].label}（${CUR[cur].symbol}）</div>${cartLines()}${HR}<div class="row"><b class="grow">應收</b><b class="num" style="font-size:34px;font-weight:900;color:var(--pink-deep)">${mmoney(total)}</b></div>`);
   body += `<div class="stack g8"><b style="font-size:17px">收款方式</b><div class="paygrid">${['cash', 'transfer', 'linePay', 'credit'].map(k => `<button class="paybtn${sh.payment === k ? ' on' : ''}" style="--fg:${PAY[k].fg}"${act('payMethod', k)} aria-pressed="${sh.payment === k}">${icon(PAY[k].icon, 22)}${k === 'credit' ? '賒帳（記應收）' : PAY[k].label}</button>`).join('')}</div></div>`;
   if (sh.payment === 'cash') {
     const given = parseInt(sh.cashGiven || '0', 10); const change = given - total;
     body += `<div class="field"><label for="f-sheet-cashGiven">客人給多少？（選填，幫你算找零）</label>${inp('sheet.cashGiven', { ph: `例如 2000（${CUR[cur].symbol}）`, num: true, cls: 'big num' })}${given > 0 ? `<b style="font-size:20px;color:${change >= 0 ? 'var(--green-deep)' : 'var(--danger)'}">${change >= 0 ? `找零 ${mmoney(change)}` : `還差 ${mmoney(-change)}`}</b>` : ''}</div>`;
   }
-  if (sh.payment === 'credit') body += `<div class="field"><label for="f-cartDebtor">${mc ? '客人名字或聯絡方式（沒有會員 ID 時必填）' : '客人名字或聯絡方式（必填）'}</label>${inp('cartDebtor', { ph: '例如 小雪・IG @snow', cls: needsName ? 'bad' : '' })}</div>`;
+  if (sh.payment === 'credit') body += `<div class="field"><label for="f-cartDebtor">${mc ? '客人名字或聯絡方式（沒有會員編號時必填）' : '客人名字或聯絡方式（必填）'}</label>${inp('cartDebtor', { ph: '例如 小雪・IG @snow', cls: needsName ? 'bad' : '' })}</div>`;
   if (mc) {
-    const m = U.cartMember ? memberByFan(U.cartMember, owner) : null;
-    body += `<div class="field"><label for="f-cartMember">會員粉絲 ID（選填）</label>${inp('cartMember', { ph: '例如 FAN123', upper: true })}${m ? `<div class="row g8 cap bold" style="color:var(--green-deep)">${icon('heart', 14)}會員：${esc(memberName(m))}</div>` : normalizeFan(U.cartMember) ? `<div class="cap soft">新的粉絲 ID，記帳後會自動加入會員。</div>` : ''}</div>`;
+    // 2026-11-10：輸入店鋪會員編號（店鋪登記過的才行）；第一次在你這裡消費會自動加入你的會員
+    const st = memberNoState(U.cartMember), m = st === 'ok' ? memberByFan(normalizeMemberNo(U.cartMember), owner) : null;
+    const hint = m ? `<div class="row g8 cap bold" id="member-no-ok" style="color:var(--green-deep)">${icon('heart', 14)}你的會員：${esc(memberName(m))}</div>` : st === 'ok' ? `<div class="row g8 cap bold" id="member-no-ok" style="color:var(--green-deep)">${icon('heart', 14)}店鋪會員 ${esc(memberNoText(normalizeMemberNo(U.cartMember)))}・記帳後加入你的會員</div>` : memberNoHint(U.cartMember, false);
+    body += `<div class="field"><label for="f-cartMember">會員編號（選填）</label>${inp('cartMember', { ph: '例如 03010891', num: true, cls: st === 'bad' ? 'bad num' : 'num' })}${hint}</div>`;
   }
-  body += btn(sh.payment === 'credit' ? `記成應收 ${mmoney(total)}` : `確認收款 ${mmoney(total)}`, 'doCheckout', null, { ic: 'check', dis: needsName }) + testNotice();
+  const memberBad = mc && ['bad', 'typing'].includes(memberNoState(U.cartMember));
+  body += btn(sh.payment === 'credit' ? `記成應收 ${mmoney(total)}` : `確認收款 ${mmoney(total)}`, 'doCheckout', null, { ic: 'check', dis: needsName || memberBad }) + testNotice();
   return sheetFrame({ title: '收款', left: tb('返回', 'closeSheet'), body });
 }
 function sheetSettle(sh) {
@@ -5363,9 +5507,13 @@ function sheetSeries(sh) {
   return sheetFrame({ title: '改名／換顏色', left: tb('取消', 'closeSheet'), body });
 }
 function sheetMember(sh) {
-  const editing = !!sh.memberID; const exists = !editing && !!memberByFan(sh.fanID, U.user.coserID);
-  const can = editing || (normalizeFan(sh.fanID) && !exists);
-  const body = `<div class="field"><label for="f-sheet-fanID">粉絲 ID（必填）</label>${editing ? `<div class="input" style="display:flex;align-items:center;opacity:.6">${esc(sh.fanID)}</div>` : inp('sheet.fanID', { ph: '例如 FAN123', upper: true })}${exists ? `<div class="cap bold" style="color:var(--danger)">這個粉絲 ID 已經是你的會員了。</div>` : ''}</div><div class="field"><label for="f-sheet-nickname">暱稱（選填）</label>${inp('sheet.nickname', { ph: '例如 小雪' })}</div><div class="field"><label for="f-sheet-note">備註（選填）</label>${inp('sheet.note', { ph: '例如 喜歡芙莉蓮' })}</div>${btn(editing ? '儲存' : '新增會員', 'saveMember', null, { ic: 'check', dis: !can })}`;
+  // 2026-11-10：會員編號＝店鋪會員編號（店鋪登記過的才能加）
+  const editing = !!sh.memberID, st = editing ? 'ok' : memberNoState(sh.fanID);
+  const exists = !editing && st === 'ok' && !!memberByFan(normalizeMemberNo(sh.fanID), U.user.coserID);
+  const can = editing || (st === 'ok' && !exists);
+  const field = editing ? `<div class="input num" style="display:flex;align-items:center;opacity:.6">${esc(memberNoText(sh.fanID))}</div>` : inp('sheet.fanID', { ph: '例如 03010891', num: true, cls: st === 'bad' ? 'bad num' : 'num' });
+  const hint = editing ? '' : exists ? `<div class="cap bold" style="color:var(--danger)">這位已經是你的會員了。</div>` : memberNoHint(sh.fanID, false);
+  const body = `<div class="field"><label for="f-sheet-fanID">會員編號（必填）</label>${field}${hint}${editing ? '' : `<div class="cap soft">客人要先在店裡登記會員，拿到 8 碼的會員編號。</div>`}</div><div class="field"><label for="f-sheet-nickname">暱稱（選填）</label>${inp('sheet.nickname', { ph: '例如 小雪' })}</div><div class="field"><label for="f-sheet-note">備註（選填）</label>${inp('sheet.note', { ph: '例如 喜歡芙莉蓮' })}</div>${btn(editing ? '儲存' : '新增會員', 'saveMember', null, { ic: 'check', dis: !can })}`;
   return sheetFrame({ title: editing ? '編輯會員' : '新增會員', left: tb('取消', 'closeSheet'), body, cls: 'short' });
 }
 
@@ -5559,6 +5707,7 @@ function liveApply(tables) {
   S.sales.sales.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
   S.seats = shopFromNotion(T);
   S.schedule = scheduleFromNotion(T);
+  S.shopMembers = safe(T('店鋪會員'), fromNotion.shopMember).filter(m => m.id);
   COSERS.splice(0, Infinity, ...safe(T('Coser 名冊'), fromNotion.coser));
 }
 function liveSave() {
@@ -5753,12 +5902,12 @@ function liveSyncDiff(b) {
 
 // 第三批：店鋪管理（座位紀錄、加購明細）、女僕管理（女僕名冊、店鋪錢箱、座位賒帳登記已收）
 const SHOP_LIVE = {
-  shopManager: [['座位紀錄', 'seatRecords', '座位紀錄編號'], ['座位加購明細', 'seatAddOns', '明細ID']],
+  shopManager: [['座位紀錄', 'seatRecords', '座位紀錄編號'], ['座位加購明細', 'seatAddOns', '明細ID'], ['店鋪會員', 'shopMembers', '會員編號']],
   maidManager: [['女僕名冊', 'maids', '女僕ID'], ['店鋪每日錢箱', 'shopCashBoxes', '日期文字'], ['座位紀錄', 'seatRecords', '座位紀錄編號']]
 };
 const SHOP_SETTLE_COLS = ['已收時間', '收回方式'];
 function shopLiveRows(role) {
-  const all = shopToNotion(), out = {};
+  const all = { ...shopToNotion(), '店鋪會員': shopMembersToNotion() }, out = {};
   for (const [name, , key] of SHOP_LIVE[role]) out[name] = new Map((all[name] || []).map(r => [r[key], r]));
   return out;
 }
@@ -5854,7 +6003,7 @@ const A = {
   // 結帳防呆：先問一次，確定才開收款畫面（2026-11-03）
   seatAskCheckout() {
     const id = U.sheet.id, ss = seatSession(id), fee = seatFee(ss), add = seatAddOnTotal(ss);
-    ask('你確定要結帳嗎><', `${id}・座位費 ${money(fee)}${add ? `＋加購 ${money(add)}` : ''}＝合計 ${money(fee + add)}`, [{ label: '確定結帳', run: () => { U.sheet = { type: 'seatPay', id, payment: 'cash', cashGiven: '', debtor: '', finished: null }; } }], '取消');
+    ask('你確定要結帳嗎><', `${id}・座位費 ${money(fee)}${add ? `＋加購 ${money(add)}` : ''}＝合計 ${money(fee + add)}`, [{ label: '確定結帳', run: () => { U.sheet = { type: 'seatPay', id, payment: 'cash', cashGiven: '', debtor: '', member: '', finished: null }; } }], '取消');
   },
   // 女僕管理帳號（2026-11-05）
   openShopCash(kind) { const v = shopCashBox(selDay())[kind]; U.sheet = { type: 'shopCash', kind, amount: v == null ? '' : String(v) }; },
@@ -5914,7 +6063,7 @@ const A = {
   seatPayMethod(k) { U.sheet.payment = k; },
   seatDoCheckout() {
     const sh = U.sheet, total = seatTotal(seatSession(sh.id));
-    const r = perform(() => seatCheckout(sh.id, total > 0 ? sh.payment : null, U.user, sh.debtor));
+    const r = perform(() => seatCheckout(sh.id, total > 0 ? sh.payment : null, U.user, sh.debtor, undefined, total > 0 ? sh.member : ''));
     if (r) sh.finished = r;
   },
   seatTest(sec) { const id = U.sheet.id, t = SEAT_TEST.find(x => x[0] === +sec); perform(() => seatTestSetRemaining(id, +sec, U.user), `測試：${id} ${t[1]}`); },
@@ -5973,6 +6122,14 @@ const A = {
   pushCostume(id) { push({ type: 'costume', id }); },
   pushLoan(id) { push({ type: 'loan', id }); },
   pushMember(id) { push({ type: 'member', id }); },
+  pushShopMember(id) { push({ type: 'shopMember', id }); },
+  openShopMember(id) { const m = id ? shopMemberByID(id) : null; U.sheet = { type: 'shopMember', id: m?.id ?? null, name: m?.name ?? '', birthday: m ? m.birthday.replace('-', '') : '', phone: m?.phone ?? '', note: m?.note ?? '' }; },
+  saveShopMember() {
+    const sh = U.sheet, form = { name: sh.name, birthday: sh.birthday, phone: sh.phone, note: sh.note };
+    if (sh.id) { if (perform(() => updateShopMember(sh.id, form, U.user), '已更新會員資料')) U.sheet = null; return; }
+    const m = perform(() => registerShopMember(form, U.user), r => `已登記會員 ${memberNoText(r.id)}`);
+    if (m) { U.sheet = null; push({ type: 'shopMember', id: m.id }); }
+  },
   back() { U.stack.pop(); scrollTop(); },
 
   // 日期
@@ -6142,7 +6299,7 @@ const A = {
   // 會員
   toggleMemberCard() { const on = !memberCardOn(); if (on) SB().memberCard.add(U.user.coserID); else SB().memberCard.delete(U.user.coserID); show('success', on ? '已打開會員卡，「會員」在「更多」裡' : '已關閉會員卡，會員資料會保留'); if (!on && U.stack.some(e => e.section === 'members')) U.stack = []; },
   openMember(id) { const m = id ? SB().members.find(x => x.id === id) : null; U.sheet = { type: 'member', memberID: m?.id ?? null, fanID: m?.fanID ?? '', nickname: m?.nickname ?? '', note: m?.note ?? '' }; },
-  saveMember() { const sh = U.sheet; const ok = sh.memberID ? perform(() => updateMember(sh.memberID, sh.nickname, sh.note, U.user), '已更新會員資料') : perform(() => addMember(sh.fanID, sh.nickname, sh.note, U.user), `已新增會員 ${normalizeFan(sh.fanID)}`); if (ok) U.sheet = null; },
+  saveMember() { const sh = U.sheet; const ok = sh.memberID ? perform(() => updateMember(sh.memberID, sh.nickname, sh.note, U.user), '已更新會員資料') : perform(() => addMember(sh.fanID, sh.nickname, sh.note, U.user), `已新增會員 ${memberNoText(normalizeMemberNo(sh.fanID))}`); if (ok) U.sheet = null; },
 
   // 意見回饋
   openFeedback() { U.sheet = { type: 'feedback', text: '', sending: false, sent: false, error: null }; },
@@ -6177,10 +6334,10 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 9; // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
+const STATE_VERSION = 10; // 11/10 加店鋪會員 +1 // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
 const KEEP_UI = ['schedMonth', 'user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
-  'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch'];
+  'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch', 'shopMemberSearch'];
 function snapshotState() {
   const ui = {}; for (const k of KEEP_UI) ui[k] = U[k];
   if (ui.sheet?.type === 'feedback') ui.sheet = null;
