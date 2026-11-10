@@ -4870,7 +4870,8 @@ function viewMembers() {
   else if (!list.length) body = card(empty('search', '找不到符合的會員'));
   else body = card(list.map(m => { const out = memberSales(m).filter(s => s.status === 'outstanding'); return `<button class="row" style="width:100%;padding:10px 0"${act('pushMember', m.id)}><span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--pink-pale);color:var(--pink)">${icon('heart', 20)}</span><span class="grow"><b style="display:block;font-size:16px">${esc(memberName(m))}</b><span class="cap soft">${esc(spendText(memberSpend(m)))}</span></span>${out.length ? pill(`待收 ${out.length}`, 'var(--orange-deep)', 'var(--orange-pale)') : ''}<span class="soft">${icon('chevron-right', 16, 3)}</span></button>`; }).join(HR), 'p10');
   const right = `<button class="icon-btn"${act('openMember', '')} aria-label="新增會員"${memberCardOn() ? '' : ' disabled'}>${icon('circle-plus', 24)}</button>`;
-  return { title: '會員', right, html: `<div class="search">${icon('search', 18)}${inp('memberSearch', { ph: '搜尋會員編號或暱稱' })}</div>${body}`, cls: 'narrowcol' };
+  const addBtn = memberCardOn() && mine.length ? btn('新增會員', 'openMember', '', { ic: 'plus', cls: 'member-add-big' }) : '';
+  return { title: '會員', right, html: addBtn + `<div class="search">${icon('search', 18)}${inp('memberSearch', { ph: '搜尋會員編號或暱稱' })}</div>${body}`, cls: 'narrowcol' };
 }
 function viewMemberDetail(id) {
   const m = SB().members.find(x => x.id === id); if (!m) return { title: '會員', html: empty('search', '找不到這位會員') };
@@ -4898,7 +4899,9 @@ function viewShopMembers() {
   else if (!list.length) body = card(empty('search', '找不到符合的會員'));
   else body = card(list.map(m => { const v = shopMemberVisits(m.id); return `<button class="row" id="shop-member-${m.id}" style="width:100%;padding:10px 0"${act('pushShopMember', m.id)}><span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--pink-pale);color:var(--pink)">${icon('heart', 20)}</span><span class="grow"><b style="display:block;font-size:16px">${esc(m.name || '（沒有稱呼）')}</b><span class="cap soft num">${esc(memberNoText(m.id))}・${esc(maskPhone(m.phone))}</span></span><span class="stack" style="align-items:flex-end;gap:2px"><b class="num">${money(shopMemberSpend(m.id))}</b><span class="cap soft">來店 ${v.length} 次</span></span><span class="soft">${icon('chevron-right', 16, 3)}</span></button>`; }).join(HR), 'p10');
   const right = `<button class="icon-btn" id="shop-member-add"${act('openShopMember', '')} aria-label="登記會員">${icon('user-plus', 24)}</button>`;
-  return { title: '店鋪會員', right, html: card(intro) + `<div class="search">${icon('search', 18)}${inp('shopMemberSearch', { ph: '搜尋編號、稱呼或電話末碼' })}</div>${body}`, cls: 'narrowcol' };
+  // 2026-11-10：登記按鈕放在頁面上（右上角的小圖示不好找）
+  const addBtn = all.length ? btn('登記會員', 'openShopMember', '', { ic: 'user-plus', cls: 'shop-member-add-big' }) : '';
+  return { title: '店鋪會員', right, html: addBtn + card(intro) + `<div class="search">${icon('search', 18)}${inp('shopMemberSearch', { ph: '搜尋編號、稱呼或電話末碼' })}</div>${body}`, cls: 'narrowcol' };
 }
 function viewShopMemberDetail(id) {
   const m = shopMemberByID(id); if (!m) return { title: '會員', html: empty('search', '找不到這位會員') };
