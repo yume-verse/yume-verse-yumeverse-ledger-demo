@@ -4932,7 +4932,7 @@ function viewBookings() {
   const row = it => it.c ? `<button style="width:100%"${act('pushLoan', it.c.id)}>${loanRow(it.c)}</button>` : `<button style="width:100%"${act('venueDetail', it.v.id)}>${venueRow(it.v)}</button>`;
   const html = [
     // 女僕店排班：測試版 2026-11-12 起移到「女僕 › 排班」；接資料庫時女僕分頁還沒接，先留在這裡
-    LIVE ? maidScheduleCard() : '',
+    LIVE && LIVE.link !== true ? maidScheduleCard() : '',
     `<div class="bigbtns"><button class="bigbtn" style="--b:var(--pink)"${act('openLend')}>${icon('shirt', 32, 2.2)}預約服裝</button><button class="bigbtn" style="--b:var(--blue)"${act('openVenue')}>${icon('aperture', 32, 2.2)}預約場地</button></div>`,
     card(stitle('接下來', up.length) + (up.length ? up.map(row).join(HR) : empty('calendar', '目前沒有預約'))),
     past.length ? card(`<button class="row" style="width:100%"${act('togglePast')}>${stitle('已結束', past.length, 'var(--ink-soft)')}<span class="soft">${icon(U.showPast ? 'chevron-up' : 'chevron-down', 18, 3)}</span></button>` + (U.showPast ? past.map(row).join(HR) : '')) : ''
@@ -5321,9 +5321,20 @@ function demoMaidSide() {
   };
 }
 const MS = () => (S.maidSide ||= demoMaidSide());
-const isMaidUser = () => !LIVE && !!maidOf(U.user);
+// 接資料庫（?api=，測試版後端）時：資料從後端 /link/maid/overview 來（S.liveMaid），動作送到後端
+const LMx = () => (LIVE ? S.liveMaid || null : null);
+const liveG = memberID => LMx()?.guests.find(g => g.memberCode === memberID) || null;
+const isoMs = v => (v ? Date.parse(v) : null);
+const isMaidUser = () => !!maidOf(U.user) && (!LIVE || LIVE.link === true);
+const msVisit = id => LIVE ? (LMx()?.pending || []).map(liveVisit).find(v => v.id === id) || null : MS().visits.find(x => x.id === id) || null;
+const liveVisit = v => ({ id: v.seatRecordID, memberID: v.memberCode, maidID: myMaid()?.id, day: v.day, plan: '300', total: v.total, seatFee: v.seatFee, closedAt: isoMs(v.closedAt) });
+const liveLetter = l => ({ id: l.letterID, memberID: l.memberCode, maidID: myMaid()?.id, kind: l.kind, at: isoMs(l.at), status: l.status, repliedAt: isoMs(l.repliedAt), stamp: l.stamp });
+const liveMsg = x => ({ id: x.messageID, memberID: x.memberCode, maidID: myMaid()?.id, text: x.text, at: isoMs(x.at), read: x.read, reply: x.reply, repliedAt: isoMs(x.repliedAt) });
+const msLetter = id => LIVE ? (LMx()?.letters || []).map(liveLetter).find(l => l.id === id) || null : MS().letters.find(x => x.id === id) || null;
+const msMsg = id => LIVE ? (LMx()?.messages || []).map(liveMsg).find(x => x.id === id) || null : MS().messages.find(x => x.id === id) || null;
+const msProfile = maidID => LIVE ? {} : MS().profiles[maidID] || {};
 const myMaid = () => maidOf(U.user);
-const guestName = memberID => MS().guests.find(g => g.memberID === memberID)?.name || S.shopMembers?.find(m => m.id === memberID)?.name || `會員 ${memberNoText(memberID)}`;
+const guestName = memberID => LIVE ? (liveG(memberID)?.name || [...(LMx()?.pending || []), ...(LMx()?.letters || []), ...(LMx()?.messages || [])].find(x => x.memberCode === memberID)?.name || `會員 ${memberNoText(memberID)}`) : MS().guests.find(g => g.memberID === memberID)?.name || S.shopMembers?.find(m => m.id === memberID)?.name || `會員 ${memberNoText(memberID)}`;
 function checkMaid(user, maidID) {
   const m = maidOf(user); if (!m) fail('只有有簽約當女僕的 Coser 帳號可以用女僕端。');
   if (maidID && m.id !== maidID) fail('這不是你的來賓。');
@@ -5331,13 +5342,14 @@ function checkMaid(user, maidID) {
 }
 /** 好感分數：最近一次「舉報歸零」之後的給分合計（0–100） */
 function bondScore(maidID, memberID) {
+  if (LIVE) return liveG(memberID)?.score ?? (LMx()?.pending || []).find(x => x.memberCode === memberID)?.score ?? 0;
   const list = MS().ratings.filter(r => r.maidID === maidID && r.memberID === memberID).sort((a, b) => a.at - b.at);
   let n = 0; for (const r of list) n = r.kind === '舉報歸零' ? 0 : Math.min(100, n + (r.points || 0));
   return n;
 }
 /** 累積消費：這位來賓 300 方案指名這位女僕的來店結帳合計 */
-const bondSpend = (maidID, memberID) => MS().visits.filter(v => v.maidID === maidID && v.memberID === memberID && v.plan === '300' && v.closedAt).reduce((n, v) => n + v.total, 0);
-const lastVisit = (maidID, memberID) => MS().visits.filter(v => v.maidID === maidID && v.memberID === memberID && v.closedAt).sort((a, b) => b.closedAt - a.closedAt)[0] || null;
+const bondSpend = (maidID, memberID) => LIVE ? liveG(memberID)?.spend ?? 0 : MS().visits.filter(v => v.maidID === maidID && v.memberID === memberID && v.plan === '300' && v.closedAt).reduce((n, v) => n + v.total, 0);
+const lastVisit = (maidID, memberID) => LIVE ? (liveG(memberID)?.lastVisit ? { day: liveG(memberID).lastVisit, closedAt: isoMs(liveG(memberID).lastVisit) } : null) : MS().visits.filter(v => v.maidID === maidID && v.memberID === memberID && v.closedAt).sort((a, b) => b.closedAt - a.closedAt)[0] || null;
 /** 雙閘門：兩個都到的最高一階；next＝下一階 */
 function bondState(maidID, memberID) {
   const score = bondScore(maidID, memberID), spend = bondSpend(maidID, memberID);
@@ -5347,14 +5359,14 @@ function bondState(maidID, memberID) {
   return { score, spend, reached, next, scoreOk: next ? score >= next.score : true, spendOk: next ? next.spend == null || spend >= next.spend : true };
 }
 function myGuests(maidID, q = '') {
-  const ids = unique(MS().visits.filter(v => v.maidID === maidID).map(v => v.memberID));
+  const ids = LIVE ? (LMx()?.guests || []).map(g => g.memberCode) : unique(MS().visits.filter(v => v.maidID === maidID).map(v => v.memberID));
   const s = (q || '').trim().replace(/\s/g, '');
   return ids.map(id => ({ memberID: id, name: guestName(id), score: bondScore(maidID, id), spend: bondSpend(maidID, id), last: lastVisit(maidID, id) }))
     .filter(g => !s || g.name.includes(s) || g.memberID.includes(s))
     .sort((a, b) => (b.last?.closedAt ?? 0) - (a.last?.closedAt ?? 0));
 }
 /** 結帳後還沒給分的來店（給分或暫不給分都算處理過） */
-const pendingRatings = maidID => MS().visits.filter(v => v.maidID === maidID && v.closedAt && !MS().ratings.some(r => r.visitID === v.id)).sort((a, b) => b.closedAt - a.closedAt);
+const pendingRatings = maidID => LIVE ? (LMx()?.pending || []).map(liveVisit) : MS().visits.filter(v => v.maidID === maidID && v.closedAt && !MS().ratings.some(r => r.visitID === v.id)).sort((a, b) => b.closedAt - a.closedAt);
 function rateVisit(visitID, points, user, now = nowMs()) {
   const v = MS().visits.find(x => x.id === visitID); if (!v) fail('找不到這次來店。');
   checkMaid(user, v.maidID);
@@ -5371,15 +5383,15 @@ function reportPrivateContact(memberID, user, now = nowMs()) {
   MS().ratings.push(r); return r;
 }
 const toggleKey = (maidID, memberID, itemID) => `${maidID}|${memberID}|${itemID}`;
-const interactOn = (maidID, memberID, itemID) => MS().toggles[toggleKey(maidID, memberID, itemID)] !== false;
+const interactOn = (maidID, memberID, itemID) => LIVE ? !(LMx()?.toggles || []).some(t => t.memberCode === memberID && t.item === INTERACT_MENU.flatMap(x => x.items).find(i => i.id === itemID)?.name && t.on === false) : MS().toggles[toggleKey(maidID, memberID, itemID)] !== false;
 function setInteract(memberID, itemID, on, user) {
   const m = checkMaid(user);
   if (!INTERACT_MENU.some(t => t.items.some(i => i.id === itemID))) fail('找不到這個互動項目。');
   MS().toggles[toggleKey(m.id, memberID, itemID)] = !!on; return !!on;
 }
-const myLetters = maidID => MS().letters.filter(l => l.maidID === maidID).sort((a, b) => (a.status === b.status ? b.at - a.at : a.status === '待回信' ? -1 : 1));
-const pendingLetters = maidID => MS().letters.filter(l => l.maidID === maidID && l.status === '待回信');
-const myMessages = maidID => MS().messages.filter(x => x.maidID === maidID).sort((a, b) => b.at - a.at);
+const myLetters = maidID => (LIVE ? (LMx()?.letters || []).map(liveLetter) : MS().letters).filter(l => l.maidID === maidID).sort((a, b) => (a.status === b.status ? b.at - a.at : a.status === '待回信' ? -1 : 1));
+const pendingLetters = maidID => (LIVE ? (LMx()?.letters || []).map(liveLetter) : MS().letters).filter(l => l.maidID === maidID && l.status === '待回信');
+const myMessages = maidID => (LIVE ? (LMx()?.messages || []).map(liveMsg) : MS().messages).filter(x => x.maidID === maidID).sort((a, b) => b.at - a.at);
 /** 回信印章：照這位來賓現在的好感（10 分一個章，0–9 是「初見章」） */
 const stampFor = score => Math.floor(Math.min(score, 100) / 10) * 10;
 const stampText = n => n ? `${n} 分章` : '初見章';
@@ -5431,21 +5443,24 @@ const monthOf = ms => dayKey(new Date(ms)).slice(0, 7);
 /** 本月分潤明細（假資料版：照來店、書信、付費訊息、座位加購的拍立得算） */
 function maidIncome(maidID, mk = today().slice(0, 7)) {
   const lines = [];
+  if (LIVE) for (const l of LMx()?.income?.lines || []) lines.push({ kind: l.kind, gross: l.gross, share: l.share, at: isoMs(l.at), note: l.note, live: true });
+  else {
   // 入場費：當班女僕平分 50%（這裡用指名她的來店的開桌費估；連動版照座位紀錄＋班表算當班人數）
   for (const v of MS().visits.filter(x => x.maidID === maidID && x.closedAt && monthOf(x.closedAt) === mk)) lines.push({ kind: '入場費', gross: v.seatFee || 0, at: v.closedAt, note: guestName(v.memberID) });
   for (const r of seatBoard().history.filter(r => monthOf(r.closedAt) === mk)) for (const a of r.addOns.filter(a => a.maidID === maidID && a.kind === 'polaroid')) lines.push({ kind: '拍立得', gross: a.unitPrice * a.quantity, at: r.closedAt, note: `${r.seatID} ×${a.quantity}` });
   for (const l of MS().letters.filter(x => x.maidID === maidID && monthOf(x.at) === mk)) lines.push({ kind: l.kind, gross: LETTER_PRICE[l.kind], at: l.at, note: guestName(l.memberID) });
   for (const x of MS().messages.filter(x => x.maidID === maidID && monthOf(x.at) === mk)) lines.push({ kind: '付費訊息', gross: MSG_PRICE, at: x.at, note: guestName(x.memberID) });
-  for (const l of lines) l.share = Math.round(l.gross * SHARE[l.kind]);
+  }
+  for (const l of lines) if (!l.live) l.share = Math.round(l.gross * SHARE[l.kind]);
   const groups = ['入場費', '拍立得', '信紙', '告白信紙', '送餐儀式', '付費訊息'].map(k => ({ kind: k, rate: SHARE[k], gross: lines.filter(l => l.kind === k).reduce((n, l) => n + l.gross, 0), share: lines.filter(l => l.kind === k).reduce((n, l) => n + l.share, 0), count: lines.filter(l => l.kind === k).length }));
   return { month: mk, total: lines.reduce((n, l) => n + l.share, 0), groups, lines: lines.sort((a, b) => b.at - a.at) };
 }
 function maidHours(maidID) {
-  const p = MS().profiles[maidID] || {};
+  const p = msProfile(maidID);
   return (p.baseHours || 0) + schedule().shifts.filter(x => x.maidID === maidID && (x.status === '已報到' || x.status === '已下班')).reduce((n, x) => n + workedHours(x), 0);
 }
 function maidRank(maidID) {
-  const p = MS().profiles[maidID] || {}, hours = maidHours(maidID), months = p.joined ? Math.floor(diffDays(p.joined, today()) / 30) : 0;
+  const p = msProfile(maidID), hours = maidHours(maidID), months = p.joined ? Math.floor(diffDays(p.joined, today()) / 30) : 0;
   let i = 0; for (let k = 0; k < MAID_RANKS.length; k++) if (months >= MAID_RANKS[k].months && hours >= MAID_RANKS[k].hours) i = k;
   return { now: MAID_RANKS[i], next: MAID_RANKS[i + 1] || null, hours, months };
 }
@@ -5467,7 +5482,7 @@ function viewMsHome() {
   const next = mine.find(x => shiftEnd(x.day, x.period) > now) || null;
   const daysTo = next ? diffDays(t, next.day) : null;
   const pend = pendingRatings(m.id), letters = pendingLetters(m.id).length, inc = maidIncome(m.id), rk = maidRank(m.id);
-  let html = `<div class="row" style="gap:14px">${avatar({ colorHex: m.colorHex, initial: (coser(u.coserID)?.initial ?? m.name[0]) }, 54)}<div class="grow"><div class="t-big">${esc(m.name.replace(/（.*）/, ''))}</div><div class="sub bold soft">學號 ${esc(MS().profiles[m.id]?.studentNo ?? '—')}・${esc(rk.now.name)}</div></div></div>`;
+  let html = `<div class="row" style="gap:14px">${avatar({ colorHex: m.colorHex, initial: (coser(u.coserID)?.initial ?? m.name[0]) }, 54)}<div class="grow"><div class="t-big">${esc(m.name.replace(/（.*）/, ''))}</div><div class="sub bold soft">學號 ${esc(msProfile(m.id).studentNo ?? '—')}・${esc(rk.now.name)}</div></div></div>`;
   // ① 今日班表／② 出勤確認提醒
   let shiftCard = stitle('今日班表') + (todays.length ? todays.map(x => `<div class="row" id="today-shift-${esc(x.id)}"><b class="grow">${x.period} ${periodTime(x.period)}</b>${statusPill(x.status)}</div>`).join('') : `<div class="sub soft">今天沒有班</div>`);
   if (next && next.status === '已排班') {
@@ -5488,6 +5503,7 @@ function viewMsHome() {
   }
   html += card(`<button class="row" style="width:100%;min-height:56px" id="open-story"${act('pushMaid', 'maidStory')}><span style="color:var(--pink)">${icon('image', 22)}</span><span class="grow stack" style="gap:2px;text-align:left"><b>發布限動</b><span class="cap soft">好感 ${STORY_MIN_SCORE} 以上的好友看得到</span></span>${icon('chevron-right', 18, 3)}</button>`, 'p8');
   html += maidTestTools();
+  if (LIVE) html += `<div class="cap soft" style="text-align:center">${LIVE.maidAt ? `${clockText(LIVE.maidAt)} 更新・` : ''}${link('重新整理', 'maidRefresh')}</div>`;
   return { title: '女僕首頁', html, cls: 'narrowcol' };
 }
 
@@ -5536,7 +5552,7 @@ function viewMsGuests() {
 /** M04 來賓詳情・給分 */
 function viewMsGuestDetail(memberID) {
   const m = myMaid(), st = bondState(m.id, memberID), pend = pendingRatings(m.id).filter(v => v.memberID === memberID);
-  const hist = MS().ratings.filter(r => r.maidID === m.id && r.memberID === memberID).sort((a, b) => b.at - a.at).slice(0, 8);
+  const hist = LIVE ? (liveG(memberID)?.history || []).map(h => ({ kind: h.kind, points: h.points, at: isoMs(h.at) })).slice(0, 8) : MS().ratings.filter(r => r.maidID === m.id && r.memberID === memberID).sort((a, b) => b.at - a.at).slice(0, 8);
   let html = card(`<div class="row"><span class="grow stack" style="gap:2px"><b style="font-size:20px">${esc(guestName(memberID))}</b><span class="cap soft">#${esc(memberNoText(memberID))}</span></span>${heartPill(st.score)}</div>`
     + (st.next ? `<div class="gate" id="gate"><b class="sub">下一階段雙閘門</b>
       <div class="row"><span class="grow">累積消費 ${esc(money(st.spend))}／門檻 ${st.next.spend == null ? '不公開' : esc(money(st.next.spend))}</span>${okMark(st.spendOk)}</div>
@@ -5585,6 +5601,7 @@ function viewMsMessages() {
 
 /** M07 限動發布 */
 function viewMsStory() {
+  if (LIVE) return { title: '限動發布', html: card(`<div class="stack center" style="gap:10px"><span style="color:var(--pink)">${icon('image', 40)}</span><b>限動照片上傳還沒接資料庫</b><span class="cap soft">先用測試版（不接資料庫）試畫面；照片上傳接好後就能發布給好感 ${STORY_MIN_SCORE} 以上的好友。</span></div>`, 'p24'), cls: 'narrowcol' };
   const m = myMaid(), mine = MS().stories.filter(s => s.maidID === m.id), draft = U.maidStoryDraft;
   let html = card(`<div class="story-pick">${draft ? `<img src="${draft}" alt="準備發布的照片" id="story-preview">` : `<div class="story-empty">${icon('image', 40)}<span>上傳自拍</span></div>`}</div>
     <div class="row g8 wrap"><label class="cbtn filebtn">${icon('camera', 16)}拍照<input type="file" accept="image/*" capture="user" data-photos="maidStory"></label><label class="cbtn ghost filebtn">${icon('image', 16)}從相簿選<input type="file" accept="image/*" data-photos="maidStory"></label></div>
@@ -5596,7 +5613,7 @@ function viewMsStory() {
 
 /** M08＋M09 我的資料（學號、藝名、公式照、分潤明細；不做五階階梯、制服縮圖） */
 function viewMsMe() {
-  const m = myMaid(), p = MS().profiles[m.id] || {}, inc = maidIncome(m.id);
+  const m = myMaid(), p = msProfile(m.id), inc = maidIncome(m.id);
   let html = card(`<div class="row" style="gap:16px"><div class="maid-photo" style="background:#${m.colorHex}">${p.photo ? `<img src="${p.photo}" alt="公式照">` : `<span>${esc(m.name[0])}</span>`}</div><div class="grow stack" style="gap:8px">${info('學號', p.studentNo ?? '—')}${info('藝名', m.name.replace(/（.*）/, ''))}${info('階級', maidRank(m.id).now.name)}</div></div><div class="cap soft">學號、藝名、公式照由女僕管理帳號在名冊維護。</div>`);
   html += card(`<div class="row"><span class="grow stack" style="gap:2px"><b class="sub soft">本月分潤</b><b style="font-size:30px;color:var(--pink-deep)" class="num" id="income-total">${esc(money(inc.total))}</b></span><span class="cap soft">${esc(monthLabel(inc.month))}</span></div>`
     + inc.groups.map(g => `<div class="row" id="income-${esc(g.kind)}"><span class="grow stack" style="gap:2px"><b>${esc(g.kind)}</b><span class="cap soft">${g.kind === '入場費' ? '店家 50%・當班女僕平分 50%' : `女僕 ${Math.round(g.rate * 100)}%`}${g.count ? `・${g.count} 筆` : ''}${g.kind === '送餐儀式' ? '・目前不收費' : ''}</span></span><b class="num">${esc(money(g.share))}</b></div>`).join(HR)
@@ -5607,7 +5624,7 @@ function viewMsMe() {
 
 /** 給分視窗：客人結帳後自動跳出 */
 function sheetMsRate(sh) {
-  const v = MS().visits.find(x => x.id === sh.visitID); if (!v) return '';
+  const v = msVisit(sh.visitID); if (!v) return '';
   const st = bondState(v.maidID, v.memberID), left = pendingRatings(v.maidID).length;
   const body = card(`<div class="row"><span class="grow stack" style="gap:2px"><b style="font-size:20px">${esc(guestName(v.memberID))}</b><span class="cap soft">#${esc(memberNoText(v.memberID))}・${esc(clockText(v.closedAt))} 結帳・${esc(money(v.total))}</span></span>${heartPill(st.score)}</div>`
     + (st.next ? `<div class="gate"><div class="row"><span class="grow">累積消費門檻</span>${okMark(st.spendOk)}</div><div class="row"><span class="grow">我的給分 ${st.score}／${st.next.score}</span>${okMark(st.scoreOk)}</div><div class="cap soft">下一階段：${esc(st.next.unlock)}</div></div>` : ''))
@@ -5617,7 +5634,7 @@ function sheetMsRate(sh) {
   return sheetFrame({ title: '客人結帳了・要給分嗎？', left: tb('稍後', 'maidRateLater'), body, cls: 'short' });
 }
 function sheetMsLetter(sh) {
-  const l = MS().letters.find(x => x.id === sh.id); if (!l) return '';
+  const l = msLetter(sh.id); if (!l) return '';
   const sc = bondScore(l.maidID, l.memberID);
   const body = card(`<div class="row"><b class="grow" style="font-size:18px">${esc(guestName(l.memberID))}</b><span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">${esc(l.kind)}</span></div>${info('收到', timeText(l.at))}${info('狀態', l.status)}`)
     + (l.status === '待回信'
@@ -5626,7 +5643,7 @@ function sheetMsLetter(sh) {
   return sheetFrame({ title: '書信', left: tb('返回', 'closeSheet'), body, cls: 'short' });
 }
 function sheetMsMsg(sh) {
-  const x = MS().messages.find(m => m.id === sh.id); if (!x) return '';
+  const x = msMsg(sh.id); if (!x) return '';
   const body = card(`<b>${esc(guestName(x.memberID))}</b><div class="sub" style="font-size:17px">${esc(x.text)}</div><div class="cap soft">${esc(timeText(x.at))}・付費訊息</div>`)
     + (x.reply ? card(`<b>你的回覆</b><div class="sub">${esc(x.reply)}</div>`) : `<div class="field"><label for="f-sheet-reply">回覆（可以不回，最多 70 字）</label>${inp('sheet.reply', { ph: '想說的話', area: true })}</div><div class="cap soft">${[...(sh.reply || '')].length}/70 字</div>` + btn('送出回覆', 'maidMsgReply', x.id, { ic: 'check', dis: !(sh.reply || '').trim() || [...(sh.reply || '')].length > 70, cls: 'msg-reply' }));
   return sheetFrame({ title: '付費訊息', left: tb('返回', 'closeSheet'), body, cls: 'short' });
@@ -6186,7 +6203,7 @@ function push(entry) { U.stack.push(entry); scrollTop(); }
 let wantScrollTop = false;
 function scrollTop() { wantScrollTop = true; }
 function signIn(acc) {
-  U.user = { ...acc }; U.section = acc.role === 'shopManager' ? 'seats' : 'home'; U.stack = []; U.rateSnooze = []; U.maidStoryDraft = null; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
+  U.user = { ...acc }; U.section = acc.role === 'shopManager' ? 'seats' : 'home'; U.stack = []; U.rateSnooze = []; U.maidStoryDraft = null; S.liveMaid = null; if (LIVE) LIVE.maidAt = null; U.sideCollapsed = false; U.costumeFilter = 'all'; U.pickedDay = null;
   U.cart = []; U.cartMember = ''; U.cartMemberPick = null; U.cartDebtor = ''; U.login = { account: '', password: '', error: null }; U.reportCur = null; U.openFolders = {}; U.justOpened = null; U.cashCoserID = null;
   // 2026-11-05：登入、登出都不重設測試資料（換帳號測試時資料都在）；要從頭開始用「重設測試資料」
   scrollTop();
@@ -6927,6 +6944,52 @@ Object.assign(A, {
     perform(() => maidTestLetter(kind, U.user), `收到一封${kind}`);
   }
 });
+// 接資料庫：女僕端的資料、動作都問後端（/link/maid/*，只有測試版後端有）
+async function liveMaidLoad() {
+  if (!LIVE || LIVE.maidLoading) return;
+  LIVE.maidLoading = true;
+  try { S.liveMaid = await liveFetch('/link/maid/overview'); LIVE.link = true; }
+  catch (e) { if (e.status === 404 || e.status === 403) LIVE.link = false; }
+  finally { LIVE.maidLoading = false; LIVE.maidAt = Date.now(); render(); }
+}
+async function liveMaidCall(path, body, ok, after) {
+  if (LIVE.maidBusy) return;
+  LIVE.maidBusy = true;
+  try { S.liveMaid = await liveFetch(path, body); LIVE.maidAt = Date.now(); if (ok) show('success', typeof ok === 'function' ? ok() : ok); if (after) after(); }
+  catch (e) { show('failure', liveMessage(e)); }
+  finally { LIVE.maidBusy = false; render(); }
+}
+function liveMaidTick() {
+  if (!LIVE || U.user?.role !== 'coser' || !maidOf(U.user) || LIVE.link === false || LIVE.maidLoading) return;
+  if (!LIVE.maidAt || Date.now() - LIVE.maidAt > 30000) liveMaidLoad();
+}
+const LIVE_MAID_ACTIONS = {
+  maidRate(visitID, p) {
+    const name = guestName(msVisit(visitID)?.memberID);
+    liveMaidCall('/link/maid/rate', { seatRecordId: visitID, points: +p }, +p ? `已給 ${name} +${+p}` : `${name}：這次暫不給分`, () => {
+      if (U.sheet?.type === 'maidRate') { const next = pendingRatings(myMaid()?.id).find(v => !(U.rateSnooze || []).includes(v.id)); U.sheet = next ? { type: 'maidRate', visitID: next.id } : null; }
+    });
+  },
+  maidReport(memberID) {
+    const name = guestName(memberID);
+    ask(`要舉報 ${name} 私下聯繫嗎？`, '請確定這位來賓真的有私下聯繫你（例如私訊要聯絡方式、約店外見面）。舉報會留下紀錄。', [{ label: '我確定，繼續', danger: true, run: () => {
+      ask(`確定後，你和 ${name} 的好感度會歸零`, '歸零後不能復原，之前解鎖的內容都會關閉。', [{ label: '確定舉報，好感歸零', danger: true, run: () => liveMaidCall('/link/maid/report', { memberCode: memberID, opId: 'r' + Date.now().toString(36) + rid() }, `已舉報，和 ${name} 的好感度已歸零`) }], '先不要');
+    } }], '取消');
+  },
+  maidToggle(memberID, itemID) {
+    const m = myMaid(); if (!m) return;
+    const on = !interactOn(m.id, memberID, itemID), item = INTERACT_MENU.flatMap(x => x.items).find(i => i.id === itemID)?.name;
+    liveMaidCall('/link/maid/toggle', { memberCode: memberID, item, on }, on ? '已開放' : '已關閉（來賓只看到剪影）');
+  },
+  maidLetterDone(id) { liveMaidCall('/link/maid/letter-reply', { letterId: id }, () => `已回信，蓋${stampText(msLetter(id)?.stamp ?? 0)}`, () => { U.sheet = null; }); },
+  openMaidMsg(id) { U.sheet = { type: 'maidMsg', id, reply: '' }; if (!msMsg(id)?.read) liveMaidCall('/link/maid/messages-read', {}); },
+  maidMsgReply(id) { liveMaidCall('/link/maid/message-reply', { messageId: id, text: U.sheet.reply }, '已送出回覆', () => { U.sheet = null; }); },
+  maidMsgTab(t) { U.maidMsgTab = t; if (t === 'messages' && myMessages(myMaid()?.id).some(x => !x.read)) liveMaidCall('/link/maid/messages-read', {}); },
+  maidStoryPost() { show('info', '限動照片上傳還沒接資料庫。'); },
+  maidRefresh() { liveMaidLoad(); }
+};
+for (const [k, fn] of Object.entries(LIVE_MAID_ACTIONS)) { const local = A[k]; A[k] = (...args) => (LIVE ? fn(...args) : local ? local(...args) : undefined); }
+
 /** 客人結帳後自動跳出給分（女僕帳號登入著時；按「稍後」這次登入先不再跳） */
 function maidAutoPrompt() {
   if (!isMaidUser() || U.sheet || U.confirm) return;
@@ -7051,7 +7114,7 @@ function slideOutCartPanel(node) {
 function render() {
   if (HOST_MODE) return;
   const flip = captureTiles();
-  if (U.user) maidAutoPrompt();
+  if (U.user) { liveMaidTick(); maidAutoPrompt(); }
   const html = (U.user ? viewShell() : viewLogin()) + (U.sheet ? viewSheet() : '') + (U.confirm ? viewConfirm() : '')
     + (U.toast ? `<div class="toast t-${U.toast.kind}" id="toast-${U.toast.id}" role="status"${act('toastClose')}>${icon(U.toast.kind === 'success' ? 'circle-check' : U.toast.kind === 'failure' ? 'circle-x' : 'info', 22, 2.4)}<span>${esc(U.toast.text)}</span></div>` : '');
   if (window.morphdom) {
