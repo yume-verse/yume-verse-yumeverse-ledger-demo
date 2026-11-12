@@ -5093,13 +5093,15 @@ function seatTile(id, now) {
   if (!ss) return `<button class="seat" id="seat-${id}"${act('tapSeat', id)} aria-label="座位 ${id}，空位"><span class="row g4">${icon('armchair', 18)}<b>${id}</b></span><span class="st soft">空位</span></button>`;
   const r = seatRemain(ss, now), lv = seatLevel(r);
   const time = seatClock(r); // 超時是「+MM:SS」，下面一行寫「超時」
-  return `<button class="seat lv-${lv}" id="seat-${id}"${act('tapSeat', id)} aria-label="座位 ${id}，${lv === 'overtime' ? `超時 ${time}` : `${SEAT_LEVEL[lv]}，剩 ${time}`}"><span class="row g4">${icon('armchair', 18)}<b>${id}</b></span><span class="tm num">${time}</span><span class="st">${SEAT_LEVEL[lv]}</span></button>`;
+  return `<button class="seat lv-${lv}" id="seat-${id}"${act('tapSeat', id)} aria-label="座位 ${id}，${lv === 'overtime' ? `超時 ${time}` : `${SEAT_LEVEL[lv]}，剩 ${time}`}"><span class="row g4">${icon('armchair', 18)}<b>${id}</b></span><span class="tm num">${time}</span><span class="st">${SEAT_LEVEL[lv]}${ss.openedBy === 'guest-app' ? '・App' : ''}</span></button>`;
 }
+/** 現在畫面是座位圖嗎（店鋪管理自動更新用） */
+const seatMapOpen = () => { const top = U.stack[U.stack.length - 1]; return top ? top.type === 'section' && top.section === 'seats' : U.section === 'seats'; };
 function viewSeats() {
   const now = nowMs(), used = seatsOccupied(), all = SEAT_LAYOUT.flat().length;
   const rows = SEAT_LAYOUT.map((row, i) => `<div class="seat-row"><span class="seat-lbl">${SEAT_ROWS[i]} 排</span>${row.map(id => seatTile(id, now)).join('')}</div>`).join('');
   const legend = `<div class="seat-legend">${[['empty', '空位'], ['plenty', '30 分鐘以上'], ['half', '30 分鐘內'], ['low', '5 分鐘內／超時']].map(([k, t]) => `<span><i class="lv-${k}"></i>${t}</span>`).join('')}</div>`;
-  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', all)}</span><span class="cap bold soft" id="seat-summary">使用中 ${used}・空位 ${all - used}</span></div><div class="seat-map">${rows}</div>${legend}<div class="cap bold soft row g8">${icon('info', 14)}點空位入座，點已入座的座位可以加購、續座、結帳。</div>`);
+  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', all)}</span><span class="cap bold soft" id="seat-summary">使用中 ${used}・空位 ${all - used}</span></div><div class="seat-map">${rows}</div>${legend}<div class="cap bold soft row g8">${icon('info', 14)}點空位入座，點已入座的座位可以加購、續座、結帳。${LIVE?.token ? '客人在 App 選完方案會自動安排空位（標「App」，約 20 秒內出現）。' : ''}</div>`);
   return { title: '座位圖', cls: 'narrowcol', html };
 }
 
@@ -5731,7 +5733,7 @@ function sheetSeat(sh) {
   const addOnList = ss.addOns.length ? `<div class="stack g8"><b class="cap heavy soft">已加購</b>${ss.addOns.map(a => `<div class="addon-line"><b class="grow">${esc(`${a.maidName}・${a.name}`)}</b><button class="stepbtn minus" id="seat-minus-${esc(a.itemID)}"${act('seatRemoveItem', a.itemID)} aria-label="減少 1 件 ${esc(a.name)}">${icon('minus', 18, 3)}</button><b class="num q" id="seat-line-qty-${esc(a.itemID)}">${a.quantity}</b><button class="stepbtn plus" id="seat-plus-${esc(a.itemID)}"${act('seatAddItem', a.itemID)} aria-label="增加 1 件 ${esc(a.name)}">${icon('plus', 18, 3)}</button><b class="num amt">${money(a.unitPrice * a.quantity)}</b></div>`).join('')}</div>` : '';
   let body = card(`<div class="row g8"><b style="font-size:22px">${sh.id}</b><span class="seat-pill lv-${lv}">${SEAT_LEVEL[lv]}</span></div>
     ${info(lv === 'overtime' ? '已超時' : '剩餘時間', seatClock(r))}${info('入座', clockText(ss.startedAt))}${info('到期', clockText(ss.endsAt))}
-    ${ss.extensions.length ? info('續座', ss.extensions.map(e => extLabel(e.minutes)).join('、')) : ''}${ss.memberID ? info('會員', memberNoText(ss.memberID)) : ''}${info('座位費', money(fee))}${info('加購', ss.addOns.length ? money(addOnTotal) : '沒有')}<div class="row" id="seat-running-total"><b class="grow">目前合計</b><b class="num" style="font-size:20px;color:var(--pink-deep)">${money(fee + addOnTotal)}</b></div>`, 'seat-head');
+    ${ss.extensions.length ? info('續座', ss.extensions.map(e => extLabel(e.minutes)).join('、')) : ''}${ss.memberID ? info('會員', memberNoText(ss.memberID)) : ''}${ss.openedBy === 'guest-app' ? info('入座方式', '客人 App 選完方案自動安排') : ''}${info('座位費', money(fee))}${info('加購', ss.addOns.length ? money(addOnTotal) : '沒有')}<div class="row" id="seat-running-total"><b class="grow">目前合計</b><b class="num" style="font-size:20px;color:var(--pink-deep)">${money(fee + addOnTotal)}</b></div>`, 'seat-head');
   if (sh.step === 'menu') {
     const tools = card(`<b class="row g8" style="color:var(--orange-deep)">${icon('puzzle', 18)}測試工具：調整剩餘時間</b><div class="seat-test">${SEAT_TEST.map(([sec, t, h]) => `<button class="seat-test-btn" id="seat-test-${sec}"${act('seatTest', sec)}><b>${t}</b><small>${h}</small></button>`).join('')}</div><div class="cap soft">只有測試版會出現。不算續座、不留紀錄。</div>`);
     body += `<div class="stack g8">${[['addOn', '加購', 'shopping-bag'], ['extend', '續座', 'history'], ['checkout', '結帳', 'circle-check']].map(([k, t, ic]) => btn(t, k === 'checkout' ? 'seatAskCheckout' : 'seatStep', k, { kind: 'secondary', ic, cls: `seat-act-${k}`, style: '--b:var(--pink-deep)' })).join('')}</div>` + (LIVE ? '' : tools); // 接資料庫時不顯示測試工具
@@ -6425,6 +6427,8 @@ function liveBoot() {
   setInterval(liveStatus, 60000);
   // 每 5 分鐘自動拿最新的價格、商品（有開著的視窗就不換，等下次）
   setInterval(() => { if (U.user && !U.sheet && !U.confirm && !U.cart.length) liveRefresh(false); }, 5 * 60000);
+  // 2026-11-12：客人 App 選完方案會自動安排座位 → 店鋪管理開著座位圖時每 20 秒更新一次，客人入座很快就出現
+  setInterval(() => { if (U.user?.role === 'shopManager' && seatMapOpen() && !U.sheet && !U.confirm && !U.cart.length) liveRefresh(false); }, 20000);
   window.addEventListener('online', liveFlush);
 }
 
