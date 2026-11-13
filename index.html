@@ -232,6 +232,17 @@ textarea.input{padding:12px 14px;min-height:84px;resize:vertical}
 .av-btn.v1 small{color:#fff}
 .av-btn.v2{background:var(--green-deep, #2E7D32);border-color:var(--green-deep, #2E7D32);color:#fff}
 .av-btn.v2 small{color:#fff}
+.av-cal .cal-g button{height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:2px solid transparent;background:#fff}
+.av-cal .cal-g button.pick{border-color:var(--ink)}
+.av-cal .cal-g button.wkend{background:var(--pink-pale)}
+.av-dots{display:flex;gap:3px;height:8px}
+.av-dots i{width:8px;height:8px;border-radius:50%;background:var(--line, #E8E0D8)}
+.av-dots i.v1{background:var(--pink)}
+.av-dots i.v2{background:var(--green-deep, #2E7D32)}
+.av-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;font-weight:700;color:var(--ink-soft)}
+.av-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.av-pick{display:flex;flex-direction:column;gap:8px}
+.av-pick .row .av-btn{min-height:56px;font-size:16px}
 .av-wks{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;flex:1}
 .av-wk{min-height:40px;border-radius:10px;border:2px solid var(--line, #E8E0D8);font-weight:800;background:#fff}
 .av-wk.on{background:var(--pink);border-color:var(--pink);color:#fff}
@@ -5310,7 +5321,17 @@ function sheetAvail(sh) {
   const weekBtn = (wd, p) => { const ds = days.filter(d => dayDate(d).getDay() === wd); const on = ds.length && ds.every(d => sh.sel[`${d}|${p}`]); return `<button class="av-wk${on ? ' on' : ''}" id="av-week-${wd}-${p === '早班' ? 'E' : 'L'}"${act('availWeek', wd, p)} aria-pressed="${on}">${WD_SHORT[wd]}</button>`; };
   let body = `<div class="cap soft">${monthLabel(sh.month)}・${deadlineText(sh.month)} 截止。點一下＝可以上班，再點一下＝優先希望，再點一下取消。</div>`;
   body += card(`<b class="sub">依星期一次勾選</b>` + PERIODS.map(p => `<div class="row g8"><b style="width:72px" class="sub">${p}</b><div class="av-wks">${[1, 2, 3, 4, 5, 6, 0].map(wd => weekBtn(wd, p)).join('')}</div></div>`).join(''), 'p12');
-  body += `<div class="av-list">${days.map(d => `<div class="av-day${dayDate(d).getDay() % 6 === 0 ? ' wkend' : ''}"><b class="sub" style="min-width:108px">${esc(dayText(d).replace(/^\d+月/, ''))}</b>${PERIODS.map(p => { const v = sh.sel[`${d}|${p}`] || 0; return `<button class="av-btn v${v}" id="av-${d}-${p === '早班' ? 'E' : 'L'}"${act('availToggle', d, p)} aria-label="${esc(`${dayText(d)} ${p} ${['不行', '可以上班', '優先希望'][v]}`)}"><span>${p}</span><small>${mark[v] || '—'}</small></button>`; }).join('')}</div>`).join('')}</div>`;
+  // 2026-11-13：改成月曆：點日期 → 下面選早班、晚班（不用一直往下拉）
+  const pick = sh.pick && days.includes(sh.pick) ? sh.pick : days[0];
+  const first = dayDate(days[0]).getDay(), blanks = Array.from({ length: first }, () => '<span></span>').join('');
+  const cells = days.map(d => {
+    const dots = PERIODS.map(p => `<i class="v${sh.sel[`${d}|${p}`] || 0}"></i>`).join('');
+    return `<button class="${d === pick ? 'pick' : ''}${dayDate(d).getDay() % 6 === 0 ? ' wkend' : ''}" id="av-day-${d}"${act('availPick', d)} aria-pressed="${d === pick}" aria-label="${esc(dayText(d))}"><span>${+d.slice(8)}</span><span class="av-dots">${dots}</span></button>`;
+  }).join('');
+  body += `<div class="cal card p10 av-cal"><div class="cal-h"><span>${monthLabel(sh.month)}</span><span class="av-legend"><span><i style="background:var(--pink)"></i>可以</span><span><i style="background:var(--green-deep, #2E7D32)"></i>優先</span><span>圓點：左早班・右晚班</span></span></div><div class="cal-g">${WD_SHORT.map(w => `<span class="wd">${w}</span>`).join('')}${blanks}${cells}</div></div>`;
+  const i = days.indexOf(pick);
+  body += card(`<div class="av-pick" id="av-pick"><div class="row g8"><button class="icon-btn"${act('availPick', days[i - 1] || pick)}${i > 0 ? '' : ' disabled'} aria-label="前一天">${icon('chevron-left', 20, 3)}</button><b class="grow" style="text-align:center;font-size:17px">${esc(dayText(pick))}</b><button class="icon-btn"${act('availPick', days[i + 1] || pick)}${i < days.length - 1 ? '' : ' disabled'} aria-label="後一天">${icon('chevron-right', 20, 3)}</button></div>
+    <div class="row g8">${PERIODS.map(p => { const v = sh.sel[`${pick}|${p}`] || 0; return `<button class="av-btn v${v}" id="av-${pick}-${p === '早班' ? 'E' : 'L'}"${act('availToggle', pick, p)} aria-label="${esc(`${dayText(pick)} ${p} ${['不行', '可以上班', '優先希望'][v]}`)}"><span>${p} ${periodTime(p)}</span><small>${mark[v] || '—'}</small></button>`; }).join('')}</div></div>`, 'p12');
   const n = Object.values(sh.sel).filter(Boolean).length;
   const footer = `<div class="stack g8" style="width:100%"><div class="cap bold soft" id="avail-summary">已選 ${n} 個時段・${n * 3.5} 小時</div>${btn(`送出 ${monthLabel(sh.month)} 可以上班的時間`, 'availSubmit', null, { ic: 'check', cls: 'avail-submit' })}</div>`;
   return sheetFrame({ title: '填寫可以上班的時間', left: tb('返回', 'closeSheet'), right: tb('清除', 'availClear'), body, footer });
@@ -6899,7 +6920,8 @@ const A = {
   },
   // 女僕店排班（2026-11-06）
   openAvail() { const m = maidOf(U.user); if (!m) return; const mk = fillMonth(); const sel = {}; for (const a of schedule().availability) if (a.maidID === m.id && a.day.startsWith(mk + '-')) sel[`${a.day}|${a.period}`] = a.preferred ? 2 : 1; U.sheet = { type: 'avail', month: mk, sel }; },
-  availToggle(d, p) { const k = `${d}|${p}`; U.sheet.sel[k] = ((U.sheet.sel[k] || 0) + 1) % 3; },
+  availToggle(d, p) { const k = `${d}|${p}`; U.sheet.sel[k] = ((U.sheet.sel[k] || 0) + 1) % 3; U.sheet.pick = d; },
+  availPick(d) { U.sheet.pick = d; },
   availWeek(wd, p) { const sh = U.sheet, ds = monthDays(sh.month).filter(d => dayDate(d).getDay() === +wd); const on = ds.every(d => sh.sel[`${d}|${p}`]); for (const d of ds) sh.sel[`${d}|${p}`] = on ? 0 : (sh.sel[`${d}|${p}`] || 1); },
   availClear() { U.sheet.sel = {}; },
   availSubmit() {
