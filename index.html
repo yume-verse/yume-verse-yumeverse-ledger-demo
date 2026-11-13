@@ -3176,7 +3176,7 @@ function shopToNotion() {
   const pay = k => k ? PAY[k].label : null;
   const ext = list => list.length ? list.map(e => `${e.minutes} 分鐘${e.price ? ` NT$${e.price}` : ''}（${clockText(e.at)}）`).join('、') : null;
   const kindLabel = k => (SHOP_KINDS.find(x => x[0] === k) || [k, k])[1];
-  out['女僕名冊'] = b.maids.map(m => { const pr = maidPrices(m.id); return { '名字': m.name, '女僕ID': m.id, 'CoserID': m.coserID || null, '狀態': m.active === false ? '停用' : '在店裡', '顏色': m.colorHex, '表演價格': pr.performance ?? null, '拍立得價格': pr.polaroid ?? null, '豪華照片組價格': pr.deluxePhotoSet ?? null }; });
+  out['女僕名冊'] = b.maids.map(m => { const pr = maidPrices(m.id); return { '名字': m.name, '女僕ID': m.id, 'CoserID': m.coserID || null, '狀態': m.active === false ? '停用' : '在店裡', '顏色': m.colorHex, '表演價格': pr.performance ?? null, '拍立得價格': pr.polaroid ?? null, '豪華照片組價格': pr.deluxePhotoSet ?? null, '學號': m.studentNo || null, '公式照': m.photo || null, '到職日': m.joinedAt || null }; });
   out['店鋪每日錢箱'] = Object.values(b.cashBoxes || {}).sort((x, y) => cmp(x.day, y.day)).map(c => ({ '日期文字': c.day, '日期': c.day, '起始現金': c.opening ?? null, '收攤實點現金': c.actual ?? null }));
   const sessions = Object.values(b.sessions).sort((x, y) => x.startedAt - y.startedAt);
   out['座位紀錄'] = sessions.map(ss => ({ '座位紀錄編號': ss.id, '座位': ss.seatID, '狀態': '使用中', '入座時間': isoTime(ss.startedAt), '到期時間': isoTime(ss.endsAt), '續座紀錄': ext(ss.extensions),
@@ -3196,7 +3196,8 @@ function shopFromNotion(T) {
   const maids = [], items = [];
   for (const r of T('女僕名冊')) {
     const id = trimOrNull(r['女僕ID']); if (!id || !r['名字']) continue;
-    maids.push({ id, name: r['名字'], colorHex: r['顏色'] || PALETTE[maids.length % PALETTE.length], active: r['狀態'] !== '停用', coserID: trimOrNull(r['CoserID'])?.toLowerCase() ?? null });
+    maids.push({ id, name: r['名字'], colorHex: r['顏色'] || PALETTE[maids.length % PALETTE.length], active: r['狀態'] !== '停用', coserID: trimOrNull(r['CoserID'])?.toLowerCase() ?? null,
+      studentNo: trimOrNull(r['學號']), photo: trimOrNull(r['公式照']), joinedAt: trimOrNull(r['到職日'])?.slice(0, 10) ?? null });
     for (const [k, label] of SHOP_KINDS) if (r[PRICE_COL[k]] != null) items.push({ id: `${id}-${k}`, maidID: id, kind: k, name: label, price: r[PRICE_COL[k]], active: true });
   }
   const cashBoxes = {};
@@ -3407,7 +3408,7 @@ function lend(ids, renter, start, due, details, user) {
   const clean = { purpose: trimOrNull(details.purpose), event: trimOrNull(details.event) };
   ids.forEach((id, i) => {
     const lid = `${order}-${i + 1}`;
-    S.loans.push({ id: lid, orderID: order, costumeID: id, renter: { name, phone: trimOrNull(renter.phone) }, lentDay: start, dueDay: due, status: 'borrowed',
+    S.loans.push({ id: lid, orderID: LIVE ? lid : order, costumeID: id, renter: { name, phone: trimOrNull(renter.phone) }, lentDay: start, dueDay: due, status: 'borrowed',
       returnedAt: null, condition: null, conditionNote: null, events: [{ id: lid + '-1', kind: 'lent', at, by: user.id, note: null }], details: clean, coserID: user.coserID });
   });
 }
@@ -3474,7 +3475,8 @@ function bookVenue(venue, day, s, e, note, user) {
   const clash = dayBookings(day, venue).find(b => overlaps(b, s, e));
   if (clash) fail(`${VENUES[venue].label} ${vTime(clash)} 已經有人預約了，請換時段或換場地。`);
   const n = S.venues.filter(b => b.day === day).length + 1;
-  const b = { id: `V-${day.replace(/-/g, '')}-${String(n).padStart(3, '0')}`, venue, day, startHour: s, endHour: e, coserID: user.coserID, byAccount: user.id, createdAt: nowMs(), note: trimOrNull(note), status: 'booked', cancelledAt: null };
+  // 接資料庫時別人的預約不一定看得到，編號加亂數免得撞號（撞時段由後端擋）
+  const b = { id: `V-${day.replace(/-/g, '')}-${String(n).padStart(3, '0')}${LIVE ? '-' + rid() : ''}`, venue, day, startHour: s, endHour: e, coserID: user.coserID, byAccount: user.id, createdAt: nowMs(), note: trimOrNull(note), status: 'booked', cancelledAt: null };
   S.venues.push(b);
   return b;
 }
@@ -3932,7 +3934,7 @@ function registerCoser(f, user) {
   syncPeople();
   const profile = { id: v.account, cosName: v.cosName, realName: v.realName, loginEmail: v.email, status: '合作中', plan: v.plan, planNote: v.planNote,
     contractDate: v.contractDate, contractEndDate: v.contractEndDate, igAccount: v.igAccount, igFollowers: v.igFollowers, socials: v.socials,
-    photos: (f.photos || []).map((src, i) => ({ id: `${v.account}-${nowMs().toString(36)}-${i + 1}`, page: i + 1, src })),
+    photos: (f.photos || []).map((x, i) => { const o = typeof x === 'string' ? { src: x } : x; return { id: o.id || `${v.account}-${nowMs().toString(36)}-${i + 1}`, page: i + 1, src: o.src }; }),
     hasLogin: false, createdAt: nowMs() };
   SB().roster.push(profile);
   createLogin(profile.id, v.password, user);
@@ -3952,7 +3954,7 @@ function addContractPhotos(id, srcs, user) {
   if (user.role !== 'company') fail('只有 Coser 管理帳號可以登記 Coser。');
   const r = rosterProfile(id); if (!r) fail('名冊裡找不到這位 Coser。');
   let last = r.photos.reduce((m, x) => Math.max(m, x.page), 0);
-  for (const src of srcs) r.photos.push({ id: `${id}-${nowMs().toString(36)}-${++last}`, page: last, src });
+  for (const x of srcs) { const o = typeof x === 'string' ? { src: x } : x; r.photos.push({ id: o.id || `${id}-${nowMs().toString(36)}-${last + 1}`, page: ++last, src: o.src }); }
 }
 function removeContractPhoto(id, photoID, user) {
   if (user.role !== 'company') fail('只有 Coser 管理帳號可以登記 Coser。');
@@ -4015,7 +4017,8 @@ function seatClock(ms) {
 const SHOP_KINDS = [['performance', '表演'], ['polaroid', '拍立得'], ['deluxePhotoSet', '豪華照片組']];
 const SHOP_TEST_PRICE = { performance: 300, polaroid: 200, deluxePhotoSet: 800 };
 // 2026-11-06：女僕連到 Coser 帳號才能排班。測試版：小雪＝小桃（momo，可以登入試排班），小葵、小鈴連到沒有登入帳號的測試 Coser
-const SHOP_MAIDS = [{ id: 'yuki', name: '小雪（測試）', colorHex: '79B0DC', coserID: 'momo' }, { id: 'aoi', name: '小葵（測試）', colorHex: 'F3A23F', coserID: 'aoi-test' }, { id: 'suzu', name: '小鈴（測試）', colorHex: 'B4A7E6', coserID: 'suzu-test' }];
+// 2026-11-13：ここあ（cocoa）預設同時是 Coser 和女僕
+const SHOP_MAIDS = [{ id: 'yuki', name: '小雪（測試）', colorHex: '79B0DC', coserID: 'momo', studentNo: '07' }, { id: 'maid-cocoa', name: 'ここあ', colorHex: 'E8477F', coserID: 'cocoa', studentNo: '01' }, { id: 'aoi', name: '小葵（測試）', colorHex: 'F3A23F', coserID: 'aoi-test' }, { id: 'suzu', name: '小鈴（測試）', colorHex: 'B4A7E6', coserID: 'suzu-test' }];
 const shopTestItems = () => SHOP_MAIDS.flatMap(m => SHOP_KINDS.map(([k, label]) => ({ id: `${m.id}-${k}`, maidID: m.id, kind: k, name: label, price: SHOP_TEST_PRICE[k], active: true })));
 const freshSeats = () => ({ sessions: {}, history: [], cashBoxes: {}, maids: SHOP_MAIDS.map(m => ({ ...m, active: true })), items: shopTestItems(), serial: 0 });
 /** 加購畫面的女僕資料夾：照女僕順序，品項照「表演、拍立得、豪華照片組」；停售的不列，沒有品項的女僕不列 */
@@ -4308,7 +4311,7 @@ function demoSchedule() {
   }
   const pick = { yuki: [6, 0], aoi: [6, 0, 3], suzu: [5, 6] };
   for (const m of SHOP_MAIDS) for (const day of monthDays(mk)) {
-    const wd = dayDate(day).getDay(); if (!pick[m.id].includes(wd)) continue;
+    const wd = dayDate(day).getDay(); if (!(pick[m.id] || []).includes(wd)) continue;
     for (const p of PERIODS) sc.availability.push({ maidID: m.id, coserID: m.coserID, day, period: p, preferred: m.id === 'yuki' && wd === 6, submittedAt: nowMs(), submittedBy: m.coserID });
   }
   sc.credits.push({ id: 'CR-demo-suzu', coserID: 'suzu-test', maidID: 'suzu', at: nowMs() - 7 * 864e5, kind: '臨時請假（24 小時內）', points: -5, shiftID: null, note: '測試資料', by: 'suzu-test', ruleVersion: SCHED.version });
@@ -4327,8 +4330,8 @@ const qtyInCart = id => U.cart.find(i => i.productID === id)?.quantity ?? 0;
 function sectionsFor() {
   switch (role()) {
     case 'company': return ['home', 'reconcile', 'costumes', 'records', 'cosers', 'memberSpend', 'more'];
-    case 'maidManager': return ['home', 'reconcile', 'schedule', 'maids', 'more'];
-    case 'shopManager': return ['seats', 'shopMembers', 'schedule', 'more'];
+    case 'maidManager': return ['home', 'reconcile', 'schedule', 'maids', 'redeem', 'guestBookings', 'more'];
+    case 'shopManager': return ['seats', 'shopMembers', 'schedule', 'redeem', 'guestBookings', 'more'];
     default: return ['home', 'checkout', 'inventory', 'bookings', 'mySales', ...(memberCardOn() ? ['members'] : []), ...(isMaidUser() ? MAID_SECTIONS : []), 'more'];
   }
 }
@@ -4343,8 +4346,8 @@ function tabsFor() {
 // 女僕端（2026-11-12）：有簽約當女僕的 Coser 帳號多一組分頁
 const MAID_SECTIONS = ['mHome', 'mSched', 'mGuests', 'mMsg', 'mMe'];
 const moreSectionsFor = () => sectionsFor().filter(s => !tabsFor().includes(s) && s !== 'more');
-const SEC_ICON = { mHome: 'sparkles', mSched: 'calendar', mGuests: 'circle-user-round', mMsg: 'mail', mMe: 'user-round', memberSpend: 'heart', shopMembers: 'heart', schedule: 'calendar', maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
-const SEC_GROUP = { mHome: '女僕', mSched: '女僕', mGuests: '女僕', mMsg: '女僕', mMe: '女僕', memberSpend: 'Coser', shopMembers: '店鋪', schedule: '女僕', maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
+const SEC_ICON = { redeem: 'qr-code', guestBookings: 'calendar-clock', mHome: 'sparkles', mSched: 'calendar', mGuests: 'circle-user-round', mMsg: 'mail', mMe: 'user-round', memberSpend: 'heart', shopMembers: 'heart', schedule: 'calendar', maids: 'circle-user-round', seats: 'armchair', cosers: 'id-card', home: 'house', costumes: 'shirt', records: 'clipboard-list', checkout: 'shopping-bag', mySales: 'chart-column', inventory: 'package', reconcile: 'badge-check', members: 'heart', bookings: 'calendar-clock', more: 'circle-ellipsis' };
+const SEC_GROUP = { redeem: '店鋪', guestBookings: '店鋪', mHome: '女僕', mSched: '女僕', mGuests: '女僕', mMsg: '女僕', mMe: '女僕', memberSpend: 'Coser', shopMembers: '店鋪', schedule: '女僕', maids: '女僕', seats: '店鋪', cosers: 'Coser', home: '帳務', checkout: '帳務', reconcile: '帳務', mySales: '帳務', costumes: '服裝與場地', records: '服裝與場地', bookings: '預約', inventory: '商品與會員', members: '商品與會員', more: '帳號' };
 function secTitle(s) {
   const c = role() === 'coser';
   if (role() === 'maidManager' && s === 'home') return '營業額';
@@ -4352,6 +4355,8 @@ function secTitle(s) {
   if (s === 'schedule') return '女僕班表';
   if (s === 'shopMembers') return '店鋪會員';
   if (s === 'memberSpend') return '會員消費';
+  if (s === 'redeem') return '兌換道具';
+  if (s === 'guestBookings') return '客人預約';
   const ms = { mHome: '女僕首頁', mSched: '排班', mGuests: '我的來賓', mMsg: '訊息與書信', mMe: '我的資料' }[s]; if (ms) return ms;
   return { home: '首頁', costumes: '服裝', records: '預約紀錄', bookings: '預約', checkout: '記帳', mySales: '我的銷售', inventory: c ? '我的商品' : '商品庫存', reconcile: '收銀對帳', members: '會員', cosers: 'Coser 名冊', seats: '座位圖', more: '更多' }[s];
 }
@@ -4499,6 +4504,7 @@ function seriesChip(t, on, a, p) { return `<button class="schip${on ? ' on' : ''
 // ================= 頁面：登入 =================
 function viewLogin() {
   const L = U.login;
+  if (L.forgot) return viewForgot();
   if (LIVE) return viewLiveLogin();
   const demo = a => {
     const co = a.role !== 'coser';
@@ -4515,10 +4521,70 @@ function viewLogin() {
       <div class="field"><label for="f-login-account" class="cap soft">帳號</label>${inp('login.account', { ph: '例如 company', enter: 'doLogin' })}</div>
       <div class="field"><label for="f-login-password" class="cap soft">密碼</label>${inp('login.password', { ph: '輸入密碼', type: 'password', enter: 'doLogin' })}</div>
       ${L.error ? `<div class="row g8 bold sub" style="color:var(--danger)">${icon('circle-x', 18)}${esc(L.error)}</div>` : ''}
-      ${btn('登入', 'doLogin')}<div class="cap soft">測試密碼：Coser 管理／女僕管理／店鋪管理 yume2026；Coser demo2026</div>`)}
+      ${btn('登入', 'doLogin')}<div style="text-align:center"><button class="link" id="forgot-open"${act('forgotOpen')}>忘記密碼？</button></div><div class="cap soft">測試密碼：Coser 管理／女僕管理／店鋪管理 yume2026；Coser demo2026</div>`)}
     <p class="cap soft" style="text-align:center;margin:0">第一階段為測試版：測試資料只存在這台裝置的這個瀏覽器。</p>
     <div style="text-align:center"><button class="link" id="login-reset"${act('askReset')}>重設測試資料</button></div>
   </main>`;
+}
+
+/** 忘記密碼（2026-11-13）：輸入帳號 → 收驗證碼 → 輸入驗證碼和新密碼 → 直接登入。正式版寄 Email（寄信方式待決定），測試版把驗證碼顯示在畫面上 */
+function viewForgot() {
+  const F = U.login.forgot, step2 = F.step === 'code';
+  const body = step2 ? `<div class="cap soft">${esc(F.info || '驗證碼已送出，15 分鐘內有效。')}</div>
+      ${F.testCode ? `<div class="proto" id="forgot-testcode"><b>測試版：</b>驗證碼 <b class="num" style="font-size:18px">${esc(F.testCode)}</b><div class="cap soft">正式版會寄到帳號的 Email，不會顯示在畫面上。</div></div>` : ''}
+      <div class="field"><label for="f-login-forgot-code" class="cap soft">6 位數驗證碼</label>${inp('login.forgot.code', { ph: '例如 123456' })}</div>
+      <div class="field"><label for="f-login-forgot-password" class="cap soft">新密碼（至少 ${MIN_PASSWORD} 個字）</label>${inp('login.forgot.password', { ph: '新密碼', type: 'password' })}</div>
+      <div class="field"><label for="f-login-forgot-password2" class="cap soft">再輸入一次新密碼</label>${inp('login.forgot.password2', { ph: '再輸入一次', type: 'password', enter: 'forgotReset' })}</div>
+      ${F.error ? `<div class="row g8 bold sub" style="color:var(--danger)" id="forgot-error">${icon('circle-x', 18)}${esc(F.error)}</div>` : ''}
+      ${btn(F.busy ? '處理中…' : '重設密碼並登入', 'forgotReset', null, { dis: F.busy })}
+      <div style="text-align:center"><button class="link"${act('forgotSend')}${F.busy ? ' disabled' : ''}>沒收到？重新寄送</button></div>`
+    : `<div class="cap soft">輸入登入用的帳號代號或 Email，我們會寄 6 位數驗證碼給你。</div>
+      <div class="field"><label for="f-login-forgot-account" class="cap soft">帳號</label>${inp('login.forgot.account', { ph: '帳號代號或 email', enter: 'forgotSend' })}</div>
+      ${F.error ? `<div class="row g8 bold sub" style="color:var(--danger)" id="forgot-error">${icon('circle-x', 18)}${esc(F.error)}</div>` : ''}
+      ${btn(F.busy ? '寄送中…' : '寄送驗證碼', 'forgotSend', null, { dis: F.busy })}`;
+  return `<main class="page" style="max-width:560px;padding-top:calc(28px + env(safe-area-inset-top,0px))">
+    <div style="text-align:center;display:flex;flex-direction:column;gap:6px"><div style="font-size:40px;font-weight:900;color:var(--pink);line-height:1.1">Yumeverse</div><div class="t-title">忘記密碼</div></div>
+    ${card(`<b style="font-size:17px">${step2 ? '輸入驗證碼' : '重設密碼'}</b>${body}`)}
+    <div style="text-align:center"><button class="link" id="forgot-back"${act('forgotClose')}>回到登入</button></div>
+  </main>`;
+}
+async function forgotSend() {
+  const F = U.login.forgot, account = (F.account || '').trim().toLowerCase();
+  if (!account) { F.error = '請輸入帳號或 Email。'; return; }
+  F.busy = true; F.error = null; render();
+  try {
+    if (LIVE) {
+      const r = await liveFetch('/auth/forgot', { account });
+      Object.assign(F, { step: 'code', info: r.to ? `驗證碼已寄到 ${r.to}，15 分鐘內有效。` : r.message, testCode: r.testCode || null });
+    } else {
+      // 測試版（不接資料庫）：驗證碼在這台產生
+      const acc = ACCOUNTS.find(x => x.id === account || (x.email || '').toLowerCase() === account);
+      Object.assign(F, { step: 'code', info: '如果這個帳號存在，驗證碼已經送出，15 分鐘內有效。', testCode: null, local: null });
+      if (acc) { F.local = { id: acc.id, code: String(100000 + Math.floor(Math.random() * 900000)), until: nowMs() + 15 * 60000, tries: 0 }; F.testCode = F.local.code; }
+    }
+  } catch (e) { F.error = liveMessage(e); }
+  F.busy = false; render();
+}
+async function forgotReset() {
+  const F = U.login.forgot, code = (F.code || '').trim(), pw = F.password || '';
+  if (!/^\d{6}$/.test(code)) { F.error = '請輸入 6 位數驗證碼。'; return; }
+  if (pw.length < MIN_PASSWORD) { F.error = `新密碼至少要 ${MIN_PASSWORD} 個字。`; return; }
+  if (pw !== F.password2) { F.error = '兩次輸入的新密碼不一樣。'; return; }
+  F.busy = true; F.error = null; render();
+  try {
+    if (LIVE) {
+      const r = await liveFetch('/auth/reset', { account: F.account.trim().toLowerCase(), code, password: pw });
+      U.login.forgot = null; await liveStart(r); show('success', '密碼已重設，已登入');
+    } else {
+      const L = F.local;
+      if (!L || L.until < nowMs()) throw new Error('驗證碼過期了，請重新申請。');
+      if (L.tries >= 5) throw new Error('驗證碼打錯太多次，請重新申請。');
+      if (code !== L.code) { L.tries++; throw new Error(`驗證碼不對（還可以試 ${5 - L.tries} 次）`); }
+      const acc = ACCOUNTS.find(x => x.id === L.id); acc.password = pw;
+      U.login.forgot = null; signIn(acc); show('success', '密碼已重設，已登入（測試版只改這台的密碼）');
+    }
+  } catch (e) { if (U.login.forgot) { F.error = e.status ? liveMessage(e) : e.message; F.busy = false; } }
+  render();
 }
 
 function viewLiveLogin() {
@@ -4530,7 +4596,7 @@ function viewLiveLogin() {
       <div class="field"><label for="f-login-account" class="cap soft">帳號</label>${inp('login.account', { ph: '帳號代號或 email', enter: 'doLogin' })}</div>
       <div class="field"><label for="f-login-password" class="cap soft">密碼</label>${inp('login.password', { ph: '輸入密碼', type: 'password', enter: 'doLogin' })}</div>
       ${L.error ? `<div class="row g8 bold sub" style="color:var(--danger)" id="login-error">${icon('circle-x', 18)}${esc(L.error)}</div>` : ''}
-      ${btn(L.busy ? '登入中…' : '登入', 'doLogin', null, { dis: L.busy })}`)}
+      ${btn(L.busy ? '登入中…' : '登入', 'doLogin', null, { dis: L.busy })}<div style="text-align:center"><button class="link" id="forgot-open"${act('forgotOpen')}>忘記密碼？</button></div>`)}
     <p class="cap soft" style="text-align:center;margin:0">結帳、賒帳收款、錢箱會寫進 Notion；網路斷掉時先存在這台，連上會自動補送。</p>
     <div style="text-align:center"><a class="link" id="live-off" href="?api=off">改回測試版（不接資料庫）</a></div>
   </main>`;
@@ -4608,6 +4674,8 @@ function sectionView(s) {
     case 'schedule': return viewSchedule();
     case 'seats': return viewSeats();
     case 'shopMembers': return viewShopMembers();
+    case 'redeem': return viewRedeem();
+    case 'guestBookings': return viewGuestBookings();
     case 'memberSpend': return viewMemberSpend();
     case 'checkout': return viewCheckout();
     case 'reconcile': return role() === 'maidManager' ? viewShopReconcile() : viewReconcile();
@@ -5042,6 +5110,61 @@ function memberNoHint(raw, showName) {
   return '';
 }
 const maskPhone = p => p && p.length > 6 ? `${p.slice(0, 4)}••${p.slice(-3)}` : (p || '');
+// ================= 客人 App 連動：兌換道具、客人預約（2026-11-13；店鋪管理、女僕管理） =================
+const liveOnly = (title, what) => ({ title, html: card(`<div class="stack center" style="gap:10px"><span style="color:var(--pink)">${icon('info', 36)}</span><b>${esc(what)}要接測試後端才能用</b><span class="cap soft">資料在客人 App（希恩絲學院）那邊，網址加上 ?api= 接測試後端再試。</span></div>`, 'p24'), cls: 'narrowcol' });
+function viewRedeem() {
+  if (!LIVE) return liveOnly('兌換道具', '兌換');
+  const r = U.redeem || (U.redeem = { code: '', busy: false, last: null, scanning: false });
+  let html = card(`<div class="stack g8"><b class="sub">客人出示的兌換碼</b>${inp('redeem.code', { ph: '例如 AB12CD34', upper: true, enter: 'redeemSubmit' })}
+    <div class="row g8 wrap">${btn(r.busy ? '兌換中…' : '兌換', 'redeemSubmit', null, { ic: 'check', dis: r.busy || (r.code || '').replace(/[^A-Za-z0-9]/g, '').length < 6 })}<button class="cbtn ghost"${act('redeemScan')}>${icon('camera', 16)}${r.scanning ? '停止掃描' : '用相機掃描'}</button></div>
+    ${r.scanning ? '<video id="redeem-video" playsinline muted style="width:100%;max-height:280px;border-radius:12px;background:#000"></video>' : ''}
+    <div class="cap soft">客人在 App「我的道具」按「使用」會出現兌換碼；兌換一次就不能再用。</div></div>`);
+  if (r.last) {
+    const x = r.last, ok = x.result === 'redeemed';
+    html += card(`<div class="row g8" id="redeem-result"><span style="color:${ok ? 'var(--green-deep)' : 'var(--danger)'}">${icon(ok ? 'circle-check' : 'circle-x', 28)}</span><div class="grow stack" style="gap:2px"><b>${esc(x.message)}</b>${x.name ? `<span class="cap soft">${esc(x.name)}・${esc(x.memberName || '')}</span>` : ''}${x.redeemedAt ? `<span class="cap soft">兌換時間 ${esc(timeText(Date.parse(x.redeemedAt)))}</span>` : ''}</div></div>`);
+  }
+  return { title: '兌換道具', html, cls: 'narrowcol' };
+}
+function viewGuestBookings() {
+  if (!LIVE) return liveOnly('客人預約', '客人預約');
+  const g = U.guestBk || (U.guestBk = { day: today(), data: null, busy: false, error: null });
+  if (!g.data && !g.busy && !g.error) liveGuestBookings();
+  const d = g.data;
+  let html = card(`<div class="row g8"><button class="cbtn ghost"${act('guestBkDay', -1)}>${icon('chevron-left', 16)}</button><b class="grow" style="text-align:center">${esc(g.day)}</b><button class="cbtn ghost"${act('guestBkDay', 1)}>${icon('chevron-right', 16)}</button><button class="cbtn ghost"${act('guestBkDay', 0)}>今天</button></div>`);
+  if (g.error) html += card(`<div class="cap" style="color:var(--danger)">${esc(g.error)}</div>`);
+  if (!d) return { title: '客人預約', html: html + card('<div class="cap soft">讀取中…</div>'), cls: 'narrowcol' };
+  html += card(stitle('各時段人數') + d.slots.map(sl => { const n = d.counts?.[sl] || 0; return `<div class="row"><span class="grow">${esc(sl)}</span><b class="num"${n >= d.capacity ? ' style="color:var(--danger)"' : ''}>${n} / ${d.capacity}${n >= d.capacity ? '（已滿）' : ''}</b></div>`; }).join(HR));
+  html += card(stitle('預約', d.reservations.length) + (d.reservations.length ? d.reservations.map(x => `<div class="row" id="gbk-${esc(x.reservationID)}"><span class="grow stack" style="gap:2px"><b>${esc(x.name)}</b><span class="cap soft">${esc(x.slot)}・${x.party} 位・會員 ${esc(memberNoText(x.memberCode))}</span></span><span class="cap soft">${esc(x.status)}</span></div>`).join(HR) : empty('calendar-clock', '這天還沒有客人預約')));
+  return { title: '客人預約', html, cls: 'narrowcol' };
+}
+async function liveGuestBookings() {
+  const g = U.guestBk; g.busy = true; g.error = null;
+  try { const d = await liveFetch(`/link/shop/reservations?day=${g.day}`); if (U.guestBk === g && d.day === g.day) g.data = d; }
+  catch (e) { g.error = liveMessage(e); }
+  g.busy = false; render();
+}
+let redeemStream = null;
+function stopRedeemScan() { if (redeemStream) { redeemStream.getTracks().forEach(t => t.stop()); redeemStream = null; } if (U.redeem) U.redeem.scanning = false; }
+async function startRedeemScan() {
+  if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) { show('info', '這個瀏覽器不能掃描，請直接輸入兌換碼。'); render(); return; }
+  try {
+    const det = new BarcodeDetector({ formats: ['qr_code', 'code_128'] });
+    redeemStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    U.redeem.scanning = true; render();
+    const tick = async () => {
+      const v = document.getElementById('redeem-video'); if (!redeemStream) return;
+      if (v && !v.srcObject) { v.srcObject = redeemStream; v.play().catch(() => {}); }
+      try {
+        const found = v && v.readyState >= 2 ? await det.detect(v) : [];
+        const code = found.map(x => x.rawValue).find(t => /[A-Za-z0-9]{6,}/.test(t || ''));
+        if (code) { stopRedeemScan(); U.redeem.code = code.replace(/^.*[:=]/, '').toUpperCase(); render(); A.redeemSubmit(); return; }
+      } catch (e) { /* 這張畫面讀不到，下一張再試 */ }
+      setTimeout(tick, 300);
+    };
+    tick();
+  } catch (e) { stopRedeemScan(); show('failure', '打不開相機，請直接輸入兌換碼。'); render(); }
+}
+
 function viewShopMembers() {
   const kw = (U.shopMemberSearch || '').trim(), digits = normalizeMemberNo(kw);
   const all = shopMembers().slice().sort((a, b) => (b.registeredAt ?? 0) - (a.registeredAt ?? 0));
@@ -5136,7 +5259,7 @@ function viewShopReconcile() {
 function viewMaidRoster() {
   const maids = seatBoard().maids;
   let html = btn('新增女僕', 'openMaidForm', '', { ic: 'plus', cls: 'add-maid' });
-  html += card(joinRows(maids, m => { const pr = maidPrices(m.id); return `<button class="row" id="maid-${esc(m.id)}" style="width:100%;min-height:60px;opacity:${m.active === false ? .6 : 1}"${act('openMaidForm', m.id)}><span class="swatch" style="background:#${m.colorHex}"></span><div class="grow stack" style="gap:3px;text-align:left"><span class="row g8"><b>${esc(m.name)}</b>${m.active === false ? '<span class="pill-off">停用</span>' : ''}${creditPill(m.coserID)}</span><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${money(pr[k] ?? 0)}`).join('・')}</span><span class="cap soft">${m.coserID ? `Coser 帳號：${esc(m.coserID)}` : '還沒連 Coser 帳號（不能排班）'}</span></div>${icon('chevron-right', 18, 3)}</button>`; }), 'p12');
+  html += card(joinRows(maids, m => { const pr = maidPrices(m.id); return `<button class="row" id="maid-${esc(m.id)}" style="width:100%;min-height:60px;opacity:${m.active === false ? .6 : 1}"${act('openMaidForm', m.id)}><span class="swatch" style="background:#${m.colorHex}"></span><div class="grow stack" style="gap:3px;text-align:left"><span class="row g8"><b>${esc(m.name)}</b>${m.active === false ? '<span class="pill-off">停用</span>' : ''}${creditPill(m.coserID)}</span><span class="cap soft">${SHOP_KINDS.map(([k, l]) => `${l} ${money(pr[k] ?? 0)}`).join('・')}</span><span class="cap soft">${m.studentNo ? `學號 ${esc(m.studentNo)}・` : ''}${m.coserID ? `Coser 帳號：${esc(m.coserID)}` : '還沒連 Coser 帳號（不能排班）'}</span></div>${icon('chevron-right', 18, 3)}</button>`; }), 'p12');
   html += `<div class="cap soft row g8">${icon('info', 14)}停用的女僕不會出現在座位加購裡；改價格只影響之後的加購。</div>`;
   return { title: '女僕名冊', cls: 'narrowcol', html: html + testNotice() };
 }
@@ -5334,7 +5457,9 @@ const liveLetter = l => ({ id: l.letterID, memberID: l.memberCode, maidID: myMai
 const liveMsg = x => ({ id: x.messageID, memberID: x.memberCode, maidID: myMaid()?.id, text: x.text, at: isoMs(x.at), read: x.read, reply: x.reply, repliedAt: isoMs(x.repliedAt) });
 const msLetter = id => LIVE ? (LMx()?.letters || []).map(liveLetter).find(l => l.id === id) || null : MS().letters.find(x => x.id === id) || null;
 const msMsg = id => LIVE ? (LMx()?.messages || []).map(liveMsg).find(x => x.id === id) || null : MS().messages.find(x => x.id === id) || null;
-const msProfile = maidID => LIVE ? {} : MS().profiles[maidID] || {};
+/** 學號、公式照、到職日：女僕名冊（2026-11-13 加欄位）；測試版沒填的用測試資料 */
+const msProfile = maidID => { const m = seatBoard().maids.find(x => x.id === maidID) || {}, p = LIVE ? {} : MS().profiles[maidID] || {};
+  return { ...p, studentNo: m.studentNo || p.studentNo || null, photo: m.photo || p.photo || null, joined: m.joinedAt || p.joined || null }; };
 const myMaid = () => maidOf(U.user);
 const guestName = memberID => LIVE ? (liveG(memberID)?.name || [...(LMx()?.pending || []), ...(LMx()?.letters || []), ...(LMx()?.messages || [])].find(x => x.memberCode === memberID)?.name || `會員 ${memberNoText(memberID)}`) : MS().guests.find(g => g.memberID === memberID)?.name || S.shopMembers?.find(m => m.id === memberID)?.name || `會員 ${memberNoText(memberID)}`;
 function checkMaid(user, maidID) {
@@ -5416,7 +5541,7 @@ function postStory(src, user, now = nowMs()) {
 }
 function deleteStory(id, user) { const m = checkMaid(user); const i = MS().stories.findIndex(s => s.id === id && s.maidID === m.id); if (i < 0) fail('找不到這則限動。'); MS().stories.splice(i, 1); }
 /** 限動看得到的好友數：好感 50 以上 */
-const storyAudience = maidID => myGuests(maidID).filter(g => g.score >= STORY_MIN_SCORE).length;
+const storyAudienceOf = maidID => myGuests(maidID).filter(g => g.score >= STORY_MIN_SCORE).length;
 /** 店員結帳時：300 方案、指名這位女僕、有帶會員 → 記一筆來店，女僕端跳出給分（連動版由客人 App 提供方案與指名） */
 function recordNominatedVisit(rec, plan, maidID) {
   if (!rec.memberID || plan !== '300' || !maidID) return null;
@@ -5603,13 +5728,15 @@ function viewMsMessages() {
 
 /** M07 限動發布 */
 function viewMsStory() {
-  if (LIVE) return { title: '限動發布', html: card(`<div class="stack center" style="gap:10px"><span style="color:var(--pink)">${icon('image', 40)}</span><b>限動照片上傳還沒接資料庫</b><span class="cap soft">先用測試版（不接資料庫）試畫面；照片上傳接好後就能發布給好感 ${STORY_MIN_SCORE} 以上的好友。</span></div>`, 'p24'), cls: 'narrowcol' };
-  const m = myMaid(), mine = MS().stories.filter(s => s.maidID === m.id), draft = U.maidStoryDraft;
-  let html = card(`<div class="story-pick">${draft ? `<img src="${draft}" alt="準備發布的照片" id="story-preview">` : `<div class="story-empty">${icon('image', 40)}<span>上傳自拍</span></div>`}</div>
+  // 接資料庫：照片先傳到後端，發布後寫進 Notion「限動」；已發布的從 /link/maid/overview 來
+  const m = myMaid(), raw = U.maidStoryDraft, draft = raw && typeof raw === 'object' ? (raw.url || raw.src) : raw;
+  const mine = LIVE ? (LMx()?.stories || []).map(x => ({ id: x.storyID, src: x.photo, at: isoMs(x.at) })) : MS().stories.filter(s => s.maidID === m.id);
+  const storyAudience = id => LIVE ? (LMx()?.guests || []).filter(g => (g.score ?? 0) >= STORY_MIN_SCORE).length : storyAudienceOf(id);
+  let html = card(`<div class="story-pick">${draft ? `<img src="${esc(draft)}" alt="準備發布的照片" id="story-preview">${raw?.busy ? '<span class="cap soft">上傳中…</span>' : ''}` : `<div class="story-empty">${icon('image', 40)}<span>上傳自拍</span></div>`}</div>
     <div class="row g8 wrap"><label class="cbtn filebtn">${icon('camera', 16)}拍照<input type="file" accept="image/*" capture="user" data-photos="maidStory"></label><label class="cbtn ghost filebtn">${icon('image', 16)}從相簿選<input type="file" accept="image/*" data-photos="maidStory"></label></div>
     <div class="row g8" id="story-audience"><span style="color:var(--green-deep)">${icon('user-round', 18)}</span><b class="grow">好友限定（好感 ${STORY_MIN_SCORE} 以上）</b><span class="cap soft">目前 ${storyAudience(m.id)} 位看得到</span></div>
     <div class="cap soft">來賓只能看，不能留言或按讚。</div>` + btn('發布限動', 'maidStoryPost', null, { ic: 'check', dis: !draft, cls: 'story-post' }));
-  html += card(stitle('已發布', mine.length) + (mine.length ? `<div class="story-grid">${mine.map(s => `<div class="story-item" id="story-${esc(s.id)}"><img src="${s.src}" alt="限動"><span class="cap soft">${esc(timeText(s.at))}</span><button class="cbtn ghost"${act('maidStoryDelete', s.id)}>刪除</button></div>`).join('')}</div>` : empty('image', '還沒有發布限動')));
+  html += card(stitle('已發布', mine.length) + (mine.length ? `<div class="story-grid">${mine.map(s => `<div class="story-item" id="story-${esc(s.id)}"><img src="${esc(s.src)}" alt="限動"><span class="cap soft">${esc(timeText(s.at))}</span><button class="cbtn ghost"${act('maidStoryDelete', s.id)}>刪除</button></div>`).join('')}</div>` : empty('image', '還沒有發布限動')));
   return { title: '限動發布', html, cls: 'narrowcol' };
 }
 
@@ -5814,6 +5941,8 @@ function sheetMaidForm(sh) {
   const f = sh.form;
   let body = `<div class="field"><label for="f-sheet-form-name">名字</label>${inp('sheet.form.name', { ph: '例如 小雪' })}</div>`;
   body += `<div class="stack g8"><b class="sub">顏色（加購資料夾的底色）</b><div class="swatches">${PALETTE.map(h => `<button class="swatch-btn${f.colorHex === h ? ' on' : ''}" style="background:#${h};color:${readableInk(h)}"${act('maidColor', h)} aria-label="顏色 ${h}" aria-pressed="${f.colorHex === h}">${f.colorHex === h ? icon('check', 18, 3) : ''}</button>`).join('')}</div></div>`;
+  body += `<div class="row g8"><div class="field grow"><label for="f-sheet-form-studentNo">學號</label>${inp('sheet.form.studentNo', { ph: '例如 07' })}</div><div class="field grow"><label for="f-sheet-form-joinedAt">到職日</label>${inp('sheet.form.joinedAt', { type: 'date' })}</div></div>`;
+  body += `<div class="stack g8"><b class="sub">公式照</b><div class="row g8">${f.photo ? `<img src="${esc(f.photo)}" alt="公式照" id="maid-photo-preview" style="width:72px;height:96px;object-fit:cover;border-radius:12px">` : `<div class="cap soft">還沒有公式照</div>`}<span class="grow"></span>${f.photoBusy ? '<span class="cap soft">上傳中…</span>' : `<label class="cbtn ghost filebtn">${icon('image', 16)}${f.photo ? '換一張' : '上傳'}<input type="file" accept="image/*" data-photos="maidPhoto"></label>`}${f.photo ? `<button class="cbtn ghost"${act('maidPhotoClear')}>移除</button>` : ''}</div><div class="cap soft">客人端、女僕端「我的資料」會顯示。</div></div>`;
   body += `<div class="field"><label for="f-sheet-form-coserID">Coser 帳號（排班用）</label>${inp('sheet.form.coserID', { ph: '例如 momo（有簽約當女僕的 Coser 帳號）' })}<div class="cap soft">填了才能用「女僕店排班」：她用這個 Coser 帳號登入，在「預約」頁填可以上班的時間、看自己的班。</div></div>`;
   body += `<div class="stack g8"><b class="sub">價格（台幣）</b>${SHOP_KINDS.map(([k, l]) => `<div class="row"><b style="width:96px">${l}</b><div class="grow">${inp(`sheet.form.prices.${k}`, { ph: 'NT$', num: true })}</div></div>`).join('')}<div class="cap soft">改價格只影響之後的加購，已經加購的照原價。</div></div>`;
   if (sh.id) body += `<button class="switch" role="switch" id="maid-active" aria-checked="${f.active}"${act('maidActive')}><span class="stack" style="gap:2px;text-align:left"><b>在店裡（出現在座位加購）</b><span class="cap soft">關掉＝停用，名冊還看得到，之後可以再打開。</span></span><span class="knob"></span></button>`;
@@ -6063,7 +6192,7 @@ function sheetRegister(sh) {
   body += `<b style="font-size:17px">合約照片</b>${photoButtons('register')}${f.photos.length ? photoPages(f.photos, 'regDelPhoto') : `<div class="cap soft">還沒有照片。可以先登記，之後在名冊裡補拍。</div>`}`;
   body += `<b style="font-size:17px">登入帳號</b>${inp('sheet.form.account', { ph: 'CoserID（App 代號，英文小寫，例如 snow_cos）' })}${inp('sheet.form.email', { ph: '登入帳號 email，例如 snow@example.com', type: 'email' })}${inp('sheet.form.password', { ph: `第一次登入的密碼（至少 ${MIN_PASSWORD} 個字）`, type: 'password' })}<div class="cap soft">登入時用 CoserID 或 email 都可以。送出後會先建立 Coser 資料，再建立登入帳號。帳號沒建成功時資料會保留，可以在名冊裡重試。</div>`;
   const filled = f.cosName.trim() && f.realName.trim() && f.plan && f.account.trim() && f.email.trim() && f.password;
-  body += btn('登記並建立帳號', 'regSubmit', null, { ic: 'check', dis: !filled });
+  body += btn(sh.busy ? '登記中…' : '登記並建立帳號', 'regSubmit', null, { ic: 'check', dis: !filled || sh.busy });
   return sheetFrame({ title: '登記新 Coser', left: tb('取消', 'closeSheet'), body, cls: 'tall' });
 }
 function sheetProfile(sh) {
@@ -6071,7 +6200,8 @@ function sheetProfile(sh) {
   let body = `<div class="row" style="gap:14px">${avatar(coser(r.id), 54)}<div class="grow"><div class="t-big">${esc(r.cosName)}</div><div class="cap soft">CoserID：${esc(r.id)}・登入帳號：${esc(r.loginEmail || '未填')}</div></div></div>`;
   body += card(info('狀態', r.status) + info('本名', r.realName) + info('方案', (r.plan ? planLabel(r.plan) : '未填') + (r.planNote ? `（${r.planNote}）` : '')) + info('簽約日期', r.contractDate ? dayText(r.contractDate) : '未填') + info('合約到期日', r.contractEndDate ? dayText(r.contractEndDate) : '未填') + info('IG', r.igAccount || '—') + info('簽約時 IG 粉絲', r.igFollowers != null ? String(r.igFollowers) : '—') + r.socials.map(so => info(socialName(so), so.handle + (so.followers != null ? `・粉絲 ${so.followers}` : ''))).join(''));
   if (!r.hasLogin) body += card(`<b style="color:var(--orange-deep)">登入帳號還沒建立</b>${inp('sheet.password', { ph: '設定第一次登入的密碼', type: 'password' })}<button class="cbtn"${act('retryLogin')}${(sh.password || '').length < MIN_PASSWORD ? ' disabled' : ''}>重試建立帳號</button>`);
-  body += card(stitle('合約照片', r.photos.length) + (r.photos.length ? photoPages([...r.photos].sort((a, b) => a.page - b.page), 'profDelPhoto') : `<div class="cap soft">還沒有合約照片。</div>`) + photoButtons('profile'));
+  const notionOnly = LIVE && !r.photosLoaded && r.notionPhotos ? `<div class="cap soft">Notion 上有 ${r.notionPhotos} 張合約照片${r.photos.length ? '（有些是直接在 Notion 上傳的，這裡看不到）' : '，是直接在 Notion 上傳的，請到 Notion 查看'}。</div>` : '';
+  body += card(stitle('合約照片', Math.max(r.photos.length, LIVE ? r.notionPhotos || 0 : 0)) + notionOnly + (r.photos.length ? photoPages([...r.photos].sort((a, b) => a.page - b.page), 'profDelPhoto') : notionOnly ? '' : `<div class="cap soft">還沒有合約照片。</div>`) + (sh.photoBusy ? '<div class="cap soft">照片上傳中…</div>' : notionOnly ? '' : photoButtons('profile')));
   return sheetFrame({ title: 'Coser 資料', left: tb('關閉', 'closeSheet'), body, cls: 'tall' });
 }
 function sheetRestock(sh) {
@@ -6200,7 +6330,7 @@ function bootHost() {
   select(cur);
 }
 // ================= 動作 =================
-function goSection(s) { U.section = s; U.stack = []; U.sideCollapsed = s === 'checkout'; scrollTop(); }
+function goSection(s) { if (s !== 'redeem') stopRedeemScan(); U.section = s; U.stack = []; U.sideCollapsed = s === 'checkout'; scrollTop(); }
 function push(entry) { U.stack.push(entry); scrollTop(); }
 let wantScrollTop = false;
 function scrollTop() { wantScrollTop = true; }
@@ -6253,9 +6383,9 @@ const LIVE = (() => {
 })();
 // 還沒接的會改資料的先擋下來，請直接在 Notion 改
 // 已接：結帳、收款、錢箱、今日幣別（第一批）；商品、作品・角色、補貨盤點、會員、會員卡（第二批）；店鋪座位、女僕名冊、店鋪錢箱、座位賒帳登記已收（第三批）
-const LIVE_BLOCKED = new Set(['seatTest', 'openRegister', 'regSubmit', 'profDelPhoto', 'retryLogin',
-  'openLend', 'doLend', 'openReturn', 'doReturn', 'askCancelLoan', 'askResume', 'openVenue', 'doVenue', 'askCancelVenue', 'askReset']);
-const LIVE_BLOCKED_TEXT = '服裝、場地、Coser 名冊的修改（和座位測試工具）還沒接資料庫，請先直接在 Notion 改，大約 5 分鐘內會更新到這裡。';
+// 2026-11-13：服裝借用、場地預約、登記 Coser、合約照片都接上了；只剩測試用的工具不接
+const LIVE_BLOCKED = new Set(['seatTest', 'askReset']);
+const LIVE_BLOCKED_TEXT = '這是測試版的工具，接資料庫時不能用。';
 
 function liveMessage(e) {
   if (e && e.status) return e.message;
@@ -6296,6 +6426,12 @@ function liveApply(tables) {
   S.schedule = scheduleFromNotion(T);
   S.shopMembers = safe(T('店鋪會員'), fromNotion.shopMember).filter(m => m.id);
   COSERS.splice(0, Infinity, ...safe(T('Coser 名冊'), fromNotion.coser));
+  // 2026-11-13：Coser 管理帳號的名冊（本名、方案、合約…）；合約照片打開時再從後端拿
+  S.sales.roster = safe(T('Coser 名冊'), r => ({ id: r['CoserID'], cosName: r['Cos名'], realName: r['本名'] || '', loginEmail: r['登入帳號'] || null, status: r['狀態'] || '合作中',
+    plan: r['方案'] || null, planNote: r['方案說明'] || null, contractDate: (r['簽約日期'] || '').slice(0, 10) || null, contractEndDate: (r['合約到期日'] || '').slice(0, 10) || null,
+    igAccount: r['IG帳號'] || null, igFollowers: r['簽約時IG粉絲'] ?? null,
+    socials: T('Coser 社群帳號').filter(x => x['CoserID'] === r['CoserID']).map(x => ({ platform: x['平台'] || '其他', custom: x['平台名稱（其他）'] || null, handle: x['帳號'], followers: x['粉絲數'] ?? null })),
+    photos: [], notionPhotos: typeof r['合約照片'] === 'number' ? r['合約照片'] : 0, photosLoaded: false, hasLogin: true, createdAt: Date.parse(r['建立時間'] || '') || 0 })).filter(r => r.id);
 }
 function liveSave() {
   if (!LIVE || !U.user) return;
@@ -6362,11 +6498,12 @@ async function liveFlush() {
         await liveFetch('/ops', body);
       } catch (e) {
         if (e.status === 401) { liveExpired(); break; }
-        if (e.status === 400 || e.status === 403) {
+        if (e.status === 400 || e.status === 403 || e.status === 409) {
           // 後端說這筆不對：拿出待上傳，記下來給人看（資料還在這台的畫面上）
           LIVE.rejected.push({ ...op, message: e.message });
           LIVE.outbox.splice(LIVE.outbox.indexOf(op), 1); liveSaveOutbox();
-          show('failure', `有一筆沒寫進 Notion：${e.message}`);
+          show('failure', e.status === 409 ? e.message : `有一筆沒寫進 Notion：${e.message}`);
+          if (e.status === 409) LIVE.needRefresh = true;
           continue;
         }
         LIVE.lastError = liveMessage(e);
@@ -6378,6 +6515,8 @@ async function liveFlush() {
   } finally {
     LIVE.sending = false;
     if (sent) setTimeout(liveStatus, 4000);
+    // 座位被客人 App 排走、場地被訂走：拿最新的座位圖、預約（畫面上的那筆會不見）
+    if (LIVE.needRefresh && !liveMine().length) { LIVE.needRefresh = false; setTimeout(() => liveRefresh(true), 0); }
     render();
   }
 }
@@ -6394,17 +6533,20 @@ async function liveStatus() {
 async function liveLogin(account, password) {
   U.login.busy = true; U.login.error = null; render();
   try {
-    const r = await liveFetch('/auth/login', { account, password });
-    LIVE.token = r.token;
-    const user = { id: r.user.id, displayName: r.user.displayName, role: r.user.role, coserID: r.user.coserID || null, email: r.user.email || null };
-    lsSet(LIVE_KEY.session, JSON.stringify({ token: r.token, user }));
-    if (!liveRestore(user.id)) liveApply({});
-    signIn(user);
-    await liveFlush();
-    if (!(await liveRefresh(false)) && LIVE.lastError) show('failure', `暫時抓不到 Notion 資料：${LIVE.lastError}`);
+    await liveStart(await liveFetch('/auth/login', { account, password }));
   } catch (e) {
     U.login.error = e.status === 401 || e.status === 400 ? '帳號或密碼不對。' : liveMessage(e);
   } finally { U.login.busy = false; render(); }
+}
+/** 登入（或重設密碼）成功後：存登入狀態、補送、抓最新資料 */
+async function liveStart(r) {
+  LIVE.token = r.token;
+  const user = { id: r.user.id, displayName: r.user.displayName, role: r.user.role, coserID: r.user.coserID || null, email: r.user.email || null };
+  lsSet(LIVE_KEY.session, JSON.stringify({ token: r.token, user }));
+  if (!liveRestore(user.id)) liveApply({});
+  signIn(user);
+  await liveFlush();
+  if (!(await liveRefresh(false)) && LIVE.lastError) show('failure', `暫時抓不到 Notion 資料：${LIVE.lastError}`);
 }
 function liveSignOut() {
   LIVE.token = null; LIVE.serverSync = null;
@@ -6487,6 +6629,94 @@ function liveSyncDiff(b) {
   for (const id of b.products.keys()) if (!a.products.has(id)) ops.push({ kind: 'row', opId: liveOpID('pd'), db: 'products', key: id, trash: true });
   for (const id of b.themes.keys()) if (!a.themes.has(id)) ops.push({ kind: 'row', opId: liveOpID('td'), db: 'series', key: id, trash: true });
   for (const op of ops) liveEnqueue(op);
+}
+
+// 第四批（2026-11-13）：場地預約、服裝借用、服裝狀態（Coser）；Coser 名冊（Coser 管理帳號）。操作前後比對，改了什麼就送什麼
+const liveVenueRow = b => ({ '預約編號': b.id, '場地': VENUES[b.venue].label, '日期': b.day, '開始': b.startHour, '結束': b.endHour,
+  '狀態': b.status === 'booked' ? '已預約' : '已取消', '備註': b.note || null, '取消時間': isoTime(b.cancelledAt) });
+function liveLoanRow(l) {
+  const c = S.costumes.find(x => x.id === l.costumeID), started = l.lentDay <= today();
+  return { '借用單號': l.orderID, '服裝編號': c?.code || l.costumeID, '服裝名稱': c ? (c.series ? `${c.series} - ${c.name}` : c.name) : null,
+    '借用CoserID': l.coserID || null, '借用人姓名': l.renter.name, '聯絡方式': l.renter.phone || null, '借用日期': l.lentDay, '約定歸還日期': l.dueDay, '實際歸還日期': isoTime(l.returnedAt),
+    '狀態': l.status === 'returned' ? '已歸還' : l.status === 'cancelled' ? '已取消' : (started ? '借出中' : '已登記'), '借用用途': l.details.purpose || null,
+    '活動名稱': l.details.event || null, '經手人': l.events[0]?.by || null, '歸還狀況': l.condition ? CONDITION[l.condition].label : null, '狀況說明': l.conditionNote || null };
+}
+const liveCostumeRow = c => ({ '借用狀態': activeLoan(c.id) ? '借出中' : '可借用', '暫停借用': !!c.suspended, '暫停原因': c.suspendReason || null });
+function liveRosterRow(r) {
+  const c = COSERS.find(x => x.id === r.id), so = r.socials || [];
+  return { 'Cos名': r.cosName || c?.name, 'CoserID': r.id, '短名': c?.shortName || r.cosName, '頭像字': c?.initial || [...(r.cosName || 'C')][0], '頭像色': c?.colorHex || null,
+    '登入帳號': r.loginEmail || null, '狀態': r.status || '合作中', '本名': r.realName || null, '方案': r.plan || null, '方案說明': r.planNote || null,
+    '簽約日期': r.contractDate || null, '合約到期日': r.contractEndDate || null, 'IG帳號': r.igAccount || null, '簽約時IG粉絲': r.igFollowers ?? null,
+    '其他社群帳號': trimOrNull(so.map(x => `${socialName(x)} ${x.handle}`).join('、')), '其他社群粉絲': trimOrNull(so.filter(x => x.followers != null).map(x => `${socialName(x)} ${x.followers}`).join('、')) };
+}
+function extraCapture() {
+  const u = U.user, j = x => JSON.stringify(x), out = { user: u.id, gen: LIVE.gen };
+  if (u.role === 'coser') {
+    out.venues = new Map(S.venues.filter(b => b.coserID === u.coserID).map(b => [b.id, j(liveVenueRow(b))]));
+    out.loans = new Map(S.loans.filter(l => l.coserID === u.coserID || l.events[0]?.by === u.id).map(l => [l.id, j(liveLoanRow(l))]));
+  }
+  out.costumes = new Map(S.costumes.map(c => [c.id, j(liveCostumeRow(c))]));
+  if (u.role === 'company') out.roster = new Map(SB().roster.map(r => [r.id, j({ row: liveRosterRow(r), photos: r.photos.map(x => x.src) })]));
+  return out;
+}
+function extraSyncDiff(b) {
+  const u = U.user;
+  if (!LIVE?.token || !u || !b || u.id !== b.user || LIVE.gen !== b.gen) return;
+  const a = extraCapture(), ops = [];
+  for (const [id, row] of a.venues || []) if (b.venues.get(id) !== row) ops.push({ kind: 'row', opId: liveOpID('vb'), db: 'venueBookings', key: id, fields: JSON.parse(row) });
+  for (const [id, row] of a.loans || []) if (b.loans.get(id) !== row) {
+    const f = JSON.parse(row);
+    ops.push({ kind: 'row', opId: liveOpID('loan'), db: 'loans', key: f['借用單號'], fields: f, relations: { '服裝': [f['服裝編號']] } });
+  }
+  for (const [id, row] of a.costumes) if (b.costumes.get(id) !== row) ops.push({ kind: 'row', opId: liveOpID('cos'), db: 'costumes', key: id, fields: JSON.parse(row) });
+  for (const [id, x] of a.roster || []) if (b.roster.get(id) !== x) {
+    const was = b.roster.get(id) ? JSON.parse(b.roster.get(id)) : null, now = JSON.parse(x), r = rosterProfile(id);
+    const fields = { ...now.row };
+    // 合約照片：只有這次有加、刪照片才送（Notion 上直接傳的照片看不到網址，那種情況不送，免得蓋掉）
+    if (!was || JSON.stringify(was.photos) !== JSON.stringify(now.photos)) { if (r && (r.photosLoaded || !r.notionPhotos)) fields['合約照片'] = now.photos.filter(src => /^(https:|http:\/\/localhost[:\/])/.test(src)); }
+    ops.push({ kind: 'row', opId: liveOpID('roster'), db: 'coserRoster', key: id, fields });
+  }
+  for (const op of ops) liveEnqueue(op);
+}
+/** 打開名冊時，從後端拿這位 Coser 的合約照片（網頁上傳的才拿得到；Notion 直接傳的只知道張數） */
+async function liveContractPhotos(id) {
+  const r = rosterProfile(id); if (!r || r.photosLoaded) return;
+  try {
+    const list = (await liveFetch(`/media?owner=${encodeURIComponent('contract:' + id)}`)).media || [];
+    const known = new Set(r.photos.map(x => x.id));
+    for (const m of list) if (!known.has(m.id)) r.photos.push({ id: m.id, page: r.photos.length + 1, src: m.url });
+    r.photosLoaded = r.photos.length >= (r.notionPhotos || 0);
+    render();
+  } catch (e) { /* 拿不到就只顯示張數 */ }
+}
+async function liveCreateLogin(id, password) {
+  const r = rosterProfile(id);
+  if (!r) { show('failure', '名冊裡找不到這位 Coser。'); return false; }
+  if ((password || '').length < MIN_PASSWORD) { show('failure', `密碼至少 ${MIN_PASSWORD} 個字。`); return false; }
+  try {
+    await liveFetch('/accounts', { id, displayName: r.cosName, coserID: id, ...(r.loginEmail ? { email: r.loginEmail } : {}), password });
+    r.hasLogin = true; show('success', `登入帳號 ${r.loginEmail || id} 已建立`); liveAccounts(); return true;
+  } catch (e) { r.hasLogin = false; show('failure', `Coser 資料已登記，但登入帳號沒建成功：${liveMessage(e)}`); return false; }
+}
+async function liveRegister(f) {
+  const sh = U.sheet; if (sh.busy) return;
+  try { validateRegistration({ ...f, photos: [] }, U.user); } catch (e) { show('failure', e.message); render(); return; }
+  sh.busy = true; render();
+  try {
+    const photos = [];
+    for (const x of f.photos) { const up = await liveUpload(x.src, `contract:${f.account.trim().toLowerCase()}`); photos.push({ id: up.id, src: up.url }); }
+    const r = A.regCommit({ ...f, photos });
+    if (!r) { sh.busy = false; render(); return; }
+    r.photosLoaded = true;
+    U.sheet = null;
+    await liveCreateLogin(r.id, f.password);
+  } catch (e) { sh.busy = false; show('failure', liveMessage(e)); }
+  render();
+}
+/** 照片先傳到後端（D1），回網址 */
+async function liveUpload(dataUrl, owner) {
+  const r = await liveFetch('/media', { dataUrl, owner });
+  return r;
 }
 
 // 第三批：店鋪管理（座位紀錄、加購明細）、女僕管理（女僕名冊、店鋪錢箱、座位賒帳登記已收）
@@ -6608,16 +6838,35 @@ const A = {
     const r = seatBoard().history.find(x => x.id === id);
     ask(`${r.debtor || '這筆'} ${money(r.total)} 用什麼方式收到？`, null, ['cash', 'transfer', 'linePay'].map(k => ({ label: PAY[k].label, run: () => perform(() => shopSettle(id, k, U.user), `已登記收到（${PAY[k].label}）`) })), '取消');
   },
+  redeemScan() { if (U.redeem?.scanning) { stopRedeemScan(); return; } startRedeemScan(); },
+  redeemSubmit() {
+    const r = U.redeem; if (!LIVE || !r || r.busy) return;
+    const code = (r.code || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); if (code.length < 6) return;
+    r.busy = true; r.last = null;
+    liveFetch('/link/shop/redeem', { code })
+      .then(x => { r.last = x; r.code = ''; if (x.result === 'redeemed') show('success', `已兌換 ${x.name}`); })
+      .catch(e => { r.last = { result: 'notFound', message: e.status === 404 ? '找不到這個兌換碼' : liveMessage(e) }; })
+      .finally(() => { r.busy = false; render(); });
+  },
+  guestBkDay(n) { const g = U.guestBk; if (!g) return; g.day = +n ? dayKey(new Date(Date.parse(g.day + 'T12:00:00') + +n * 864e5)) : today(); g.data = null; liveGuestBookings(); },
   openMaidForm(id) {
     const m = id ? seatBoard().maids.find(x => x.id === id) : null;
     const pr = m ? maidPrices(m.id) : SHOP_TEST_PRICE;
-    U.sheet = { type: 'maidForm', id: m ? m.id : null, form: { name: m ? m.name : '', coserID: m?.coserID || '', colorHex: m ? m.colorHex : suggestedMaidColor(), active: m ? m.active !== false : true, prices: Object.fromEntries(SHOP_KINDS.map(([k]) => [k, pr[k] != null ? String(pr[k]) : ''])) } };
+    U.sheet = { type: 'maidForm', id: m ? m.id : null, form: { name: m ? m.name : '', coserID: m?.coserID || '', colorHex: m ? m.colorHex : suggestedMaidColor(), active: m ? m.active !== false : true, prices: Object.fromEntries(SHOP_KINDS.map(([k]) => [k, pr[k] != null ? String(pr[k]) : ''])),
+      studentNo: m?.studentNo || '', joinedAt: m?.joinedAt || '', photo: m?.photo || null } };
   },
+  maidPhotoClear() { U.sheet.form.photo = null; },
   maidColor(h) { U.sheet.form.colorHex = h; },
   maidActive() { U.sheet.form.active = !U.sheet.form.active; },
   saveMaid() {
     const sh = U.sheet, f = sh.form, prices = Object.fromEntries(SHOP_KINDS.map(([k]) => [k, f.prices[k] === '' ? NaN : parseInt(f.prices[k], 10)]));
-    const ok = perform(() => { const m = sh.id ? maidUpdate(sh.id, f.name, f.colorHex, prices, f.active, U.user) : maidAdd(f.name, f.colorHex, prices, U.user); maidLinkCoser(m.id, f.coserID, U.user); return m; }, `${sh.id ? '已儲存' : '已新增女僕'} ${f.name.trim()}`);
+    if (f.photoBusy) { show('info', '公式照還在上傳，請稍等一下。'); return; }
+    const ok = perform(() => {
+      const m = sh.id ? maidUpdate(sh.id, f.name, f.colorHex, prices, f.active, U.user) : maidAdd(f.name, f.colorHex, prices, U.user); maidLinkCoser(m.id, f.coserID, U.user);
+      if (f.joinedAt && !/^\d{4}-\d{2}-\d{2}$/.test(f.joinedAt)) fail('到職日格式不對。');
+      m.studentNo = trimOrNull(f.studentNo); m.joinedAt = trimOrNull(f.joinedAt); m.photo = f.photo || null;
+      return m;
+    }, `${sh.id ? '已儲存' : '已新增女僕'} ${f.name.trim()}`);
     if (ok) U.sheet = null;
   },
   // 女僕店排班（2026-11-06）
@@ -6670,6 +6919,10 @@ const A = {
 
   // 登入
   demoLogin(id) { signIn(ACCOUNTS.find(a => a.id === id)); },
+  forgotOpen() { U.login.forgot = { step: 'ask', account: U.login.account || '', code: '', password: '', password2: '', busy: false, error: null, info: null, testCode: null }; U.login.error = null; },
+  forgotClose() { if (U.login.forgot?.account) U.login.account = U.login.forgot.account; U.login.forgot = null; },
+  forgotSend() { if (!U.login.forgot?.busy) forgotSend(); },
+  forgotReset() { if (!U.login.forgot?.busy) forgotReset(); },
   doLogin() {
     const a = U.login.account.trim().toLowerCase(), p = U.login.password;
     if (!a || !p) { U.login.error = '請輸入帳號和密碼。'; return; }
@@ -6777,12 +7030,23 @@ const A = {
   regDelPhoto(id) { U.sheet.form.photos = U.sheet.form.photos.filter(x => x.id !== id); },
   regSubmit() {
     const f = U.sheet.form;
+    if (LIVE) { liveRegister(f); return; }
     const r = perform(() => registerCoser({ ...f, photos: f.photos.map(x => x.src) }, U.user));
     if (r) { U.sheet = null; show('success', `已登記 ${r.cosName}，登入帳號 ${r.loginEmail || r.id} 已建立`); }
   },
-  openProfile(id) { U.sheet = { type: 'profile', id, password: '' }; },
-  profDelPhoto(pid) { perform(() => removeContractPhoto(U.sheet.id, pid, U.user), '已刪除這頁合約照片'); },
-  retryLogin() { if (perform(() => createLogin(U.sheet.id, U.sheet.password, U.user), `登入帳號 ${U.sheet.id} 已建立`)) U.sheet.password = ''; },
+  // 接資料庫：照片都傳好之後才真的登記（這個動作前後比對，名冊寫進 Notion）
+  regCommit(f) { return perform(() => registerCoser(f, U.user)); },
+  openProfile(id) { U.sheet = { type: 'profile', id, password: '' }; if (LIVE) liveContractPhotos(id); },
+  profAddPhotos(list) { perform(() => addContractPhotos(U.sheet.id, list, U.user), `已加入 ${list.length} 頁合約照片`); },
+  profDelPhoto(pid) {
+    const r = rosterProfile(U.sheet.id);
+    if (LIVE && r && !r.photosLoaded && r.notionPhotos) { show('info', '有合約照片是直接在 Notion 上傳的，請到 Notion 刪除。'); return; }
+    if (perform(() => removeContractPhoto(U.sheet.id, pid, U.user), '已刪除這頁合約照片') && LIVE && /^[0-9a-f]{32}$/.test(pid)) liveFetch(`/media/${pid}/delete`, {}).catch(() => { /* 照片留著沒關係，名冊已經拿掉 */ });
+  },
+  retryLogin() {
+    if (LIVE) { liveCreateLogin(U.sheet.id, U.sheet.password).then(ok => { if (ok) U.sheet.password = ''; render(); }); return; }
+    if (perform(() => createLogin(U.sheet.id, U.sheet.password, U.user), `登入帳號 ${U.sheet.id} 已建立`)) U.sheet.password = '';
+  },
 
   // 對帳
   openCash(kind) { const cid = cashCoserID(); const inf = dayInfo(selDay(), cid); const v = kind === 'opening' ? inf?.openingCash : inf?.actualCash; U.sheet = { type: 'cash', kind, coserID: cid, text: v != null ? String(v) : '' }; },
@@ -6959,7 +7223,7 @@ async function liveMaidLoad() {
 async function liveMaidCall(path, body, ok, after) {
   if (LIVE.maidBusy) return;
   LIVE.maidBusy = true;
-  try { S.liveMaid = await liveFetch(path, body); LIVE.maidAt = Date.now(); if (ok) show('success', typeof ok === 'function' ? ok() : ok); if (after) after(); }
+  try { const r = await liveFetch(path, body); S.liveMaid = r && r.maid ? r : { ...(S.liveMaid || {}), ...r }; LIVE.maidAt = Date.now(); if (ok) show('success', typeof ok === 'function' ? ok() : ok); if (after) after(); }
   catch (e) { show('failure', liveMessage(e)); }
   finally { LIVE.maidBusy = false; render(); }
 }
@@ -6989,7 +7253,11 @@ const LIVE_MAID_ACTIONS = {
   openMaidMsg(id) { U.sheet = { type: 'maidMsg', id, reply: '' }; if (!msMsg(id)?.read) liveMaidCall('/link/maid/messages-read', {}); },
   maidMsgReply(id) { liveMaidCall('/link/maid/message-reply', { messageId: id, text: U.sheet.reply }, '已送出回覆', () => { U.sheet = null; }); },
   maidMsgTab(t) { U.maidMsgTab = t; if (t === 'messages' && myMessages(myMaid()?.id).some(x => !x.read)) liveMaidCall('/link/maid/messages-read', {}); },
-  maidStoryPost() { show('info', '限動照片上傳還沒接資料庫。'); },
+  maidStoryPost() {
+    const d = U.maidStoryDraft; if (!d || typeof d !== 'object' || !d.url) { show('info', d ? '照片還在上傳，請稍等一下。' : '請先選一張照片。'); return; }
+    liveMaidCall('/link/maid/story', { storyId: 'ST' + Date.now().toString(36) + rid(), photoUrl: d.url }, `已發布限動（好感 ${STORY_MIN_SCORE} 以上的好友看得到）`, () => { U.maidStoryDraft = null; });
+  },
+  maidStoryDelete(id) { ask('要刪除這則限動嗎？', null, [{ label: '刪除', danger: true, run: () => liveMaidCall('/link/maid/story-delete', { storyId: id }, '已刪除') }]); },
   maidRefresh() { liveMaidLoad(); }
 };
 for (const [k, fn] of Object.entries(LIVE_MAID_ACTIONS)) { const local = A[k]; A[k] = (...args) => (LIVE ? fn(...args) : local ? local(...args) : undefined); }
@@ -7014,11 +7282,12 @@ if (LIVE) for (const k of Object.keys(A)) {
   const f = A[k];
   A[k] = function (...args) {
     const r = U.user?.role, shop = !!SHOP_LIVE[r];
-    if (liveDepth || !(r === 'coser' || shop) || !LIVE.token) return f.apply(this, args);
-    const before = shop ? shopCapture() : liveCapture();
+    if (liveDepth || !(r === 'coser' || r === 'company' || shop) || !LIVE.token) return f.apply(this, args);
+    const before = shop ? shopCapture() : r === 'coser' ? liveCapture() : null;
     const sched = { user: U.user.id, gen: LIVE.gen, sched: schedCapture() };
+    const extra = r === 'coser' || r === 'company' ? extraCapture() : null;
     liveDepth++;
-    try { return f.apply(this, args); } finally { liveDepth--; if (shop) shopSyncDiff(before); else liveSyncDiff(before); schedSyncDiff(sched); }
+    try { return f.apply(this, args); } finally { liveDepth--; if (shop) shopSyncDiff(before); else if (before) liveSyncDiff(before); if (extra) extraSyncDiff(extra); if (r !== 'company') schedSyncDiff(sched); }
   };
 }
 
@@ -7028,7 +7297,7 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 10; // 11/10 加店鋪會員 +1 // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
+const STATE_VERSION = 11; // 11/13 ここあ也是女僕、女僕名冊加學號等 +1 // 11/10 加店鋪會員 +1 // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
 const KEEP_UI = ['schedMonth', 'user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartMemberPick', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch', 'shopMemberSearch', 'memberSpendSearch'];
@@ -7184,13 +7453,40 @@ function shrinkImage(file) {
 }
 document.addEventListener('change', async e => {
   const el = e.target; if (!el.dataset?.photos || !el.files?.length) return;
-  if (LIVE) { el.value = ''; show('info', LIVE_BLOCKED_TEXT); render(); return; }
   const target = el.dataset.photos, files = [...el.files]; el.value = '';
   const srcs = (await Promise.all(files.map(shrinkImage))).filter(Boolean);
   if (!srcs.length) { show('failure', '讀不到這張照片，請換一張再試。'); render(); return; }
+  // 登記 Coser 的照片先放在表單裡，按「登記」時才上傳（接資料庫時）
   if (target === 'register' && U.sheet?.type === 'register') U.sheet.form.photos.push(...srcs.map(src => ({ id: 'ph-' + rid() + nowMs().toString(36), src })));
-  else if (target === 'maidStory') U.maidStoryDraft = srcs[0];
-  else if (target === 'profile' && U.sheet?.type === 'profile') perform(() => addContractPhotos(U.sheet.id, srcs, U.user), `已加入 ${srcs.length} 頁合約照片`);
+  else if (target === 'maidStory') {
+    if (!LIVE) U.maidStoryDraft = srcs[0];
+    else {
+      const m = myMaid(), d = U.maidStoryDraft = { src: srcs[0], url: null, busy: true }; render();
+      try { d.url = (await liveUpload(srcs[0], `story:${m.id}`)).url; } catch (err) { if (U.maidStoryDraft === d) U.maidStoryDraft = null; show('failure', liveMessage(err)); }
+      d.busy = false;
+    }
+  } else if (target === 'maidPhoto' && U.sheet?.type === 'maidForm') {
+    const sh = U.sheet, f = sh.form;
+    if (!LIVE) f.photo = srcs[0];
+    else {
+      f.photoBusy = true; render();
+      try { f.photo = (await liveUpload(srcs[0], `maid:${sh.id || 'new'}`)).url; } catch (err) { show('failure', liveMessage(err)); }
+      f.photoBusy = false;
+    }
+  } else if (target === 'profile' && U.sheet?.type === 'profile') {
+    if (!LIVE) perform(() => addContractPhotos(U.sheet.id, srcs, U.user), `已加入 ${srcs.length} 頁合約照片`);
+    else {
+      const id = U.sheet.id, r = rosterProfile(id);
+      if (r && !r.photosLoaded && r.notionPhotos) { show('info', '這位 Coser 有直接在 Notion 上傳的合約照片，為了不蓋掉，請到 Notion 加照片。'); render(); return; }
+      U.sheet.photoBusy = true; render();
+      try {
+        const list = [];
+        for (const src of srcs) { const up = await liveUpload(src, `contract:${id}`); list.push({ id: up.id, src: up.url }); }
+        if (U.sheet?.type === 'profile' && U.sheet.id === id) A.profAddPhotos(list);
+      } catch (err) { show('failure', liveMessage(err)); }
+      if (U.sheet) U.sheet.photoBusy = false;
+    }
+  }
   render();
 });
 document.addEventListener('keydown', e => {
