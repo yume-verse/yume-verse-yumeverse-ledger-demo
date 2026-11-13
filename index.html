@@ -5383,8 +5383,8 @@ const BOND_LEVELS = [
   { score: 10, spend: 1000, unlock: '成為好友' },
   { score: 20, spend: 2000, unlock: '交換書信' },
   { score: 30, spend: 4000, unlock: '互動第一層、拍照角落' },
-  { score: 40, spend: 8000, unlock: '互動第二層' },
-  { score: 50, spend: 16000, unlock: '互動第三層、好友限動' },
+  { score: 40, spend: 8000, unlock: '互動第二層、好友限動' },
+  { score: 50, spend: 16000, unlock: '互動第三層' },
 ];
 const RATE_OPTIONS = [1, 2, 3];
 /** M05 互動菜單：依層級列出；第二、三層內容定案中 */
@@ -5393,7 +5393,8 @@ const INTERACT_MENU = [
   { tier: '第二層', level: 40, items: [] },
   { tier: '第三層', level: 50, items: [] }
 ];
-const STORY_MIN_SCORE = 50;
+// 2026-11-13：好友限動要第 4 級（好感 40、累積消費 NT$8,000 都到）；書信要第 2 級
+const STORY_MIN_SCORE = 40, STORY_LEVEL_TEXT = '第 4 級（好感 40、累積消費 NT$8,000）以上';
 /** 分潤（PDF 方案、道具與分潤；籌備中）：入場費店家 50%、當班女僕平分 50%；拍立得 50%；信紙、告白信紙、送餐儀式、付費訊息 80% */
 const SHARE = { '入場費': 0.5, '拍立得': 0.5, '信紙': 0.8, '告白信紙': 0.8, '送餐儀式': 0.8, '付費訊息': 0.8 };
 const LETTER_PRICE = { '信紙': 500, '告白信紙': 3000 };
@@ -5470,7 +5471,15 @@ function bondScore(maidID, memberID) {
   return n;
 }
 /** 累積消費：這位來賓 300 方案指名這位女僕的來店結帳合計 */
-const bondSpend = (maidID, memberID) => LIVE ? liveG(memberID)?.spend ?? 0 : MS().visits.filter(v => v.maidID === maidID && v.memberID === memberID && v.plan === '300' && v.closedAt).reduce((n, v) => n + v.total, 0);
+// 累積消費（2026-11-13）：300 指名她的座位費＋她自己的加購；同桌別的女僕的加購算在那位女僕身上（客人 App 裡的消費不算）
+const bondSpend = (maidID, memberID) => {
+  if (LIVE) return liveG(memberID)?.spend ?? 0;
+  const fees = MS().visits.filter(v => v.maidID === maidID && v.memberID === memberID && v.plan === '300' && v.closedAt).reduce((n, v) => n + (v.seatFee ?? 0) + (v.own ?? Math.max(0, v.total - (v.seatFee ?? 0))), 0);
+  const counted = new Set(MS().visits.filter(v => v.maidID === maidID).map(v => v.seatRecordID));
+  const others = (seatBoard().history || []).filter(r => r.memberID === memberID && !counted.has(r.id))
+    .reduce((n, r) => n + (r.addOns || []).filter(a => a.maidID === maidID).reduce((m, a) => m + a.unitPrice * a.quantity, 0), 0);
+  return fees + others;
+};
 const lastVisit = (maidID, memberID) => LIVE ? (liveG(memberID)?.lastVisit ? { day: liveG(memberID).lastVisit, closedAt: isoMs(liveG(memberID).lastVisit) } : null) : MS().visits.filter(v => v.maidID === maidID && v.memberID === memberID && v.closedAt).sort((a, b) => b.closedAt - a.closedAt)[0] || null;
 /** 雙閘門：兩個都到的最高一階；next＝下一階 */
 function bondState(maidID, memberID) {
@@ -5535,13 +5544,15 @@ function postStory(src, user, now = nowMs()) {
   const s = { id: `ST-${now.toString(36)}${rid()}`, maidID: m.id, src, at: now, minScore: STORY_MIN_SCORE }; MS().stories.unshift(s); return s;
 }
 function deleteStory(id, user) { const m = checkMaid(user); const i = MS().stories.findIndex(s => s.id === id && s.maidID === m.id); if (i < 0) fail('找不到這則限動。'); MS().stories.splice(i, 1); }
-/** 限動看得到的好友數：好感 50 以上 */
-const storyAudienceOf = maidID => myGuests(maidID).filter(g => g.score >= STORY_MIN_SCORE).length;
+/** 限動看得到的好友數：第 4 級以上（好感、累積消費都到） */
+const storyLevelOk = (maidID, memberID) => { const st = bondState(maidID, memberID); return !!st.reached && st.reached.score >= STORY_MIN_SCORE; };
+const storyAudienceOf = maidID => myGuests(maidID).filter(g => storyLevelOk(maidID, g.memberID)).length;
 /** 店員結帳時：300 方案、指名這位女僕、有帶會員 → 記一筆來店，女僕端跳出給分（連動版由客人 App 提供方案與指名） */
 function recordNominatedVisit(rec, plan, maidID) {
   if (!rec.memberID || plan !== '300' || !maidID) return null;
   if (MS().visits.some(v => v.seatRecordID === rec.id)) return null;
-  const v = { id: `V-${rec.id}`, memberID: rec.memberID, maidID, day: dayKey(new Date(rec.closedAt)), plan, total: rec.total, seatFee: rec.seatFee ?? 0, closedAt: rec.closedAt, seatRecordID: rec.id };
+  const own = (rec.addOns || []).filter(a => a.maidID === maidID).reduce((n, a) => n + a.unitPrice * a.quantity, 0);
+  const v = { id: `V-${rec.id}`, memberID: rec.memberID, maidID, day: dayKey(new Date(rec.closedAt)), plan, total: rec.total, seatFee: rec.seatFee ?? 0, own, closedAt: rec.closedAt, seatRecordID: rec.id };
   MS().visits.push(v);
   if (!MS().guests.some(g => g.memberID === rec.memberID)) MS().guests.push({ memberID: rec.memberID, name: guestName(rec.memberID) });
   return v;
@@ -5623,7 +5634,7 @@ function viewMsHome() {
     const pct = Math.min(100, Math.round(Math.min(rk.hours / rk.next.hours, rk.months / Math.max(1, rk.next.months)) * 100));
     html += card(`${stitle('階級條')}<div class="row g8"><span class="pill" style="background:var(--gray-pale);color:var(--ink)">${esc(rk.now.name)}</span>${icon('chevron-right', 16, 3)}<span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">${esc(rk.next.name)}</span></div><div class="bar-track"><span style="width:${pct}%"></span></div><div class="cap soft">（${rk.next.months >= 12 ? `${rk.next.months / 12} 年` : `${rk.next.months} 個月`}＋${rk.next.hours} 小時）目前 ${rk.months} 個月・${Math.round(rk.hours)} 小時</div>`);
   }
-  html += card(`<button class="row" style="width:100%;min-height:56px" id="open-story"${act('pushMaid', 'maidStory')}><span style="color:var(--pink)">${icon('image', 22)}</span><span class="grow stack" style="gap:2px;text-align:left"><b>發布限動</b><span class="cap soft">好感 ${STORY_MIN_SCORE} 以上的好友看得到</span></span>${icon('chevron-right', 18, 3)}</button>`, 'p8');
+  html += card(`<button class="row" style="width:100%;min-height:56px" id="open-story"${act('pushMaid', 'maidStory')}><span style="color:var(--pink)">${icon('image', 22)}</span><span class="grow stack" style="gap:2px;text-align:left"><b>發布限動</b><span class="cap soft">${STORY_LEVEL_TEXT}的好友看得到</span></span>${icon('chevron-right', 18, 3)}</button>`, 'p8');
   html += maidTestTools();
   if (LIVE) html += `<div class="cap soft" style="text-align:center">${LIVE.maidAt ? `${clockText(LIVE.maidAt)} 更新・` : ''}${link('重新整理', 'maidRefresh')}</div>`;
   return { title: '女僕首頁', html, cls: 'narrowcol' };
@@ -5726,10 +5737,10 @@ function viewMsStory() {
   // 接資料庫：照片先傳到後端，發布後寫進 Notion「限動」；已發布的從 /link/maid/overview 來
   const m = myMaid(), raw = U.maidStoryDraft, draft = raw && typeof raw === 'object' ? (raw.url || raw.src) : raw;
   const mine = LIVE ? (LMx()?.stories || []).map(x => ({ id: x.storyID, src: x.photo, at: isoMs(x.at) })) : MS().stories.filter(s => s.maidID === m.id);
-  const storyAudience = id => LIVE ? (LMx()?.guests || []).filter(g => (g.score ?? 0) >= STORY_MIN_SCORE).length : storyAudienceOf(id);
+  const storyAudience = id => LIVE ? (LMx()?.guests || []).filter(g => (g.level ?? 0) >= 4).length : storyAudienceOf(id);
   let html = card(`<div class="story-pick">${draft ? `<img src="${esc(draft)}" alt="準備發布的照片" id="story-preview">${raw?.busy ? '<span class="cap soft">上傳中…</span>' : ''}` : `<div class="story-empty">${icon('image', 40)}<span>上傳自拍</span></div>`}</div>
     <div class="row g8 wrap"><label class="cbtn filebtn">${icon('camera', 16)}拍照<input type="file" accept="image/*" capture="user" data-photos="maidStory"></label><label class="cbtn ghost filebtn">${icon('image', 16)}從相簿選<input type="file" accept="image/*" data-photos="maidStory"></label></div>
-    <div class="row g8" id="story-audience"><span style="color:var(--green-deep)">${icon('user-round', 18)}</span><b class="grow">好友限定（好感 ${STORY_MIN_SCORE} 以上）</b><span class="cap soft">目前 ${storyAudience(m.id)} 位看得到</span></div>
+    <div class="row g8" id="story-audience"><span style="color:var(--green-deep)">${icon('user-round', 18)}</span><b class="grow">好友限定（${STORY_LEVEL_TEXT}）</b><span class="cap soft">目前 ${storyAudience(m.id)} 位看得到</span></div>
     <div class="cap soft">來賓只能看，不能留言或按讚。</div>` + btn('發布限動', 'maidStoryPost', null, { ic: 'check', dis: !draft, cls: 'story-post' }));
   html += card(stitle('已發布', mine.length) + (mine.length ? `<div class="story-grid">${mine.map(s => `<div class="story-item" id="story-${esc(s.id)}"><img src="${esc(s.src)}" alt="限動"><span class="cap soft">${esc(timeText(s.at))}</span><button class="cbtn ghost"${act('maidStoryDelete', s.id)}>刪除</button></div>`).join('')}</div>` : empty('image', '還沒有發布限動')));
   return { title: '限動發布', html, cls: 'narrowcol' };
@@ -7199,7 +7210,7 @@ Object.assign(A, {
   maidLetterDone(id) { if (perform(() => replyLetter(id, U.user), l => `已回信，蓋${stampText(l.stamp)}`)) U.sheet = null; },
   openMaidMsg(id) { const x = MS().messages.find(m => m.id === id); if (x) x.read = true; U.sheet = { type: 'maidMsg', id, reply: '' }; },
   maidMsgReply(id) { if (perform(() => replyMessage(id, U.sheet.reply, U.user), '已送出回覆')) U.sheet = null; },
-  maidStoryPost() { if (perform(() => postStory(U.maidStoryDraft, U.user), '已發布限動（好感 50 以上的好友看得到）')) U.maidStoryDraft = null; },
+  maidStoryPost() { if (perform(() => postStory(U.maidStoryDraft, U.user), `已發布限動（${STORY_LEVEL_TEXT}的好友看得到）`)) U.maidStoryDraft = null; },
   maidStoryDelete(id) { ask('要刪除這則限動嗎？', null, [{ label: '刪除', danger: true, run: () => perform(() => deleteStory(id, U.user), '已刪除') }]); },
   maidTest(kind) {
     if (kind === 'checkout') { const v = perform(() => maidTestCheckout(U.user)); if (v) U.sheet = { type: 'maidRate', visitID: v.id }; return; }
@@ -7250,7 +7261,7 @@ const LIVE_MAID_ACTIONS = {
   maidMsgTab(t) { U.maidMsgTab = t; if (t === 'messages' && myMessages(myMaid()?.id).some(x => !x.read)) liveMaidCall('/link/maid/messages-read', {}); },
   maidStoryPost() {
     const d = U.maidStoryDraft; if (!d || typeof d !== 'object' || !d.url) { show('info', d ? '照片還在上傳，請稍等一下。' : '請先選一張照片。'); return; }
-    liveMaidCall('/link/maid/story', { storyId: 'ST' + Date.now().toString(36) + rid(), photoUrl: d.url }, `已發布限動（好感 ${STORY_MIN_SCORE} 以上的好友看得到）`, () => { U.maidStoryDraft = null; });
+    liveMaidCall('/link/maid/story', { storyId: 'ST' + Date.now().toString(36) + rid(), photoUrl: d.url }, `已發布限動（${STORY_LEVEL_TEXT}的好友看得到）`, () => { U.maidStoryDraft = null; });
   },
   maidStoryDelete(id) { ask('要刪除這則限動嗎？', null, [{ label: '刪除', danger: true, run: () => liveMaidCall('/link/maid/story-delete', { storyId: id }, '已刪除') }]); },
   maidRefresh() { liveMaidLoad(); }
