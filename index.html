@@ -5318,9 +5318,7 @@ function maidScheduleCard() {
 function sheetAvail(sh) {
   const days = monthDays(sh.month), t = today();
   const mark = { 0: '', 1: '可以', 2: '優先' };
-  const weekBtn = (wd, p) => { const ds = days.filter(d => dayDate(d).getDay() === wd); const on = ds.length && ds.every(d => sh.sel[`${d}|${p}`]); return `<button class="av-wk${on ? ' on' : ''}" id="av-week-${wd}-${p === '早班' ? 'E' : 'L'}"${act('availWeek', wd, p)} aria-pressed="${on}">${WD_SHORT[wd]}</button>`; };
   let body = `<div class="cap soft">${monthLabel(sh.month)}・${deadlineText(sh.month)} 截止。點一下＝可以上班，再點一下＝優先希望，再點一下取消。</div>`;
-  body += card(`<b class="sub">依星期一次勾選</b>` + PERIODS.map(p => `<div class="row g8"><b style="width:72px" class="sub">${p}</b><div class="av-wks">${[1, 2, 3, 4, 5, 6, 0].map(wd => weekBtn(wd, p)).join('')}</div></div>`).join(''), 'p12');
   // 2026-11-13：改成月曆：點日期 → 下面選早班、晚班（不用一直往下拉）
   const pick = sh.pick && days.includes(sh.pick) ? sh.pick : days[0];
   const first = dayDate(days[0]).getDay(), blanks = Array.from({ length: first }, () => '<span></span>').join('');
