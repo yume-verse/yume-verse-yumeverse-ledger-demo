@@ -84,6 +84,14 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .stitle{display:flex;align-items:center;gap:8px;font-size:19px;font-weight:900;color:var(--t,var(--ink));flex:1;min-width:0}
 .stitle .count{font-size:13px;color:#fff;background:var(--t,var(--ink));border-radius:10px;padding:1px 8px}
 .stitle .count.zero{background:var(--gray)}
+/* 2026-11-13：階級條旁的小問號 → 五階階梯 */
+.help-q{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--pink-deep);color:var(--pink-deep);background:#fff;font-size:14px;font-weight:900;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+.rank-row{display:flex;align-items:center;gap:12px;border-radius:14px;padding:12px 16px;background:#EEF1E4;min-height:52px}
+.rank-row b{font-size:18px;min-width:96px}
+.rank-row .rank-req{border-left:1.5px solid rgba(0,0,0,.18);padding-left:12px;font-weight:700;color:var(--ink)}
+.rank-row.now{background:var(--pink-pale)}
+.rank-row.now b{background:var(--pink-deep);color:#fff;border-radius:999px;padding:4px 14px;display:inline-flex;align-items:center;gap:8px}
+.rank-row.now .rank-badge{font-size:12px;background:rgba(255,255,255,.3);border-radius:999px;padding:1px 8px}
 .link{font-weight:800;color:var(--pink);font-size:14px;min-height:36px;display:inline-flex;align-items:center}
 .empty{display:flex;align-items:center;gap:12px;color:var(--ink-soft);font-weight:700;font-size:14px;padding:6px 0}
 .empty .ic{color:var(--green)}
@@ -5632,9 +5640,11 @@ function viewMsHome() {
     <button class="mtile" style="--fg:var(--ink);--bg:#fff" id="tile-income"${act('jump', 'mMe')}><span class="tl">本月分潤</span><span class="tv">${esc(money(inc.total))}</span></button>
     ${mtile('累積時數', `${Math.round(rk.hours)}h`, 'var(--ink)', '#fff')}</div>`;
   // 階級條
+  const rankHead = `<div class="row g8">${stitle('階級條')}<button class="help-q" id="rank-help"${act('openRankTable')} aria-label="看階級規則" title="階級規則">?</button></div>`;
+  if (!rk.next) html += card(`${rankHead}<div class="row g8"><span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">${esc(rk.now.name)}</span><span class="cap soft">已經是最高階級</span></div>`);
   if (rk.next) {
     const pct = Math.min(100, Math.round(Math.min(rk.hours / rk.next.hours, rk.months / Math.max(1, rk.next.months)) * 100));
-    html += card(`${stitle('階級條')}<div class="row g8"><span class="pill" style="background:var(--gray-pale);color:var(--ink)">${esc(rk.now.name)}</span>${icon('chevron-right', 16, 3)}<span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">${esc(rk.next.name)}</span></div><div class="bar-track"><span style="width:${pct}%"></span></div><div class="cap soft">（${rk.next.months >= 12 ? `${rk.next.months / 12} 年` : `${rk.next.months} 個月`}＋${rk.next.hours} 小時）目前 ${rk.months} 個月・${Math.round(rk.hours)} 小時</div>`);
+    html += card(`${rankHead}<div class="row g8"><span class="pill" style="background:var(--gray-pale);color:var(--ink)">${esc(rk.now.name)}</span>${icon('chevron-right', 16, 3)}<span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">${esc(rk.next.name)}</span></div><div class="bar-track"><span style="width:${pct}%"></span></div><div class="cap soft">（${rk.next.months >= 12 ? `${rk.next.months / 12} 年` : `${rk.next.months} 個月`}＋${rk.next.hours} 小時）目前 ${rk.months} 個月・${Math.round(rk.hours)} 小時</div>`);
   }
   html += card(`<button class="row" style="width:100%;min-height:56px" id="open-story"${act('pushMaid', 'maidStory')}><span style="color:var(--pink)">${icon('image', 22)}</span><span class="grow stack" style="gap:2px;text-align:left"><b>發布限動</b><span class="cap soft">${STORY_LEVEL_TEXT}的好友看得到</span></span>${icon('chevron-right', 18, 3)}</button>`, 'p8');
   html += maidTestTools();
@@ -5760,6 +5770,15 @@ function viewMsMe() {
 }
 
 /** 給分視窗：客人結帳後自動跳出 */
+/** 五階階梯（階級條旁的問號）：年資＋累積時數兩個都到才升階 */
+function sheetRankTable() {
+  const m = myMaid(), rk = m ? maidRank(m.id) : null;
+  const req = r => r.months === 0 && r.hours === 0 ? '' : `${r.months >= 12 ? `${r.months / 12}年` : `${r.months}個月`}＋${r.hours}小時`;
+  const rows = MAID_RANKS.map(r => { const now = rk && rk.now === r;
+    return `<div class="rank-row${now ? ' now' : ''}" id="rank-${esc(r.name)}"><b>${esc(r.name)}${now ? '<span class="rank-badge">目前</span>' : ''}</b>${req(r) ? `<span class="rank-req">${esc(req(r))}</span>` : ''}</div>`; }).join('');
+  const body = `<div class="stack g8">${rows}</div><div class="cap soft">年資（到職日起算）和累積上班時數兩個都到才會升階。${rk ? `目前 ${rk.months} 個月・${Math.round(rk.hours)} 小時。` : ''}</div>`;
+  return sheetFrame({ title: '五階階梯', left: tb('關閉', 'closeSheet'), body, cls: 'short' });
+}
 function sheetMsRate(sh) {
   const v = msVisit(sh.visitID); if (!v) return '';
   const st = bondState(v.maidID, v.memberID), left = pendingRatings(v.maidID).length;
@@ -5821,6 +5840,7 @@ function viewSheet() {
   const sh = U.sheet;
   switch (sh.type) {
     case 'maidRate': return sheetMsRate(sh);
+    case 'rankTable': return sheetRankTable();
     case 'maidLetter': return sheetMsLetter(sh);
     case 'maidMsg': return sheetMsMsg(sh);
     case 'calendar': return sheetCalendar(sh);
@@ -7212,6 +7232,7 @@ Object.assign(A, {
   maidLetterDone(id) { if (perform(() => replyLetter(id, U.user), l => `已回信，蓋${stampText(l.stamp)}`)) U.sheet = null; },
   openMaidMsg(id) { const x = MS().messages.find(m => m.id === id); if (x) x.read = true; U.sheet = { type: 'maidMsg', id, reply: '' }; },
   maidMsgReply(id) { if (perform(() => replyMessage(id, U.sheet.reply, U.user), '已送出回覆')) U.sheet = null; },
+  openRankTable() { U.sheet = { type: 'rankTable' }; },
   maidStoryPost() { if (perform(() => postStory(U.maidStoryDraft, U.user), `已發布限動（${STORY_LEVEL_TEXT}的好友看得到）`)) U.maidStoryDraft = null; },
   maidStoryDelete(id) { ask('要刪除這則限動嗎？', null, [{ label: '刪除', danger: true, run: () => perform(() => deleteStory(id, U.user), '已刪除') }]); },
   maidTest(kind) {
