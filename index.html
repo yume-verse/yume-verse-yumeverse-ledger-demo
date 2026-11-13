@@ -5455,7 +5455,9 @@ const msLetter = id => LIVE ? (LMx()?.letters || []).map(liveLetter).find(l => l
 const msMsg = id => LIVE ? (LMx()?.messages || []).map(liveMsg).find(x => x.id === id) || null : MS().messages.find(x => x.id === id) || null;
 /** 學號、公式照、到職日：女僕名冊（2026-11-13 加欄位）；測試版沒填的用測試資料 */
 const msProfile = maidID => { const m = seatBoard().maids.find(x => x.id === maidID) || {}, p = LIVE ? {} : MS().profiles[maidID] || {};
-  return { ...p, studentNo: m.studentNo || p.studentNo || null, photo: m.photo || p.photo || null, joined: m.joinedAt || p.joined || null }; };
+  // 接資料庫：女僕自己的學號、公式照、到職日也從 /link/maid/overview 拿（女僕名冊）
+  const lm = LIVE && LMx()?.maid?.maidID === maidID ? LMx().maid : {};
+  return { ...p, studentNo: m.studentNo || lm.studentNo || p.studentNo || null, photo: m.photo || lm.photo || p.photo || null, joined: m.joinedAt || lm.joinedAt || p.joined || null }; };
 const myMaid = () => maidOf(U.user);
 const guestName = memberID => LIVE ? (liveG(memberID)?.name || [...(LMx()?.pending || []), ...(LMx()?.letters || []), ...(LMx()?.messages || [])].find(x => x.memberCode === memberID)?.name || `會員 ${memberNoText(memberID)}`) : MS().guests.find(g => g.memberID === memberID)?.name || S.shopMembers?.find(m => m.id === memberID)?.name || `會員 ${memberNoText(memberID)}`;
 function checkMaid(user, maidID) {
