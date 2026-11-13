@@ -4050,6 +4050,19 @@ const seatAddOnTotal = ss => ss.addOns.reduce((n, a) => n + a.unitPrice * a.quan
 /** 座位費：開桌＋每次續座（舊資料沒有價格的算 0） */
 const seatFee = ss => (ss.openFee ?? 0) + (ss.extensions || []).reduce((n, e) => n + (e.price ?? 0), 0);
 const seatTotal = ss => seatFee(ss) + seatAddOnTotal(ss);
+/** S02（2026-11-13）：這桌的紀錄（入座、續座、加購照時間排） */
+function seatTimeline(ss) {
+  const ev = [{ at: ss.startedAt, t: ss.openedBy === 'guest-app' ? '客人 App 入座' : `店員開桌${ss.openedBy ? `（${ss.openedBy}）` : ''}` },
+    ...(ss.extensions || []).map(e => ({ at: e.at, t: `續座 ${extLabel(e.minutes)}` })),
+    ...(ss.addOns || []).map(a => ({ at: a.addedAt, t: `加購 ${a.maidName}・${a.name} ×${a.quantity}` }))].filter(x => x.at).sort((a, b) => a.at - b.at);
+  return card(`${stitle('這桌的紀錄', ev.length)}<div class="stack" style="gap:6px" id="seat-timeline">${ev.map(x => `<div class="row g8 cap"><b class="num" style="min-width:48px">${esc(clockText(x.at))}</b><span class="grow">${esc(x.t)}</span></div>`).join('')}</div>`);
+}
+/** S03：加購、續座有沒有存到資料庫（接資料庫時） */
+function seatSyncNote(ss) {
+  if (!LIVE) return '';
+  const pending = LIVE.outbox.some(op => (op.db === 'seatRecords' && op.key === ss.id) || (op.db === 'seatAddOns' && (op.relations?.['座位紀錄'] || []).includes(ss.id)));
+  return `<div class="cap bold" id="seat-sync" style="color:${pending ? 'var(--orange-deep)' : 'var(--green-deep)'}">${pending ? '⏳ 已加在這桌，正在存到資料庫（不用重按）' : '✓ 這桌的資料都已存好'}</div>`;
+}
 /** 座位費明細：[['開桌', 200], ['續座 30 分鐘', 100], …]（開桌 2026-11-11 起是 90 分鐘，之前是 1 小時，所以只寫「開桌」） */
 const seatFeeLines = ss => [...(ss.openFee ? [['開桌', ss.openFee]] : []), ...(ss.extensions || []).filter(e => e.price).map(e => [`續座 ${extLabel(e.minutes)}`, e.price])];
 const seatsOccupied = () => Object.keys(seatBoard().sessions).length;
@@ -5629,6 +5642,9 @@ function maidRank(maidID) {
 
 // ---------- 畫面 ----------
 const heartPill = (n, small) => `<span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">${icon('heart', small ? 12 : 14, 2.6)} 好感 ${n}</span>`;
+// V06（2026-11-13）：接資料庫時，給分／回信／回覆送出中按鈕先鎖住，避免重複點
+const maidBusy = () => !!(LIVE && LIVE.maidBusy);
+const busyAttr = () => maidBusy() ? ' disabled aria-busy="true"' : '';
 const okMark = ok => ok ? `<b style="color:var(--green-deep)">✓</b>` : `<b style="color:var(--danger, #C62828)">✗</b>`;
 const maidTestTools = () => LIVE ? '' : card(`<b>測試工具（模擬客人那邊）</b><div class="cap soft">假資料版：只存在這個瀏覽器。連動版會由客人 App、店鋪管理帳號產生這些資料。</div><div class="row g8 wrap">
   <button class="cbtn ghost" id="mt-checkout"${act('maidTest', 'checkout')}>模擬：300 指名我的客人結帳</button>
@@ -5652,11 +5668,20 @@ function viewMsHome() {
       + btn('確定出席', 'shiftConfirmNow', next.id, { ic: 'check', cls: 'maid-confirm' });
   } else if (next) shiftCard += `<div class="cap soft" id="maid-next">下一班：${esc(shiftLabel(next))}・${esc(next.status)}</div>`;
   html += card(shiftCard + `<div class="cap soft">上班前 1–2 天，App 和 LINE 都會提醒。</div>`);
-  if (pend.length) html += card(`<button class="row" style="width:100%;min-height:56px" id="maid-pending"${act('maidRateNext')}><span style="color:var(--pink-deep)">${icon('heart', 22)}</span><b class="grow" style="text-align:left">${pend.length} 位客人結帳了，還沒給分</b><span class="cbtn">給分</span></button>`, 'p8');
+  // V06：接資料庫還沒拿到資料時，先說讀取中（不要先顯示 0 或沒有待辦）
+  const maidLoading = LIVE && !S.liveMaid && LIVE.link !== false;
+  if (maidLoading) html += card(`<div class="row g8" id="maid-loading">${icon('history', 18)}<span class="sub soft">讀取待辦、書信和分潤中…</span></div>`);
+  // S07（2026-11-13）：待辦集中一張卡：待給分（每次來店各一筆）、必回書信、付費訊息；按「稍後」的也留在這裡
+  { const lets = pendingLetters(m.id), unread = myMessages(m.id).filter(x => !x.read);
+    if (!maidLoading && (pend.length || lets.length || unread.length)) html += card(`${stitle('待辦', pend.length + lets.length + unread.length)}`
+      + pend.map(v => `<button class="row" style="width:100%;min-height:48px" id="todo-rate-${esc(v.id)}"${act('maidRateOpen', v.id)}><span style="color:var(--pink-deep)">${icon('heart', 18)}</span><span class="grow stack" style="gap:1px;text-align:left"><b>給分・${esc(guestName(v.memberID))}</b><span class="cap soft">${esc(dayText(v.day))} ${esc(clockText(v.closedAt))} 結帳・${esc(money(v.total))}</span></span><span class="cbtn">給分</span></button>`).join(HR)
+      + (lets.length ? `${pend.length ? HR : ''}<button class="row" style="width:100%;min-height:48px" id="todo-letters"${act('jump', 'mMsg')}><span style="color:var(--pink-deep)">${icon('mail', 18)}</span><b class="grow" style="text-align:left">待回信 ${lets.length} 封（書信一定要回）</b>${icon('chevron-right', 16, 3)}</button>` : '')
+      + (unread.length ? `${pend.length || lets.length ? HR : ''}<button class="row" style="width:100%;min-height:48px" id="todo-messages"${act('maidMsgTabJump')}><span style="color:var(--ink-soft)">${icon('message-square-text', 18)}</span><b class="grow" style="text-align:left">付費訊息未讀 ${unread.length} 則（可以不回）</b>${icon('chevron-right', 16, 3)}</button>` : ''), 'p12');
+  }
   // ③ 待回信數 ④ 本月分潤 ＋ 累積時數
   html += `<div class="tiles maid-tiles">
-    <button class="mtile" style="--fg:var(--pink-deep);--bg:var(--pink-pale)" id="tile-letters"${act('jump', 'mMsg', 'letters')}><span class="tl">待回信</span><span class="tv">${letters}</span></button>
-    <button class="mtile" style="--fg:var(--ink);--bg:#fff" id="tile-income"${act('jump', 'mMe')}><span class="tl">本月分潤</span><span class="tv">${esc(money(inc.total))}</span></button>
+    <button class="mtile" style="--fg:var(--pink-deep);--bg:var(--pink-pale)" id="tile-letters"${act('jump', 'mMsg', 'letters')}><span class="tl">待回信</span><span class="tv">${maidLoading ? '—' : letters}</span></button>
+    <button class="mtile" style="--fg:var(--ink);--bg:#fff" id="tile-income"${act('jump', 'mMe')}><span class="tl">本月分潤</span><span class="tv">${maidLoading ? '—' : esc(money(inc.total))}</span></button>
     ${mtile('累積時數', `${Math.round(rk.hours)}h`, 'var(--ink)', '#fff')}</div>`;
   // 階級條
   const rankHead = `<div class="row g8">${stitle('階級條')}<button class="help-q" id="rank-help"${act('openRankTable')} aria-label="看階級規則" title="階級規則">?</button></div>`;
@@ -5667,6 +5692,7 @@ function viewMsHome() {
   }
   html += card(`<button class="row" style="width:100%;min-height:56px" id="open-story"${act('pushMaid', 'maidStory')}><span style="color:var(--pink)">${icon('image', 22)}</span><span class="grow stack" style="gap:2px;text-align:left"><b>發布限動</b><span class="cap soft">${STORY_LEVEL_TEXT}的好友看得到</span></span>${icon('chevron-right', 18, 3)}</button>`, 'p8');
   html += maidTestTools();
+  if (LIVE) html += `<div class="cap soft" style="text-align:center" id="maid-live-note">給分、回信、回覆會送到測試後端，寫進測試 Notion（不是只存在這台）。</div>`;
   if (LIVE) html += `<div class="cap soft" style="text-align:center">${LIVE.maidAt ? `${clockText(LIVE.maidAt)} 更新・` : ''}${link('重新整理', 'maidRefresh')}</div>`;
   return { title: '女僕首頁', html, cls: 'narrowcol' };
 }
@@ -5723,7 +5749,7 @@ function viewMsGuestDetail(memberID) {
       <div class="row"><span class="grow">我的給分 ${st.score}／需要 ${st.next.score}</span>${okMark(st.scoreOk)}</div></div>` : '<div class="cap soft">已經到最高階段。</div>'));
   if (pend.length) {
     const v = pend[0];
-    html += card(`<b>這次來店還沒給分</b><div class="cap soft">${esc(dayText(v.day))}・結帳 ${esc(money(v.total))}</div><div class="row g8 wrap">${RATE_OPTIONS.map(p => `<button class="cbtn rate-btn" id="rate-${p}"${act('maidRate', v.id, p)}>+${p} 給分</button>`).join('')}<button class="cbtn ghost" id="rate-0"${act('maidRate', v.id, 0)}>暫不給分</button></div><div class="cap soft">給不給、給多少由你決定。</div>`, 'rate-card');
+    html += card(`<b>這次來店還沒給分</b><div class="cap soft">${esc(dayText(v.day))}・結帳 ${esc(money(v.total))}</div><div class="row g8 wrap">${RATE_OPTIONS.map(p => `<button class="cbtn rate-btn" id="rate-${p}"${act('maidRate', v.id, p)}${busyAttr()}>+${p} 給分</button>`).join('')}<button class="cbtn ghost" id="rate-0"${act('maidRate', v.id, 0)}${busyAttr()}>暫不給分</button></div>${maidBusy() ? '<div class="cap soft busy-note">送出中…</div>' : ''}<div class="cap soft">給不給、給多少由你決定。</div>`, 'rate-card');
   }
   html += card(stitle('下一階段解鎖內容') + (st.next ? `<div class="row g8"><span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">好感 ${st.next.score}</span><b>${esc(st.next.unlock)}</b></div>` : empty('circle-check', '全部解鎖了'))
     + (st.reached ? `<div class="cap soft">目前已解鎖：${esc(BOND_LEVELS.filter(l => l.score <= st.reached.score).map(l => l.unlock).join('、'))}</div>` : '<div class="cap soft">還沒解鎖任何內容。</div>'));
@@ -5803,9 +5829,11 @@ function sheetMsRate(sh) {
   const st = bondState(v.maidID, v.memberID), left = pendingRatings(v.maidID).length;
   const body = card(`<div class="row"><span class="grow stack" style="gap:2px"><b style="font-size:20px">${esc(guestName(v.memberID))}</b><span class="cap soft">#${esc(memberNoText(v.memberID))}・${esc(clockText(v.closedAt))} 結帳・${esc(money(v.total))}</span></span>${heartPill(st.score)}</div>`
     + (st.next ? `<div class="gate"><div class="row"><span class="grow">累積消費門檻</span>${okMark(st.spendOk)}</div><div class="row"><span class="grow">我的給分 ${st.score}／${st.next.score}</span>${okMark(st.scoreOk)}</div><div class="cap soft">下一階段：${esc(st.next.unlock)}</div></div>` : ''))
-    + `<div class="rate-grid">${RATE_OPTIONS.map(p => `<button class="btn primary" id="rate-sheet-${p}"${act('maidRate', v.id, p)}><span>+${p}</span></button>`).join('')}</div>`
-    + `<button class="btn secondary rate-skip" id="rate-sheet-0"${act('maidRate', v.id, 0)}><span>暫不給分</span></button>`
-    + `<div class="cap soft" style="text-align:center">給不給、給多少由你決定。${left > 1 ? `還有 ${left - 1} 位等你給分。` : ''}</div>`;
+    + `<div class="rate-grid">${RATE_OPTIONS.map(p => `<button class="btn primary" id="rate-sheet-${p}"${act('maidRate', v.id, p)}${busyAttr()}><span>+${p}</span></button>`).join('')}</div>`
+    + `<button class="btn secondary rate-skip" id="rate-sheet-0"${act('maidRate', v.id, 0)}${busyAttr()}><span>暫不給分</span></button>`
+    + (maidBusy() ? `<div class="cap soft busy-note" id="rate-busy" style="text-align:center">送出中…完成前請不要關掉這頁</div>` : '')
+    + `<div class="cap soft" style="text-align:center">給不給、給多少由你決定。${left > 1 ? `還有 ${left - 1} 位等你給分。` : ''}</div>`
+    + `<div class="cap soft" style="text-align:center">「暫不給分」＝這次來店不給分，之後不會再問；「稍後」＝先不處理，會留在女僕首頁的待辦。</div>`;
   return sheetFrame({ title: '客人結帳了・要給分嗎？', left: tb('稍後', 'maidRateLater'), body, cls: 'short' });
 }
 function sheetMsLetter(sh) {
@@ -5813,14 +5841,14 @@ function sheetMsLetter(sh) {
   const sc = bondScore(l.maidID, l.memberID);
   const body = card(`<div class="row"><b class="grow" style="font-size:18px">${esc(guestName(l.memberID))}</b><span class="pill" style="background:var(--pink-pale);color:var(--pink-deep)">${esc(l.kind)}</span></div>${info('收到', timeText(l.at))}${info('狀態', l.status)}`)
     + (l.status === '待回信'
-      ? card(`<b>回信要蓋的印章</b><div class="stamp" id="stamp-hint">${esc(stampText(stampFor(sc)))}</div><div class="cap soft">照這位來賓現在的好感（${sc}）。手寫回信、蓋好印章後再按下面的按鈕。</div>`) + btn('已手寫回信並蓋章', 'maidLetterDone', l.id, { ic: 'check', cls: 'letter-done' })
+      ? card(`<b>回信要蓋的印章</b><div class="stamp" id="stamp-hint">${esc(stampText(stampFor(sc)))}</div><div class="cap soft">照這位來賓現在的好感（${sc}）。手寫回信、蓋好印章後再按下面的按鈕。</div>`) + btn(maidBusy() ? '送出中…' : '已手寫回信並蓋章', 'maidLetterDone', l.id, { ic: 'check', cls: 'letter-done', dis: maidBusy() })
       : card(`<b>已回信</b><div class="stamp">${esc(stampText(l.stamp))}</div><div class="cap soft">${esc(timeText(l.repliedAt))} 回信</div>`));
   return sheetFrame({ title: '書信', left: tb('返回', 'closeSheet'), body, cls: 'short' });
 }
 function sheetMsMsg(sh) {
   const x = msMsg(sh.id); if (!x) return '';
   const body = card(`<b>${esc(guestName(x.memberID))}</b><div class="sub" style="font-size:17px">${esc(x.text)}</div><div class="cap soft">${esc(timeText(x.at))}・付費訊息</div>`)
-    + (x.reply ? card(`<b>你的回覆</b><div class="sub">${esc(x.reply)}</div>`) : `<div class="field"><label for="f-sheet-reply">回覆（可以不回，最多 70 字）</label>${inp('sheet.reply', { ph: '想說的話', area: true })}</div><div class="cap soft">${[...(sh.reply || '')].length}/70 字</div>` + btn('送出回覆', 'maidMsgReply', x.id, { ic: 'check', dis: !(sh.reply || '').trim() || [...(sh.reply || '')].length > 70, cls: 'msg-reply' }));
+    + (x.reply ? card(`<b>你的回覆</b><div class="sub">${esc(x.reply)}</div>`) : `<div class="field"><label for="f-sheet-reply">回覆（可以不回，最多 70 字）</label>${inp('sheet.reply', { ph: '想說的話', area: true })}</div><div class="cap soft">${[...(sh.reply || '')].length}/70 字</div>` + btn(maidBusy() ? '送出中…' : '送出回覆', 'maidMsgReply', x.id, { ic: 'check', dis: maidBusy() || !(sh.reply || '').trim() || [...(sh.reply || '')].length > 70, cls: 'msg-reply' }));
   return sheetFrame({ title: '付費訊息', left: tb('返回', 'closeSheet'), body, cls: 'short' });
 }
 
@@ -5907,15 +5935,18 @@ function sheetSeat(sh) {
   const addOnList = ss.addOns.length ? `<div class="stack g8"><b class="cap heavy soft">已加購</b>${ss.addOns.map(a => `<div class="addon-line"><b class="grow">${esc(`${a.maidName}・${a.name}`)}</b><button class="stepbtn minus" id="seat-minus-${esc(a.itemID)}"${act('seatRemoveItem', a.itemID)} aria-label="減少 1 件 ${esc(a.name)}">${icon('minus', 18, 3)}</button><b class="num q" id="seat-line-qty-${esc(a.itemID)}">${a.quantity}</b><button class="stepbtn plus" id="seat-plus-${esc(a.itemID)}"${act('seatAddItem', a.itemID)} aria-label="增加 1 件 ${esc(a.name)}">${icon('plus', 18, 3)}</button><b class="num amt">${money(a.unitPrice * a.quantity)}</b></div>`).join('')}</div>` : '';
   let body = card(`<div class="row g8"><b style="font-size:22px">${sh.id}</b><span class="seat-pill lv-${lv}">${SEAT_LEVEL[lv]}</span></div>
     ${info(lv === 'overtime' ? '已超時' : '剩餘時間', seatClock(r))}${info('入座', clockText(ss.startedAt))}${info('到期', clockText(ss.endsAt))}
-    ${ss.extensions.length ? info('續座', ss.extensions.map(e => extLabel(e.minutes)).join('、')) : ''}${ss.memberID ? info('會員', memberNoText(ss.memberID)) : ''}${ss.openedBy === 'guest-app' ? info('入座方式', '客人 App 選完方案自動安排') : ''}${info('座位費', money(fee))}${info('加購', ss.addOns.length ? money(addOnTotal) : '沒有')}<div class="row" id="seat-running-total"><b class="grow">目前合計</b><b class="num" style="font-size:20px;color:var(--pink-deep)">${money(fee + addOnTotal)}</b></div>`, 'seat-head');
+    ${ss.extensions.length ? info('續座', ss.extensions.map(e => extLabel(e.minutes)).join('、')) : ''}${ss.memberID ? info('會員', memberNoText(ss.memberID)) : ''}${info('來源', ss.openedBy === 'guest-app' ? `客人 App（${(ss.openFee ?? 0) >= 300 ? '300 方案・可指名' : '200 方案'}）` : '店員開桌')}${ss.openedBy === 'guest-app' ? '<div class="cap soft">客人 App 選完方案自動安排，不用再手動開桌。</div>' : ''}${info('座位費', money(fee))}${info('加購', ss.addOns.length ? money(addOnTotal) : '沒有')}<div class="row" id="seat-running-total"><b class="grow">目前合計</b><b class="num" style="font-size:20px;color:var(--pink-deep)">${money(fee + addOnTotal)}</b></div>`, 'seat-head');
   if (sh.step === 'menu') {
+    body += seatTimeline(ss) + seatSyncNote(ss);
     const tools = card(`<b class="row g8" style="color:var(--orange-deep)">${icon('puzzle', 18)}測試工具：調整剩餘時間</b><div class="seat-test">${SEAT_TEST.map(([sec, t, h]) => `<button class="seat-test-btn" id="seat-test-${sec}"${act('seatTest', sec)}><b>${t}</b><small>${h}</small></button>`).join('')}</div><div class="cap soft">只有測試版會出現。不算續座、不留紀錄。</div>`);
     body += `<div class="stack g8">${[['addOn', '加購', 'shopping-bag'], ['extend', '續座', 'history'], ['checkout', '結帳', 'circle-check']].map(([k, t, ic]) => btn(t, k === 'checkout' ? 'seatAskCheckout' : 'seatStep', k, { kind: 'secondary', ic, cls: `seat-act-${k}`, style: '--b:var(--pink-deep)' })).join('')}</div>` + (LIVE ? '' : tools); // 接資料庫時不顯示測試工具
   } else if (sh.step === 'addOn') {
     // 跟 Coser 記帳畫面一樣：一位女僕一個資料夾，點開是色塊格子；點格子 +1，下方「已加購」清單用 －／＋ 調整
     const folders = maidFolders();
     body += folders.length ? `<div class="folders">${folders.map(f => maidFolder(f, ss, folders.length === 1, sh)).join('')}</div>` : card(`<div id="seat-items-pending">${empty('package', '還沒有可以加購的品項')}</div>`);
-    if (addOnList) body += card(addOnList + HR + info('加購合計', money(total)));
+    // S03（2026-11-13）：點格子就直接加在這桌（沒有另外的送單），點錯用 － 減回來；接資料庫時顯示有沒有存好
+    body += `<div class="cap soft" id="addon-hint">點一下就直接加在這桌（不用另外送單）；點錯了在下面「已加購」按 － 減回來。</div>`;
+    if (addOnList) body += card(addOnList + HR + info('加購合計', money(total)) + seatSyncNote(ss));
   } else if (sh.step === 'extend') {
     body += card(stitle('續座') + `<div class="cap soft">從目前的到期時間（${clockText(ss.endsAt)}）往後加。</div>` + [...SEAT_EXT].reverse().map(m => btn(`續座 ${extLabel(m)}・${money(SEAT_FEE_EXT[m])}（到 ${clockText(ss.endsAt + m * SEAT_MIN)}）`, 'seatExtend', m, { kind: 'secondary', cls: `seat-ext-${m}`, style: '--b:var(--pink-deep)' })).join(''));
   }
@@ -5974,7 +6005,7 @@ function sheetSeatPay(sh) {
   }
   const memberBad = total > 0 && !['none', 'ok'].includes(seatMemberLookup(sh.member, sh.memberPick).st);
   body += btn(total === 0 ? '確認結帳（不用收錢）' : sh.payment === 'credit' ? `記成應收 ${money(total)}` : `確認收款 ${money(total)}`, 'seatDoCheckout', null, { ic: 'check', dis: needsName || memberBad, cls: 'seat-confirm' })
-    + `<div class="cap soft">座位費：${SEAT_PRICE_TEXT}。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>` + testNotice();
+    + `<div class="cap soft">座位費：這桌開桌 ${money(ss.openFee ?? SEAT_FEE_OPEN)}（${ss.openedBy === 'guest-app' ? `客人 App 選 ${ss.openFee >= 300 ? 300 : 200} 方案` : '店員開桌'}）・續座 1 小時 ${money(200)}・續座 30 分鐘 ${money(100)}。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>` + testNotice();
   return sheetFrame({ title: '收款', left: tb('返回', 'seatPayBack'), body });
 }
 
@@ -6506,7 +6537,11 @@ async function liveRefresh(force) {
   try {
     const snap = await liveFetch('/snapshot' + (force ? '?refresh=1' : ''));
     if (liveMine().length) return false; // 抓的時候又記了一筆：下次再換
+    // S02（2026-11-13）：正在看的這桌被別人改過（結帳、續座、加購）→ 提示一下
+    const sid = U.sheet?.type === 'seat' ? U.sheet.id : null, seatSum = () => { const x = sid ? seatBoard().sessions[sid] : null; return x ? `${x.id}|${x.endsAt}|${x.addOns.map(a => `${a.itemID}:${a.quantity}`).sort().join(',')}` : 'none'; };
+    const seatBefore = sid ? seatSum() : null;
     liveApply(snap.tables || {});
+    if (sid && seatBefore !== seatSum() && !U.sheet?.finished) show('info', seatSum() === 'none' ? `${sid} 剛被其他人結帳了` : `${sid} 剛被其他人更新過，畫面已經換成最新的，請再確認一次`);
     LIVE.serverSync = snap.sync || null;
     liveAccounts();
     LIVE.refreshedAt = nowMs();
@@ -7235,6 +7270,8 @@ Object.assign(A, {
   maidSchedMonth(n) { U.maidSchedMonth = shiftMonth(U.maidSchedMonth || today().slice(0, 7), +n); },
   maidMsgTab(t) { U.maidMsgTab = t; if (t === 'messages') { const m = myMaid(); if (m) markMessagesRead(m.id); } },
   maidRateNext() { const m = myMaid(); const v = m && pendingRatings(m.id)[0]; if (v) U.sheet = { type: 'maidRate', visitID: v.id }; },
+  maidRateOpen(id) { U.sheet = { type: 'maidRate', visitID: id }; },
+  maidMsgTabJump() { U.maidMsgTab = 'messages'; goSection('mMsg'); },
   maidRateLater() { if (U.sheet?.visitID) (U.rateSnooze ||= []).push(U.sheet.visitID); U.sheet = null; },
   maidRate(visitID, p) {
     const r = perform(() => rateVisit(visitID, +p, U.user), x => x.points ? `已給 ${guestName(x.memberID)} +${x.points}` : `${guestName(x.memberID)}：這次暫不給分`);
@@ -7271,9 +7308,9 @@ async function liveMaidLoad() {
 }
 async function liveMaidCall(path, body, ok, after) {
   if (LIVE.maidBusy) return;
-  LIVE.maidBusy = true;
+  LIVE.maidBusy = true; render();
   try { const r = await liveFetch(path, body); S.liveMaid = r && r.maid ? r : { ...(S.liveMaid || {}), ...r }; LIVE.maidAt = Date.now(); if (ok) show('success', typeof ok === 'function' ? ok() : ok); if (after) after(); }
-  catch (e) { show('failure', liveMessage(e)); }
+  catch (e) { show('failure', `${liveMessage(e)} 這次沒有存進去，畫面上的內容還在，可以再按一次。`); }
   finally { LIVE.maidBusy = false; render(); }
 }
 function liveMaidTick() {
@@ -7314,6 +7351,7 @@ for (const [k, fn] of Object.entries(LIVE_MAID_ACTIONS)) { const local = A[k]; A
 /** 客人結帳後自動跳出給分（女僕帳號登入著時；按「稍後」這次登入先不再跳） */
 function maidAutoPrompt() {
   if (!isMaidUser() || U.sheet || U.confirm) return;
+  const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // 正在輸入時不打斷
   const m = myMaid(), v = pendingRatings(m.id).find(x => !(U.rateSnooze || []).includes(x.id));
   if (v) U.sheet = { type: 'maidRate', visitID: v.id };
 }
