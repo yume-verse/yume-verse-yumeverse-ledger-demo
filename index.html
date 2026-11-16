@@ -3703,18 +3703,28 @@ function makeTheme(work, character, tint, coserID, id) {
   if (SB().themes.some(x => x.coserID === coserID && x.id !== id && themeName(x) === themeName(t))) fail(`已經有「${themeName(t)}」了，直接選它就好。`);
   return t;
 }
-// 新增商品（2026-11-16 改）：1 大項目（寫真、套組、明信片…，自己打）2 小項目（花火、芙莉蓮…，自己打）3 數量（＋售價）。
-// 品名自動是「小項目＋大項目」（花火寫真）；小項目對到同名的作品・角色就用它的顏色，沒有就自動新增一個。
+// 新增商品（2026-11-16 改）：1 大項目（寫真、套組、明信片…，自己打）2 小項目（花火單書、芙莉蓮單書…，打完整名稱）3 數量（＋售價）。
+// 小項目就是品名（打什麼就是什麼）。顏色跟著小項目裡的角色：名字裡有已經有的作品・角色（花火、芙莉蓮…）就用它的顏色，
+// 沒有就自動新增一個（名字去掉後面的大項目，例如「安妮亞明信片」→ 安妮亞）。
 // 記帳畫面的資料夾就是大項目；之前建的商品沒有大項目，照舊放在「寫真集／周邊」。
-const productNameOf = (item, category) => { const i = (item || '').trim(), c = (category || '').trim(); return !c || i.endsWith(c) ? i : i + c; };
-/** 小項目：打成「花火寫真」也當成「花火」 */
+/** 小項目去掉後面的大項目（安妮亞明信片 → 安妮亞），新增作品・角色時當名字 */
 const itemKeyOf = (item, category) => { const i = (item || '').trim(), c = (category || '').trim(); return c && i.length > c.length && i.endsWith(c) ? i.slice(0, -c.length).trim() : i; };
-/** 記帳格子上的字：大項目資料夾裡只寫小項目（花火） */
-const itemOf = p => p.category ? itemKeyOf(p.name, p.category) : p.name;
-/** 大項目看起來是寫真（寫真、寫真書、拍本、電子檔）就算寫真集，其他算周邊；電子檔一定是寫真集 */
-const kindOfCategory = (c, digital) => digital || /寫真|拍本|電子/.test(c || '') ? 'photobook' : 'goods';
+/** 記帳格子上的字：小項目（＝品名） */
+const itemOf = p => p.name;
+/** 大項目看起來是寫真（寫真、單書、拍本、電子檔）就算寫真集，其他算周邊；電子檔一定是寫真集 */
+const kindOfCategory = (c, digital) => digital || /寫真|拍本|電子|書/.test(c || '') ? 'photobook' : 'goods';
 const themeKeys = t => [themeName(t), t.work, t.character, ...[t.character, t.work].filter(Boolean).flatMap(k => k.split(/[／\/]/))].map(k => (k || '').trim()).filter(Boolean);
-const themeForItem = (item, cid) => { const k = (item || '').trim(); return k ? SB().themes.find(t => t.coserID === cid && themeKeys(t).includes(k)) || null : null; };
+/** 角色名字（沒有角色才用作品），用「／」分開的每個都算 */
+const charKeys = t => (t.character || t.work || '').split(/[／\/]/).map(k => k.trim()).filter(Boolean);
+/** 小項目對到的作品・角色：名字完全一樣的先；不然找名字裡有寫到的角色（最長的優先） */
+function themeForItem(item, cid) {
+  const k = (item || '').trim(); if (!k) return null;
+  const mine = SB().themes.filter(t => t.coserID === cid);
+  const exact = mine.find(t => themeKeys(t).includes(k)); if (exact) return exact;
+  let best = null, len = 0;
+  for (const t of mine) for (const c of charKeys(t)) if (c.length > len && k.includes(c)) { best = t; len = c.length; }
+  return best;
+}
 function freeTint(cid) { const mine = SB().themes.filter(t => t.coserID === cid), used = new Set(mine.map(t => t.tintHex)); return PALETTE.find(h => !used.has(h)) || PALETTE[mine.length % PALETTE.length]; }
 /** 這位 Coser 用過的大項目（照建立的順序：新的大項目排最後，前面的顏色不會變） */
 function categoriesOf(cid) { return unique(SB().products.filter(p => p.category && coserOfProduct(p) === cid).map(p => p.category)); }
@@ -3726,16 +3736,15 @@ const categoryChip = (c, cid, on, a) => `<button class="schip${on ? ' on' : ''}"
 function saveProduct(draft, editingID, user) {
   if (user.role !== 'coser' || !user.coserID) fail('這個帳號不能做這個操作。');
   const editing = editingID ? ownProduct(editingID, user) : null;
-  const category = (draft.category || '').trim(), key = itemKeyOf(draft.item, category);
-  const legacy = !!editing && !editing.category && !category;   // 之前建的商品，大項目空著＝照舊
-  if (!category && !legacy) fail('請填大項目，例如 寫真、套組、明信片。');
-  if (!key) fail('請填小項目，例如 花火、芙莉蓮。');
-  if (category.length > 20 || key.length > 30) fail('大項目、小項目請寫短一點。');
+  const category = (draft.category || '').trim(), name = (draft.item || '').trim();
+  const legacy = !!editing && !editing.category && !category;   // 之前建的商品，大項目可以空著
+  if (!category && !legacy) fail('請填大項目，例如 寫真、明信片。');
+  if (!name) fail('請填小項目，例如 花火單書、芙莉蓮單書。');
+  if (category.length > 20 || name.length > 40) fail('大項目、小項目請寫短一點。');
   if (CURRENCIES.some(c => draft.prices[c] != null && draft.prices[c] < 0) || (draft.stock ?? 0) < 0) fail('請輸入 0 以上的整數。');
-  const name = legacy ? editing.name : productNameOf(key, category);
   if (SB().products.some(p => p !== editing && coserOfProduct(p) === user.coserID && p.name === name)) fail(`已經有「${name}」了，直接改它就好。`);
-  let t = themeForItem(key, user.coserID);
-  if (!t) { t = makeTheme(key, '', freeTint(user.coserID), user.coserID, 'T-' + nowMs().toString(36) + rid()); SB().themes.push(t); }
+  let t = editing && editing.name === name ? themeByID(editing.themeID) : themeForItem(name, user.coserID);
+  if (!t) { t = makeTheme(itemKeyOf(name, category), '', freeTint(user.coserID), user.coserID, 'T-' + nowMs().toString(36) + rid()); SB().themes.push(t); }
   const digital = !!draft.digital;
   const kind = legacy ? (digital ? 'photobook' : editing.kind) : kindOfCategory(category, digital);
   if (editing) {
@@ -6266,26 +6275,24 @@ function sheetVenueDetail(sh) {
 // ----- 商品 -----
 function productDraft(sh) {
   // 售價可以先留空（＝未定價），之後再補
-  const legacy = !!sh.legacyName && !sh.category.trim();
-  if ((!sh.category.trim() && !legacy) || !itemKeyOf(sh.item, sh.category)) return null;
+  const legacy = !!sh.legacy && !sh.category.trim();
+  if ((!sh.category.trim() && !legacy) || !sh.item.trim()) return null;
   const prices = {};
   for (const c of CURRENCIES) { const t = sh.prices[c]; if (t !== '') prices[c] = parseInt(t, 10); }
   return { category: sh.category, item: sh.item, prices, stock: sh.digital || sh.stock === '' ? null : parseInt(sh.stock, 10), digital: sh.digital };
 }
-const draftName = sh => sh.legacyName && !sh.category.trim() ? sh.legacyName : productNameOf(itemKeyOf(sh.item, sh.category), sh.category);
+const draftName = sh => sh.item.trim();
 const palette = (sel, a) => `<div class="palette">${PALETTE.map((h, i) => `<button class="${sel === h ? 'on' : ''}" style="background:#${h};color:${readableInk(h)}"${act(a, h)} aria-label="顏色 ${i + 1}" aria-pressed="${sel === h}">${sel === h ? icon('check', 20, 3.2) : ''}</button>`).join('')}</div>`;
 function sheetProduct(sh) {
   const u = U.user, p = sh.productID ? productByID(sh.productID) : null;
-  const cat = sh.category.trim(), key = itemKeyOf(sh.item, cat), cats = categoriesOf(u.coserID);
-  const themes = visibleThemes(u), match = themeForItem(key, u.coserID);
-  // 1 大項目：自己打；用過的列在下面點一下就好
+  const cat = sh.category.trim(), cats = categoriesOf(u.coserID);
+  const themes = visibleThemes(u), match = themeForItem(sh.item, u.coserID);
+  // 1 大項目：自己打；用過的列在下面
   let body = stepHead(1, '大項目', '例如 寫真、明信片') + inp('sheet.category', { ph: '例如 寫真、明信片、套組' });
   if (cats.length) body += `<div class="row g8 wrap">${cats.map(c => categoryChip(c, u.coserID, c === cat, 'pfCategory')).join('')}</div>`;
-  if (p && !p.category) body += `<div class="cap soft">這是之前建的商品，還沒有大項目。填了大項目，品名會變成「小項目＋大項目」；空著就照舊叫「${esc(p.name)}」。</div>`;
-  // 2 小項目：自己打；品名自動是「小項目＋大項目」
-  body += stepHead(2, '小項目', '角色') + inp('sheet.item', { ph: cat ? `例如 花火（會變成「花火${cat}」）` : '例如 花火、芙莉蓮' });
+  // 2 小項目：打完整名稱（＝品名）；點角色會填「角色＋大項目」
+  body += stepHead(2, '小項目', '例如 花火單書、芙莉蓮單書') + inp('sheet.item', { ph: cat ? `例如 花火${cat}` : '例如 花火單書、芙莉蓮單書' });
   if (themes.length) body += `<div class="row g8 wrap">${themes.map(t => seriesChip(t, !!match && match.id === t.id, 'pfItem', t.id)).join('')}</div>`;
-  if (key && (cat || !sh.legacyName)) body += `<div class="row g8 wrap" id="pf-name" style="align-items:center"><span class="sub bold soft">品名</span><b style="font-size:17px;color:var(--pink-deep)">${esc(draftName(sh))}</b>${match ? '' : `<span class="cap bold soft">新的小項目，記帳格子會用新的顏色</span>`}</div>`;
   // 3 數量（＋售價）
   body += stepHead(3, '數量', '不知道可以先空著')
     + (sh.digital ? '' : `<div class="field"><label for="f-sheet-stock">${sh.productID ? '目前庫存（點過的正確數量）' : '現在有幾件？（不知道可以先空著）'}</label>${inp('sheet.stock', { ph: '例如 30', num: true, cls: 'big num' })}</div>`)
@@ -6482,10 +6489,10 @@ function changeQty(id, d) {
 }
 const resetCart = () => { U.cart = []; U.cartMember = ''; U.cartMemberPick = null; U.cartDebtor = ''; };
 function openProductForm(pid, tid, cat) {
-  const sh = { type: 'product', productID: pid || null, category: cat || '', item: '', legacyName: null, prices: { TWD: '', HKD: '', JPY: '', USD: '' }, stock: '', digital: false };
+  const sh = { type: 'product', productID: pid || null, category: cat || '', item: '', legacy: false, prices: { TWD: '', HKD: '', JPY: '', USD: '' }, stock: '', digital: false };
   const p = pid ? productByID(pid) : null;
   const short = t => t ? (t.character || t.work) : '';
-  if (p) Object.assign(sh, { category: p.category || '', item: p.category ? itemOf(p) : short(themeByID(p.themeID)), legacyName: p.category ? null : p.name,
+  if (p) Object.assign(sh, { category: p.category || '', item: p.name, legacy: !p.category,
     prices: Object.fromEntries(CURRENCIES.map(c => [c, priceIn(p, c) != null ? String(priceIn(p, c)) : ''])), stock: p.stock != null ? String(p.stock) : '', digital: p.digital });
   else if (tid) sh.item = short(themeByID(tid));
   U.sheet = sh;
@@ -7274,7 +7281,7 @@ const A = {
   openProduct(pid, tid) { openProductForm(pid, tid); },
   addInCategory(cat) { openProductForm(null, null, cat); },
   pfCategory(c) { U.sheet.category = c; },
-  pfItem(tid) { const t = themeByID(tid); if (t) U.sheet.item = t.character || t.work; },
+  pfItem(tid) { const t = themeByID(tid); if (t) U.sheet.item = (t.character || t.work) + U.sheet.category.trim(); },
   pfDigital() { U.sheet.digital = !U.sheet.digital; },
   pfSave() { const sh = U.sheet; const d = productDraft(sh); if (!d) return; const n = draftName(sh); if (perform(() => saveProduct(d, sh.productID, U.user), sh.productID ? `已更新「${n}」` : `已新增「${n}」`)) U.sheet = null; },
   pfDiscontinue() { const p = productByID(U.sheet.productID); const to = !p.discontinued; if (perform(() => { ownProduct(p.id, U.user).discontinued = to; }, to ? `「${p.name}」已停售` : `「${p.name}」恢復販售`)) U.sheet = null; },
