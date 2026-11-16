@@ -2962,37 +2962,42 @@ const NOTION_SEED = {
     { '名稱': '原創・妹妹本', '系列ID': 'original', '作品': '原創', '角色': '妹妹本', 'CoserID': 'cocoa', '底色': 'F9C8DB' },
     { '名稱': '原創・索達／蘇打', '系列ID': 'soda', '作品': '原創', '角色': '索達／蘇打', 'CoserID': 'cocoa', '底色': '79B0DC' },
     { '名稱': '原創・Live Party', '系列ID': 'liveparty', '作品': '原創', '角色': 'Live Party', 'CoserID': 'cocoa', '底色': 'F3A23F' },
-    { '名稱': '現場加購', '系列ID': 'onsite', '作品': '現場加購', '角色': null, 'CoserID': 'cocoa', '底色': 'F7E7A9' },
-    { '名稱': '原創・JK 制服（測試）', '系列ID': 'momo-jk', '作品': '原創', '角色': 'JK 制服（測試）', 'CoserID': 'momo', '底色': 'F3A23F' }
+    // 2026-11-16 重新分類：小項目＝角色，每個角色一個顏色（現場加購的明信片、舊拍、掛軸各自分開）
+    { '名稱': '現場加購・舊拍', '系列ID': 'onsite', '作品': '現場加購', '角色': '舊拍', 'CoserID': 'cocoa', '底色': 'F7E7A9' },
+    { '名稱': '鳴潮・菲比', '系列ID': 'phoebe', '作品': '鳴潮', '角色': '菲比', 'CoserID': 'cocoa', '底色': '9B7BD4' },
+    { '名稱': '現場加購・六月雨', '系列ID': 'june', '作品': '現場加購', '角色': '六月雨', 'CoserID': 'cocoa', '底色': '5BB5A8' },
+    { '名稱': '鏈鋸人・蕾潔', '系列ID': 'reze', '作品': '鏈鋸人', '角色': '蕾潔', 'CoserID': 'cocoa', '底色': '8E2C48' },
+    { '名稱': '現場加購・掛軸', '系列ID': 'kakejiku', '作品': '現場加購', '角色': '掛軸', 'CoserID': 'cocoa', '底色': 'A0785A' },
+    { '名稱': '原創・JK', '系列ID': 'momo-jk', '作品': '原創', '角色': 'JK', 'CoserID': 'momo', '底色': 'F3A23F' }
   ],
   // 商品照 Notion「商品」（2026-10-27）；小桃的 6 項是測試商品
   '商品': [
     { '名稱': "花火套組", '商品ID': "hanabi-set", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': null, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "Cosforce04 有售出 1 組；Notion 台幣、港幣售價都未建", '大項目': "套組" },
     { '名稱': "花火寫真書・單書", '商品ID': "hanabi-book", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': null, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$200；Notion 台幣價未建", '大項目': "寫真書・單書" },
-    { '名稱': "花火拍本 Cheki Album", '商品ID': "hanabi-cheki", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': 500, '港幣售價': 130, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': null },
-    { '名稱': "花火電子檔", '商品ID': "hanabi-digital", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': null, '港幣售價': 150, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "香港自訂品項 HK$150；Notion 台幣價未建", '大項目': null },
+    { '名稱': "花火拍本", '商品ID': "hanabi-cheki", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': 500, '港幣售價': 130, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': "拍本" },
+    { '名稱': "花火電子檔", '商品ID': "hanabi-digital", '作品・角色': ["hanabi"], '類型': "寫真集", '台幣售價': null, '港幣售價': 150, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "香港自訂品項 HK$150；Notion 台幣價未建", '大項目': "電子檔" },
     { '名稱': "芙莉蓮寫真書・單書", '商品ID': "frieren-book", '作品・角色': ["frieren"], '類型': "寫真集", '台幣售價': 1000, '港幣售價': 250, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': "寫真書・單書" },
-    { '名稱': "芙莉蓮單書＋電子檔", '商品ID': "frieren-book-digital", '作品・角色': ["frieren"], '類型': "寫真集", '台幣售價': 1800, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價", '大項目': null },
-    { '名稱': "芙莉蓮 L 夾", '商品ID': "frieren-folder", '作品・角色': ["frieren"], '類型': "周邊", '台幣售價': 250, '港幣售價': 70, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': null },
-    { '名稱': "大套組", '商品ID': "original-big-set", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 2500, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價", '大項目': null },
-    { '名稱': "小套組", '商品ID': "original-small-set", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 1700, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價", '大項目': null },
-    { '名稱': "寫真書・單書", '商品ID': "original-book", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 800, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': null },
-    { '名稱': "電子檔", '商品ID': "original-digital", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 1000, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價", '大項目': null },
+    { '名稱': "芙莉蓮單書＋電子檔", '商品ID': "frieren-book-digital", '作品・角色': ["frieren"], '類型': "寫真集", '台幣售價': 1800, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價", '大項目': "單書＋電子檔" },
+    { '名稱': "芙莉蓮L夾", '商品ID': "frieren-folder", '作品・角色': ["frieren"], '類型': "周邊", '台幣售價': 250, '港幣售價': 70, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': "L夾" },
+    { '名稱': "妹妹本大套組", '商品ID': "original-big-set", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 2500, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價", '大項目': "大套組" },
+    { '名稱': "妹妹本小套組", '商品ID': "original-small-set", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 1700, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價", '大項目': "小套組" },
+    { '名稱': "妹妹本寫真書・單書", '商品ID': "original-book", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 800, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': "寫真書・單書" },
+    { '名稱': "妹妹本電子檔", '商品ID': "original-digital", '作品・角色': ["original"], '類型': "寫真集", '台幣售價': 1000, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表正式台幣價", '大項目': "電子檔" },
     { '名稱': "索達寫真書・單書", '商品ID': "soda-book", '作品・角色': ["soda"], '類型': "寫真集", '台幣售價': 800, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': "寫真書・單書" },
-    { '名稱': "索達拍立卡 Slide Card", '商品ID': "soda-slide", '作品・角色': ["soda"], '類型': "周邊", '台幣售價': 350, '港幣售價': 90, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': null },
-    { '名稱': "索達電子檔", '商品ID': "soda-digital", '作品・角色': ["soda"], '類型': "寫真集", '台幣售價': null, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "Cosforce04 有數量紀錄；Notion 台幣、港幣售價都未建", '大項目': null },
-    { '名稱': "Live Party 寫真書", '商品ID': "liveparty-book", '作品・角色': ["liveparty"], '類型': "寫真集", '台幣售價': 600, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': null },
-    { '名稱': "菲比明信片", '商品ID': "phoebe-postcard", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 75, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$75；Notion 台幣價未建", '大項目': null },
-    { '名稱': "六月雨明信片", '商品ID': "june-postcard", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': 200, '港幣售價': 75, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': null },
-    { '名稱': "蕾潔明信片", '商品ID': "reze-postcard", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 120, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$120；Notion 台幣價未建", '大項目': null },
-    { '名稱': "舊拍", '商品ID': "old-cheki", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 80, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$80；Notion 台幣價未建", '大項目': null },
-    { '名稱': "掛軸海報", '商品ID': "scroll", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 270, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$270；Notion 台幣價未建", '大項目': null },
-    { '名稱': "JK 寫真書・單書", '商品ID': "momo-jk-book", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 600, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品", '大項目': null },
-    { '名稱': "JK 套組（書＋拍立得）", '商品ID': "momo-jk-set", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 900, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品", '大項目': null },
-    { '名稱': "JK 電子寫真集", '商品ID': "momo-jk-digital", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 400, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "momo", '價格說明': "測試商品", '大項目': null },
-    { '名稱': "簽名拍立得", '商品ID': "momo-cheki", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 150, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': 3, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品・測試庫存", '大項目': null },
-    { '名稱': "明信片 3 入", '商品ID': "momo-postcard", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 120, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': 20, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品・測試庫存", '大項目': null },
-    { '名稱': "壓克力徽章", '商品ID': "momo-badge", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 80, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品", '大項目': null },
+    { '名稱': "索達拍立卡", '商品ID': "soda-slide", '作品・角色': ["soda"], '類型': "周邊", '台幣售價': 350, '港幣售價': 90, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': "拍立卡" },
+    { '名稱': "索達電子檔", '商品ID': "soda-digital", '作品・角色': ["soda"], '類型': "寫真集", '台幣售價': null, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "cocoa", '價格說明': "Cosforce04 有數量紀錄；Notion 台幣、港幣售價都未建", '大項目': "電子檔" },
+    { '名稱': "Live Party寫真書・單書", '商品ID': "liveparty-book", '作品・角色': ["liveparty"], '類型': "寫真集", '台幣售價': 600, '港幣售價': 200, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': "寫真書・單書" },
+    { '名稱': "菲比明信片", '商品ID': "phoebe-postcard", '作品・角色': ["phoebe"], '類型': "周邊", '台幣售價': null, '港幣售價': 75, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$75；Notion 台幣價未建", '大項目': "明信片" },
+    { '名稱': "六月雨明信片", '商品ID': "june-postcard", '作品・角色': ["june"], '類型': "周邊", '台幣售價': 200, '港幣售價': 75, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "營運總表台幣價", '大項目': "明信片" },
+    { '名稱': "蕾潔明信片", '商品ID': "reze-postcard", '作品・角色': ["reze"], '類型': "周邊", '台幣售價': null, '港幣售價': 120, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$120；Notion 台幣價未建", '大項目': "明信片" },
+    { '名稱': "舊拍拍立得", '商品ID': "old-cheki", '作品・角色': ["onsite"], '類型': "周邊", '台幣售價': null, '港幣售價': 80, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$80；Notion 台幣價未建", '大項目': "拍立得" },
+    { '名稱': "掛軸海報", '商品ID': "scroll", '作品・角色': ["kakejiku"], '類型': "周邊", '台幣售價': null, '港幣售價': 270, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "cocoa", '價格說明': "香港現場價 HK$270；Notion 台幣價未建", '大項目': "海報" },
+    { '名稱': "JK寫真書・單書", '商品ID': "momo-jk-book", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 600, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品", '大項目': "寫真書・單書" },
+    { '名稱': "JK套組（書＋拍立得）", '商品ID': "momo-jk-set", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 900, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品", '大項目': "套組（書＋拍立得）" },
+    { '名稱': "JK電子寫真集", '商品ID': "momo-jk-digital", '作品・角色': ["momo-jk"], '類型': "寫真集", '台幣售價': 400, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': true, '停售': false, 'CoserID': "momo", '價格說明': "測試商品", '大項目': "電子寫真集" },
+    { '名稱': "JK簽名拍立得", '商品ID': "momo-cheki", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 150, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': 3, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品・測試庫存", '大項目': "簽名拍立得" },
+    { '名稱': "JK明信片 3 入", '商品ID': "momo-postcard", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 120, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': 20, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品・測試庫存", '大項目': "明信片 3 入" },
+    { '名稱': "JK壓克力徽章", '商品ID': "momo-badge", '作品・角色': ["momo-jk"], '類型': "周邊", '台幣售價': 80, '港幣售價': null, '日幣售價': null, '美元售價': null, '庫存': null, '電子檔': false, '停售': false, 'CoserID': "momo", '價格說明': "測試商品", '大項目': "壓克力徽章" },
   ],
   // 服裝借用：正式資料庫目前沒有紀錄，這 3 筆是測試資料（C-2 借出中、C-4 10/22 借、C-5 已歸還）
   '服裝借用': [
@@ -3711,8 +3716,13 @@ const kindOfCategory = (c, digital) => digital || /寫真|拍本|電子/.test(c 
 const themeKeys = t => [themeName(t), t.work, t.character, ...[t.character, t.work].filter(Boolean).flatMap(k => k.split(/[／\/]/))].map(k => (k || '').trim()).filter(Boolean);
 const themeForItem = (item, cid) => { const k = (item || '').trim(); return k ? SB().themes.find(t => t.coserID === cid && themeKeys(t).includes(k)) || null : null; };
 function freeTint(cid) { const mine = SB().themes.filter(t => t.coserID === cid), used = new Set(mine.map(t => t.tintHex)); return PALETTE.find(h => !used.has(h)) || PALETTE[mine.length % PALETTE.length]; }
-/** 這位 Coser 用過的大項目（照作品・角色順序第一次出現的順序） */
-function categoriesOf(cid) { const ids = SB().themes.filter(t => t.coserID === cid).map(t => t.id); return unique(ids.flatMap(id => productsIn(id).map(p => p.category).filter(Boolean))); }
+/** 這位 Coser 用過的大項目（照建立的順序：新的大項目排最後，前面的顏色不會變） */
+function categoriesOf(cid) { return unique(SB().products.filter(p => p.category && coserOfProduct(p) === cid).map(p => p.category)); }
+/** 大項目的顏色（2026-11-16）：一個大項目一個顏色，照建立順序輪流用；小項目（作品・角色）各自一個顏色 */
+const CATEGORY_TINTS = ['F9C8DB', 'C3D88E', 'BFD7EA', 'F7E7A9', 'B4A7E6', 'FFC4A8', '9ED9CC', 'E6B8A2', 'F4C542', 'D7CCE8', 'C9E4B4', 'F2B8C6',
+  'A8D8EA', 'FFD3B6', 'DCEDC1', 'E0BBE4', 'FFDAC1', 'B5EAD7'];
+const categoryTint = (c, cid) => { const i = categoriesOf(cid).indexOf(c); return CATEGORY_TINTS[(i < 0 ? 0 : i) % CATEGORY_TINTS.length]; };
+const categoryChip = (c, cid, on, a) => `<button class="schip${on ? ' on' : ''}" style="${tintVars(categoryTint(c, cid))}"${act(a, c)} aria-pressed="${on}" aria-label="大項目 ${esc(c)}"><i></i>${esc(c)}</button>`;
 function saveProduct(draft, editingID, user) {
   if (user.role !== 'coser' || !user.coserID) fail('這個帳號不能做這個操作。');
   const editing = editingID ? ownProduct(editingID, user) : null;
@@ -4831,7 +4841,7 @@ function viewCheckout() {
   // 格子照作品・角色的底色、照作品順序排；停售的不顯示；沒有可賣商品的資料夾不列
   const all = themes.flatMap(t => sellableIn(t.id).map(p => ({ p, t })));
   const groups = [
-    ...unique(all.map(x => x.p.category).filter(Boolean)).map(c => { const list = all.filter(x => x.p.category === c); return { id: 'cat-' + c, title: c, k: list[0].p.kind, list, byItem: true }; }),
+    ...categoriesOf(cid).map(c => { const list = all.filter(x => x.p.category === c); return { id: 'cat-' + c, title: c, k: list[0]?.p.kind, list, byItem: true, tint: categoryTint(c, cid) }; }),
     ...['photobook', 'goods'].map(k => ({ id: 'kind-' + k, title: KIND[k].label, k, list: all.filter(x => !x.p.category && x.p.kind === k) }))
   ].filter(g => g.list.length);
   const body = groups.length ? `<div class="folders">${groups.map(kindFolder).join('')}</div>`
@@ -4851,11 +4861,11 @@ const KIND_TINT = { photobook: 'F9C8DB', goods: 'C3D88E' };
 /** 品名沒寫到作品・角色時（例如原創的「寫真書・單書」），格子上面小字標出是哪個作品・角色 */
 const seriesHint = (p, t) => { const keys = [t.character, t.work].filter(Boolean).flatMap(k => k.split(/[／\/]/)).map(k => k.trim()).filter(Boolean); return keys.some(k => p.name.includes(k)) ? '' : themeName(t); };
 /** 一個資料夾：大項目（寫真、套組…，2026-11-16）或之前建的商品的寫真集／周邊。底色照類型 */
-function kindFolder({ id, title, k, list, byItem }) {
+function kindFolder({ id, title, k, list, byItem, tint }) {
   const open = folderOpen(id, true), ids = new Set(list.map(x => x.p.id)), fid = esc(id);
   const picked = U.cart.reduce((n, i) => n + (ids.has(i.productID) ? i.quantity : 0), 0);
   const label = [title, `${list.length} 項`, picked ? `已選 ${picked} 件` : '', open ? '已展開' : '已收起'].filter(Boolean).join('，');
-  return `<section class="folder${open ? ' open' : ''}" style="${tintVars(KIND_TINT[k])}" data-flip="folder-${fid}"><button class="folder-h" id="folder-${fid}"${act('toggleFolder', id, 1)} aria-expanded="${open}" aria-label="${esc(label)}"><span style="display:flex">${icon(KIND[k].icon, 22)}</span><span class="grow stack" style="min-width:0"><span class="c ellip">${esc(title)}</span></span>${picked ? `<span class="sel num">已選 ${picked}</span>` : ''}<span class="cnt">${list.length} 項</span><span class="chev">${icon('chevron-down', 22, 3)}</span></button>${open ? `<div class="folder-b${U.justOpened === id ? ' in' : ''}"><div class="tile-grid">${list.map(x => productTile(x.p, x.t, !byItem, byItem ? itemOf(x.p) : null)).join('')}</div></div>` : ''}</section>`;
+  return `<section class="folder${open ? ' open' : ''}" style="${tintVars(tint || KIND_TINT[k])}" data-flip="folder-${fid}"><button class="folder-h" id="folder-${fid}"${act('toggleFolder', id, 1)} aria-expanded="${open}" aria-label="${esc(label)}"><span style="display:flex">${icon(KIND[k].icon, 22)}</span><span class="grow stack" style="min-width:0"><span class="c ellip">${esc(title)}</span></span>${picked ? `<span class="sel num">已選 ${picked}</span>` : ''}<span class="cnt">${list.length} 項</span><span class="chev">${icon('chevron-down', 22, 3)}</span></button>${open ? `<div class="folder-b${U.justOpened === id ? ' in' : ''}"><div class="tile-grid">${list.map(x => productTile(x.p, x.t, !byItem, byItem ? itemOf(x.p) : null)).join('')}</div></div>` : ''}</section>`;
 }
 /** 記帳畫面的系列資料夾（2026-10-27；2026-11-09 起記帳改用類型資料夾，這個留著備用）：一條系列底色的長條，點了展開成商品格子、再點收起。
  *  一進來全部收起；只有一個系列時直接展開。可以同時開好幾個，開合狀態在登出前都記得。
@@ -5071,7 +5081,7 @@ function viewProducts() {
       + (uncounted.length ? `<div class="row g8 cap bold soft" id="uncounted" style="align-items:flex-start">${icon('package', 16)}<span>未盤點 ${uncounted.length} 項：庫存空白不是 0，盤點後才知道實際數量。</span></div>` : ''), 'p12');
     const cats = categoriesOf(u.coserID);
     html += `<div class="row g8 wrap"><span class="bold sub soft">共 ${cats.length} 個大項目、${total} 項商品</span>${low.length ? pill(`${low.length} 項庫存偏低`, 'var(--orange-deep)', 'var(--orange-pale)') : ''}</div>`;
-    if (cats.length) html += `<div class="series-grid">${cats.map(c => categoryCard(c, prods.filter(p => p.category === c))).join('')}</div>`;
+    if (cats.length) html += `<div class="series-grid">${cats.map(c => categoryCard(c, prods.filter(p => p.category === c), categoryTint(c, u.coserID))).join('')}</div>`;
     // 之前建、還沒有大項目的商品：照作品・角色分（記帳畫面放在「寫真集／周邊」）
     const old = themes.filter(t => productsIn(t.id).some(p => !p.category));
     if (old.length) html += (cats.length ? `<div class="stack" style="gap:2px;margin-top:6px"><b style="font-size:17px">之前建的商品</b><span class="cap bold soft">還沒有大項目，記帳畫面放在「寫真集／周邊」。點商品可以補大項目。</span></div>` : '') + `<div class="series-grid">${old.map(seriesCard).join('')}</div>`;
@@ -5081,12 +5091,12 @@ function viewProducts() {
   return { title: '我的商品', html };
 }
 /** 「我的商品」的一個大項目（2026-11-16）：裡面每列一個小項目（前面圓點是作品・角色的顏色），下面「在這裡加商品」 */
-function categoryCard(c, all) {
+function categoryCard(c, all, tint) {
   const k = all[0]?.kind ?? 'photobook', on = all.filter(p => !p.discontinued), stopped = all.filter(p => p.discontinued);
   let body = on.map(p => ownerRow(p, true)).join('');
   if (stopped.length) body += `<div class="row g8 heavy sub soft" style="padding:10px 6px 0">${icon('circle-pause', 16)}已停售（記帳畫面看不到）</div>` + stopped.map(stoppedRow).join('');
   body += `<button class="row g8" style="justify-content:center;width:100%;min-height:44px;font-weight:800;font-size:14px;color:var(--pink-deep)"${act('addInCategory', c)}>${icon('circle-plus', 18)}在這裡加商品</button>`;
-  return `<section class="series" style="${tintVars(KIND_TINT[k])}"><div class="series-h"><span style="display:flex">${icon(KIND[k].icon, 20)}</span><div class="grow"><div class="c ellip">${esc(c)}</div></div><span class="cnt">${all.length} 項</span></div><div class="series-b">${body}</div></section>`;
+  return `<section class="series" style="${tintVars(tint || KIND_TINT[k])}"><div class="series-h"><span style="display:flex">${icon(KIND[k].icon, 20)}</span><div class="grow"><div class="c ellip">${esc(c)}</div></div><span class="cnt">${all.length} 項</span></div><div class="series-b">${body}</div></section>`;
 }
 const stoppedRow = p => `<div class="prow"><button class="grow" style="text-align:left"${act('openProduct', p.id)}><div class="heavy sub soft" style="text-decoration:line-through">${esc(p.name)}</div><div class="cap soft">${p.stock != null ? `停售中・剩 ${p.stock} 件` : '停售中'}</div></button><button class="cbtn ghost"${act('resumeSale', p.id)}>恢復販售</button></div>`;
 function seriesCard(t) {
@@ -5912,7 +5922,7 @@ function sheetFrame({ title, left = '', right = '', body, footer = '', cls = '' 
     <div class="sheet-h"><div class="l">${left}</div><h2>${esc(title)}</h2><div class="r">${right}</div></div>
     <div class="sheet-b" id="sb-${sh.type}-${sh.step || 0}-${sh.done || sh.finished ? 'done' : 'form'}">${body}</div>${footer ? `<div class="sheet-f">${footer}</div>` : ''}</div></div>`;
 }
-const stepHead = (no, title) => `<div class="row g8"><span class="stepno">${no}</span><b style="font-size:17px">${esc(title)}</b></div>`;
+const stepHead = (no, title, hint) => `<div class="row g8"><span class="stepno">${no}</span><b style="font-size:17px">${esc(title)}</b>${hint ? `<span class="sub bold soft">（${esc(hint)}）</span>` : ''}</div>`;
 function stepHeader(cur, total, title, hint) {
   return `<div class="stack g8"><div class="steps">${Array.from({ length: total }, (_, i) => `<i class="${i < cur ? 'on' : ''}"></i>`).join('')}</div><span class="cap heavy" style="color:var(--pink-deep)">步驟 ${cur}／${total}</span><div class="t-big">${esc(title)}</div>${hint ? `<div class="sub soft">${esc(hint)}</div>` : ''}</div>`;
 }
@@ -6269,15 +6279,17 @@ function sheetProduct(sh) {
   const cat = sh.category.trim(), key = itemKeyOf(sh.item, cat), cats = categoriesOf(u.coserID);
   const themes = visibleThemes(u), match = themeForItem(key, u.coserID);
   // 1 大項目：自己打；用過的列在下面點一下就好
-  let body = stepHead(1, '大項目') + inp('sheet.category', { ph: '例如 寫真、套組、明信片' });
-  if (cats.length) body += `<div class="row g8 wrap">${cats.map(c => chip(c, c === cat, 'pfCategory', c)).join('')}</div>`;
+  let body = stepHead(1, '大項目', '例如 寫真、明信片') + inp('sheet.category', { ph: '例如 寫真、明信片、套組' })
+    + `<div class="cap soft">商品的種類。記帳畫面會照大項目分資料夾，一個大項目一個顏色。</div>`;
+  if (cats.length) body += `<div class="cap bold soft">用過的大項目，點一下就好</div><div class="row g8 wrap">${cats.map(c => categoryChip(c, u.coserID, c === cat, 'pfCategory')).join('')}</div>`;
   if (p && !p.category) body += `<div class="cap soft">這是之前建的商品，還沒有大項目。填了大項目，品名會變成「小項目＋大項目」；空著就照舊叫「${esc(p.name)}」。</div>`;
   // 2 小項目：自己打；品名自動是「小項目＋大項目」
-  body += stepHead(2, '小項目') + inp('sheet.item', { ph: cat ? `例如 花火（會變成「花火${cat}」）` : '例如 花火、芙莉蓮' });
-  if (themes.length) body += `<div class="row g8 wrap">${themes.map(t => seriesChip(t, !!match && match.id === t.id, 'pfItem', t.id)).join('')}</div>`;
+  body += stepHead(2, '小項目', '角色') + inp('sheet.item', { ph: cat ? `例如 花火（會變成「花火${cat}」）` : '例如 花火、芙莉蓮' })
+    + `<div class="cap soft">填角色名字。品名會自動變成「角色＋大項目」，每個角色一個顏色。</div>`;
+  if (themes.length) body += `<div class="cap bold soft">已經有的角色，點一下就好</div><div class="row g8 wrap">${themes.map(t => seriesChip(t, !!match && match.id === t.id, 'pfItem', t.id)).join('')}</div>`;
   if (key && (cat || !sh.legacyName)) body += `<div class="row g8 wrap" id="pf-name" style="align-items:center"><span class="sub bold soft">品名</span><b style="font-size:17px;color:var(--pink-deep)">${esc(draftName(sh))}</b>${match ? '' : `<span class="cap bold soft">新的小項目，記帳格子會用新的顏色</span>`}</div>`;
   // 3 數量（＋售價）
-  body += stepHead(3, '數量')
+  body += stepHead(3, '數量', '不知道可以先空著')
     + (sh.digital ? '' : `<div class="field"><label for="f-sheet-stock">${sh.productID ? '目前庫存（點過的正確數量）' : '現在有幾件？（不知道可以先空著）'}</label>${inp('sheet.stock', { ph: '例如 30', num: true, cls: 'big num' })}</div>`)
     + `<button class="switch" role="switch" aria-checked="${sh.digital}"${act('pfDigital')}><b class="sub">電子檔（不計庫存）</b><span class="knob"></span></button>`
     + `<div class="field"><label>售價（不賣的幣別空著＝未定價，之後可以補）</label><div class="pricegrid">${CURRENCIES.map(c => `<div class="field" style="gap:4px"><label class="cap bold soft" for="f-sheet-prices-${c}">${CUR[c].label}（${CUR[c].symbol}）</label>${inp(`sheet.prices.${c}`, { ph: '未定價', num: true, cls: 'num' })}</div>`).join('')}</div>${sh.productID ? `<div class="cap soft">改價只影響之後的銷售；已經記好的交易照成交當時的價格，不會被改。</div>` : ''}</div>`
@@ -7422,7 +7434,7 @@ let composing = false, focusAfter = null;
 // ================= 切換裝置時保留狀態 =================
 // 外框頁（選 iPhone／iPad）負責保管；App 每次畫面更新後把目前的資料與畫面狀態交給外框。
 const IN_FRAME = !!DEVICE && DEVICE !== 'full' && window.parent !== window;
-const STATE_VERSION = 12; // 11/16 商品加大項目 +1 // 11/13 ここあ也是女僕、女僕名冊加學號等 +1 // 11/10 加店鋪會員 +1 // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
+const STATE_VERSION = 13; // 11/16 測試資料照大項目／角色重新分類 +1 // 11/16 商品加大項目 +1 // 11/13 ここあ也是女僕、女僕名冊加學號等 +1 // 11/10 加店鋪會員 +1 // 11/06 加女僕店排班 +1 // 11/05 測試資料固定完整情境後 +1（舊的暫存不沿用）
 // // 10/27 改成照正式資料庫的欄位後 +1 // 10/22 補測試售價後 +1；10/27 多幣別、Coser 名冊後再 +1，舊的暫存狀態不再沿用
 const KEEP_UI = ['schedMonth', 'user', 'section', 'stack', 'sheet', 'pickedDay', 'cart', 'cartMember', 'cartMemberPick', 'cartDebtor', 'homeCoserID', 'reportCur', 'openFolders', 'cashCoserID',
   'costumeFilter', 'locationFilter', 'costumeSearch', 'recordsKind', 'recordsTab', 'recordsSearch', 'venueDay', 'showPast', 'themeFilter', 'memberSearch', 'shopMemberSearch', 'memberSpendSearch'];
