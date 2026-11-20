@@ -6042,20 +6042,49 @@ function sheetSeatOpen(sh) {
 
 // ----- 店鋪座位：客人打卡核銷（2026-11-20） -----
 // 客人選完方案在 App 打卡、出示 QR Code（內容 YUME-REDEEM|<核銷碼>，畫面上也有核銷碼文字）。
-// 網頁版先做手動輸入：送後端 POST /link/shop/seat-redeem → 後端安排空位、建立座位紀錄、開始計時 90 分鐘。
+// 手動輸入或相機掃描都可以：送後端 POST /link/shop/seat-redeem → 後端安排空位、建立座位紀錄、開始計時 90 分鐘。
 // 本機模式（沒接後端）沒有「待核銷」的概念：只能提示要接後端，不硬湊本機入座。
 function sheetSeatRedeem(sh) {
   if (!LIVE) {
     return sheetFrame({ title: '核銷打卡', left: tb('取消', 'closeSheet'), cls: 'short', body: card(`<div class="stack center" style="gap:10px"><span style="color:var(--pink)">${icon('info', 36)}</span><b>核銷打卡要接測試後端才能用</b><span class="cap soft">客人的打卡資料在後端，本機（瀏覽器測試版）沒有待核銷的來店紀錄。網址加上 ?api= 接測試後端再試。</span></div>`, 'p24') });
   }
   let body = `<div class="stack g8"><b class="sub">客人畫面上的核銷碼</b>${inp('sheet.code', { ph: '例如 AB12CD34EF56GH78', upper: true, enter: 'seatRedeemSubmit' })}
-    <div class="cap soft">客人選完方案打卡後，App 會顯示 QR Code 和一組核銷碼。輸入核銷碼按「核銷入座」，後端會安排空位、開始計時 90 分鐘（核銷碼只能用一次）。</div></div>`
+    <div class="row g8 wrap"><button class="cbtn ghost seat-redeem-scan"${act('seatRedeemScan')}>${icon('camera', 16)}${sh.scanning ? '停止掃描' : '掃描 QR Code'}</button></div>
+    ${sh.scanning ? '<video id="seat-redeem-video" playsinline muted style="width:100%;max-height:280px;border-radius:12px;background:#000"></video>' : ''}
+    <div class="cap soft">客人選完方案打卡後，App 會顯示 QR Code 和一組核銷碼。掃描 QR Code 或輸入核銷碼按「核銷入座」，後端會安排空位、開始計時 90 分鐘（核銷碼只能用一次）。</div></div>`
     + btn(sh.busy ? '核銷中…' : '核銷入座', 'seatRedeemSubmit', null, { ic: 'check', dis: sh.busy || !(sh.code || '').trim(), cls: 'seat-redeem-submit' });
   if (sh.last) {
     const x = sh.last, t0 = Date.parse(x.startedAt || ''), t1 = Date.parse(x.endsAt || '');
     body += card(`<div class="row g8" id="seat-redeem-result"><span style="color:${x.ok ? 'var(--green-deep)' : 'var(--danger)'}">${icon(x.ok ? 'circle-check' : 'circle-x', 28)}</span><div class="grow stack" style="gap:2px"><b>${esc(x.message)}</b>${x.ok ? `<span class="cap soft">座位 ${esc(x.seatId || '')}・${esc(x.plan || '')} 方案・會員 ${esc(x.memberCode || '')}</span>${isFinite(t0) && isFinite(t1) ? `<span class="cap soft">入座 ${clockText(t0)}・結束 ${clockText(t1)}</span>` : ''}` : ''}</div></div>`);
   }
   return sheetFrame({ title: '核銷打卡', left: tb('取消', 'closeSheet'), cls: 'short seat-sheet', body });
+}
+// 核銷掃描：照「兌換道具」頁的掃描模式（BarcodeDetector＋getUserMedia，不另引函式庫）。
+// 掃到的內容就是 QR 原文（YUME-REDEEM|<核銷碼>）或裸碼，跟手動輸入同格式，帶進既有的 seatRedeemSubmit 流程。
+// 視窗關掉/換掉時 tick 會自己停相機；closeSheet 與送出核銷時也會停。
+let seatRedeemStream = null;
+function stopSeatRedeemScan() { if (seatRedeemStream) { seatRedeemStream.getTracks().forEach(t => t.stop()); seatRedeemStream = null; } if (U.sheet?.type === 'seatRedeem') U.sheet.scanning = false; }
+async function startSeatRedeemScan() {
+  const sh = U.sheet; if (sh?.type !== 'seatRedeem') return;
+  if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) { show('info', '這個瀏覽器不能掃描，請直接輸入核銷碼。'); render(); return; }
+  try {
+    const det = new BarcodeDetector({ formats: ['qr_code', 'code_128'] });
+    seatRedeemStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    sh.scanning = true; render();
+    const tick = async () => {
+      if (!seatRedeemStream) return;
+      if (U.sheet !== sh || !sh.scanning) { stopSeatRedeemScan(); return; } // 視窗已關/已換，相機收起來
+      const v = document.getElementById('seat-redeem-video');
+      if (v && !v.srcObject) { v.srcObject = seatRedeemStream; v.play().catch(() => {}); }
+      try {
+        const found = v && v.readyState >= 2 ? await det.detect(v) : [];
+        const raw = found.map(x => x.rawValue).find(t => /[A-Za-z0-9]{6,}/.test(t || ''));
+        if (raw) { stopSeatRedeemScan(); sh.code = String(raw).trim(); render(); A.seatRedeemSubmit(); return; }
+      } catch (e) { /* 這張畫面讀不到，下一張再試 */ }
+      setTimeout(tick, 300);
+    };
+    tick();
+  } catch (e) { stopSeatRedeemScan(); show('failure', '打不開相機，請直接輸入核銷碼。'); render(); }
 }
 
 // ----- 店鋪座位：收款（照 Coser 收款畫面；2026-11-03） -----
@@ -6979,7 +7008,7 @@ function liveBar() {
 
 const A = {
   noop() { return 'skip'; },
-  closeSheet() { U.sheet = null; },
+  closeSheet() { stopSeatRedeemScan(); U.sheet = null; },
   // 店鋪座位（2026-11-02）
   tapSeat(id) {
     if (seatSession(id)) { U.sheet = { type: 'seat', id, step: 'menu', pay: null }; return; }
@@ -6993,9 +7022,11 @@ const A = {
     if (ss) U.sheet = null;
   },
   // 客人打卡核銷（2026-11-20）：座位圖開核銷視窗；送後端核銷，成功後刷新座位圖
-  openSeatRedeem() { U.sheet = { type: 'seatRedeem', code: '', busy: false, last: null }; },
+  openSeatRedeem() { U.sheet = { type: 'seatRedeem', code: '', busy: false, last: null, scanning: false }; },
+  seatRedeemScan() { const sh = U.sheet; if (sh?.type !== 'seatRedeem') return; if (sh.scanning) { stopSeatRedeemScan(); return; } startSeatRedeemScan(); },
   seatRedeemSubmit() {
     const sh = U.sheet; if (!LIVE?.token || sh?.type !== 'seatRedeem' || sh.busy) return;
+    stopSeatRedeemScan(); // 手動送出時若還開著相機，先收起來
     const code = (sh.code || '').trim(); if (!code) return;
     sh.busy = true; sh.last = null; render();
     liveFetch('/link/shop/seat-redeem', { code })
