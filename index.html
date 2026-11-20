@@ -5260,7 +5260,7 @@ function viewSeats() {
   const now = nowMs(), used = seatsOccupied(), all = SEAT_LAYOUT.flat().length;
   const rows = SEAT_LAYOUT.map((row, i) => `<div class="seat-row"><span class="seat-lbl">${SEAT_ROWS[i]} 排</span>${row.map(id => seatTile(id, now)).join('')}</div>`).join('');
   const legend = `<div class="seat-legend">${[['empty', '空位'], ['plenty', '30 分鐘以上'], ['half', '30 分鐘內'], ['low', '5 分鐘內／超時']].map(([k, t]) => `<span><i class="lv-${k}"></i>${t}</span>`).join('')}</div>`;
-  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', all)}</span><span class="cap bold soft" id="seat-summary">使用中 ${used}・空位 ${all - used}</span></div><div class="seat-map">${rows}</div>${legend}<div class="cap bold soft row g8">${icon('info', 14)}點空位入座，點已入座的座位可以加購、續座、結帳。${LIVE?.token ? '客人在 App 選完方案會自動安排空位（標「App」，約 20 秒內出現）。' : ''}</div>`);
+  const html = card(`<div class="row"><span class="grow">${stitle('座位圖', all)}</span><span class="cap bold soft" id="seat-summary">使用中 ${used}・空位 ${all - used}</span>${btn('核銷打卡', 'openSeatRedeem', null, { kind: 'secondary', ic: 'qr-code', cls: 'seat-redeem-open' })}</div><div class="seat-map">${rows}</div>${legend}<div class="cap bold soft row g8">${icon('info', 14)}點空位入座，點已入座的座位可以加購、續座、結帳。${LIVE?.token ? '客人打卡後，按「核銷打卡」輸入核銷碼（或掃 QR）才會入座開始計時。' : ''}</div>`);
   return { title: '座位圖', cls: 'narrowcol', html };
 }
 
@@ -5916,6 +5916,7 @@ function viewSheet() {
     case 'seat': return sheetSeat(sh);
     case 'seatPay': return sheetSeatPay(sh);
     case 'seatOpen': return sheetSeatOpen(sh);
+    case 'seatRedeem': return sheetSeatRedeem(sh);
     case 'shopCash': return sheetShopCash(sh);
     case 'maidForm': return sheetMaidForm(sh);
     case 'avail': return sheetAvail(sh);
@@ -5978,6 +5979,24 @@ function sheetSeatOpen(sh) {
     + `<div class="cap soft">帶了會員，客人在「希恩絲學院」App 就會看到自己的座位和剩餘時間；結帳後 App 就不再顯示入座。沒有會員可以不填。</div>`
     + btn(`入座，開始計時 90 分鐘（${money(SEAT_FEE_OPEN)}）`, 'seatDoOpen', null, { ic: 'check', dis: bad, cls: 'seat-open-confirm' });
   return sheetFrame({ title: `${sh.id} 開始入座`, left: tb('取消', 'closeSheet'), cls: 'short seat-sheet', body });
+}
+
+// ----- 店鋪座位：客人打卡核銷（2026-11-20） -----
+// 客人選完方案在 App 打卡、出示 QR Code（內容 YUME-REDEEM|<核銷碼>，畫面上也有核銷碼文字）。
+// 網頁版先做手動輸入：送後端 POST /link/shop/seat-redeem → 後端安排空位、建立座位紀錄、開始計時 90 分鐘。
+// 本機模式（沒接後端）沒有「待核銷」的概念：只能提示要接後端，不硬湊本機入座。
+function sheetSeatRedeem(sh) {
+  if (!LIVE) {
+    return sheetFrame({ title: '核銷打卡', left: tb('取消', 'closeSheet'), cls: 'short', body: card(`<div class="stack center" style="gap:10px"><span style="color:var(--pink)">${icon('info', 36)}</span><b>核銷打卡要接測試後端才能用</b><span class="cap soft">客人的打卡資料在後端，本機（瀏覽器測試版）沒有待核銷的來店紀錄。網址加上 ?api= 接測試後端再試。</span></div>`, 'p24') });
+  }
+  let body = `<div class="stack g8"><b class="sub">客人畫面上的核銷碼</b>${inp('sheet.code', { ph: '例如 AB12CD34EF56GH78', upper: true, enter: 'seatRedeemSubmit' })}
+    <div class="cap soft">客人選完方案打卡後，App 會顯示 QR Code 和一組核銷碼。輸入核銷碼按「核銷入座」，後端會安排空位、開始計時 90 分鐘（核銷碼只能用一次）。</div></div>`
+    + btn(sh.busy ? '核銷中…' : '核銷入座', 'seatRedeemSubmit', null, { ic: 'check', dis: sh.busy || !(sh.code || '').trim(), cls: 'seat-redeem-submit' });
+  if (sh.last) {
+    const x = sh.last, t0 = Date.parse(x.startedAt || ''), t1 = Date.parse(x.endsAt || '');
+    body += card(`<div class="row g8" id="seat-redeem-result"><span style="color:${x.ok ? 'var(--green-deep)' : 'var(--danger)'}">${icon(x.ok ? 'circle-check' : 'circle-x', 28)}</span><div class="grow stack" style="gap:2px"><b>${esc(x.message)}</b>${x.ok ? `<span class="cap soft">座位 ${esc(x.seatId || '')}・${esc(x.plan || '')} 方案・會員 ${esc(x.memberCode || '')}</span>${isFinite(t0) && isFinite(t1) ? `<span class="cap soft">入座 ${clockText(t0)}・結束 ${clockText(t1)}</span>` : ''}` : ''}</div></div>`);
+  }
+  return sheetFrame({ title: '核銷打卡', left: tb('取消', 'closeSheet'), cls: 'short seat-sheet', body });
 }
 
 // ----- 店鋪座位：收款（照 Coser 收款畫面；2026-11-03） -----
@@ -6908,6 +6927,22 @@ const A = {
     const sh = U.sheet, look = seatMemberLookup(sh.member, sh.memberPick);
     const ss = perform(() => seatOpen(sh.id, U.user, undefined, look.id || ''), r => `${r.seatID} 已入座，開始計時 90 分鐘${r.memberID ? `・會員 ${memberNoText(r.memberID)}` : ''}`);
     if (ss) U.sheet = null;
+  },
+  // 客人打卡核銷（2026-11-20）：座位圖開核銷視窗；送後端核銷，成功後刷新座位圖
+  openSeatRedeem() { U.sheet = { type: 'seatRedeem', code: '', busy: false, last: null }; },
+  seatRedeemSubmit() {
+    const sh = U.sheet; if (!LIVE?.token || sh?.type !== 'seatRedeem' || sh.busy) return;
+    const code = (sh.code || '').trim(); if (!code) return;
+    sh.busy = true; sh.last = null; render();
+    liveFetch('/link/shop/seat-redeem', { code })
+      .then(async x => {
+        sh.last = { ok: true, message: '核銷成功，已開始計時', seatId: x.seat?.seatId, plan: x.visit?.plan, memberCode: x.visit?.memberCode, startedAt: x.seat?.startedAt, endsAt: x.seat?.endsAt };
+        sh.code = '';
+        show('success', `已核銷入座${x.seat?.seatId ? `（座位 ${x.seat.seatId}）` : ''}`);
+        await liveRefresh(true); // 座位換成後端最新的，新座位就會出現
+      })
+      .catch(e => { sh.last = { ok: false, message: liveMessage(e) }; })
+      .finally(() => { sh.busy = false; render(); });
   },
   seatStep(step) { if (U.sheet?.type === 'seat') { U.sheet.step = step; U.sheet.pay = null; } },
   seatExtend(m) { const id = U.sheet.id; if (perform(() => seatExtend(id, +m, U.user), `${id} 已續座 ${extLabel(+m)}（${money(SEAT_FEE_EXT[+m])}）`)) U.sheet.step = 'menu'; },
