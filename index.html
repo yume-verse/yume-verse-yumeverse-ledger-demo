@@ -4026,6 +4026,10 @@ const SEAT_FEE_OPEN = 200, SEAT_FEE_EXT = { 30: 100, 60: 200 };
 const SEAT_PRICE_TEXT = `開桌 90 分鐘 ${'NT$'}200・續座 1 小時 ${'NT$'}200・續座 30 分鐘 ${'NT$'}100`;
 const extLabel = m => m === 60 ? '1 小時' : `${m} 分鐘`;
 const SEAT_PAY = ['cash', 'transfer', 'linePay', 'credit']; // 跟 Coser 收款一樣四種（2026-11-03）；賒帳要填客人名字
+// LINE Pay 固定收款連結（夢次元 Yume Verse；固定式，金額由付款人輸入；2026-11-19 Yume 提供）
+// 座位結帳選 LINE Pay 時，用這個連結產生 QR Code 並提供「開啟 LINE Pay 付款頁」按鈕；全站只放這一份，要換連結改這裡（2026-11-20）
+const LINE_PAY_URL = 'https://qrcodepay.line.me/qr/payment/HRWzUD4zbOuKOdBosAmGllNFOZwSPQnDCwYQYUTP2g00UTOL5wtgHuhhVo1BbZNl';
+const LINE_PAY_MERCHANT = '夢次元 Yume Verse'; // 顯示在 QR Code 下方的收款商家名稱
 const SEAT_LEVEL = { plenty: '使用中', half: '剩半小時內', low: '快到時間', overtime: '超時' };
 const seatLevel = remain => remain > SEAT_HALF ? 'plenty' : remain > SEAT_LOW ? 'half' : remain > 0 ? 'low' : 'overtime';
 function seatClock(ms) {
@@ -5978,6 +5982,7 @@ function sheetSeatOpen(sh) {
 
 // ----- 店鋪座位：收款（照 Coser 收款畫面；2026-11-03） -----
 // 懸浮視窗按「結帳」→「你確定要結帳嗎><」→ 這裡；「返回」回到懸浮視窗。應收＝座位費（開桌＋續座）＋加購。
+// LINE Pay（2026-11-20）：選了顯示店家收款 QR（用 LINE_PAY_URL 固定連結產生），客人掃描並輸入相同金額付款；店員確認收到才按「已收款，完成結帳」。
 function sheetSeatPay(sh) {
   if (sh.finished) {
     const r = sh.finished, paid = r.payment !== 'credit', n = r.addOns.reduce((k, a) => k + a.quantity, 0);
@@ -6000,11 +6005,12 @@ function sheetSeatPay(sh) {
       body += `<div class="field"><label for="f-sheet-cashGiven">客人給多少？（選填，幫你算找零）</label>${inp('sheet.cashGiven', { ph: '例如 1000（NT$）', num: true, cls: 'big num' })}${given > 0 ? `<b id="seat-change" style="font-size:20px;color:${change >= 0 ? 'var(--green-deep)' : 'var(--danger)'}">${change >= 0 ? `找零 ${money(change)}` : `還差 ${money(-change)}`}</b>` : ''}</div>`;
     }
     if (sh.payment === 'credit') body += `<div class="field"><label for="f-sheet-debtor">客人名字或聯絡方式（必填）</label>${inp('sheet.debtor', { ph: '例如 小雪・IG @snow', cls: needsName ? 'bad' : '' })}</div>`;
+    if (sh.payment === 'linePay') body += `<div class="stack g8"><b class="sub">請客人掃描 QR Code，並輸入相同金額付款。</b><div class="qr" id="seat-linepay-qr" role="img" aria-label="LINE Pay 收款 QR code">${qrSvg(LINE_PAY_URL)}<div class="sub heavy" style="text-align:center;margin-top:8px">${LINE_PAY_MERCHANT}</div></div><a class="btn secondary" style="text-decoration:none;--b:var(--line-pay)" href="${LINE_PAY_URL}" target="_blank" rel="noopener">${icon('arrow-up-right', 20, 2.6)}<span>開啟 LINE Pay 付款頁</span></a><div class="cap soft">客人付完款，確認收到再按下方「已收款，完成結帳」。</div></div>`;
     // 2026-11-10：店鋪會員（選填），消費記在這位會員名下。現場通常問客人電話：輸入電話（完整號碼）或會員編號都可以
     body += seatMemberField(sh, 'seatMemberPick');
   }
   const memberBad = total > 0 && !['none', 'ok'].includes(seatMemberLookup(sh.member, sh.memberPick).st);
-  body += btn(total === 0 ? '確認結帳（不用收錢）' : sh.payment === 'credit' ? `記成應收 ${money(total)}` : `確認收款 ${money(total)}`, 'seatDoCheckout', null, { ic: 'check', dis: needsName || memberBad, cls: 'seat-confirm' })
+  body += btn(total === 0 ? '確認結帳（不用收錢）' : sh.payment === 'credit' ? `記成應收 ${money(total)}` : sh.payment === 'linePay' ? '已收款，完成結帳' : `確認收款 ${money(total)}`, 'seatDoCheckout', null, { ic: 'check', dis: needsName || memberBad, cls: 'seat-confirm' })
     + `<div class="cap soft">座位費：這桌開桌 ${money(ss.openFee ?? SEAT_FEE_OPEN)}（${ss.openedBy === 'guest-app' ? `客人 App 選 ${ss.openFee >= 300 ? 300 : 200} 方案` : '店員開桌'}）・續座 1 小時 ${money(200)}・續座 30 分鐘 ${money(100)}。${lv === 'overtime' ? '已超時，超時不另外加收。' : ''}</div>` + testNotice();
   return sheetFrame({ title: '收款', left: tb('返回', 'seatPayBack'), body });
 }
