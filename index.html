@@ -3194,7 +3194,7 @@ function shopToNotion() {
   const b = seatBoard(), out = {};
   const pay = k => k ? PAY[k].label : null;
   const ext = list => list.length ? list.map(e => `${e.minutes} 分鐘${e.price ? ` NT$${e.price}` : ''}（${clockText(e.at)}）`).join('、') : null;
-  const kindLabel = k => (SHOP_KINDS.find(x => x[0] === k) || [k, k])[1];
+  const kindLabel = k => (SHOP_KINDS.find(x => x[0] === k) || GUEST_ADDON_KINDS.find(x => x[0] === k) || [k, k])[1];
   out['女僕名冊'] = b.maids.map(m => { const pr = maidPrices(m.id); return { '名字': m.name, '女僕ID': m.id, 'CoserID': m.coserID || null, '狀態': m.active === false ? '停用' : '在店裡', '顏色': m.colorHex, '表演價格': pr.performance ?? null, '拍立得價格': pr.polaroid ?? null, '豪華照片組價格': pr.deluxePhotoSet ?? null, '學號': m.studentNo || null, '公式照': m.photo || null, '到職日': m.joinedAt || null }; });
   out['店鋪每日錢箱'] = Object.values(b.cashBoxes || {}).sort((x, y) => cmp(x.day, y.day)).map(c => ({ '日期文字': c.day, '日期': c.day, '起始現金': c.opening ?? null, '收攤實點現金': c.actual ?? null }));
   const sessions = Object.values(b.sessions).sort((x, y) => x.startedAt - y.startedAt);
@@ -3210,7 +3210,7 @@ function shopToNotion() {
 }
 /** Notion 4 個資料庫 → 店鋪・女僕（接資料庫用；照 NotionMapping.shopBoard） */
 function shopFromNotion(T) {
-  const kindOf = label => (SHOP_KINDS.find(x => x[1] === label) || [null])[0];
+  const kindOf = label => (SHOP_KINDS.find(x => x[1] === label) || GUEST_ADDON_KINDS.find(x => x[1] === label) || [null])[0];
   const PRICE_COL = { performance: '表演價格', polaroid: '拍立得價格', deluxePhotoSet: '豪華照片組價格' };
   const maids = [], items = [];
   for (const r of T('女僕名冊')) {
@@ -4072,6 +4072,8 @@ function seatClock(ms) {
   return ms < 0 && t > 0 ? '+' + body : body;
 }
 const SHOP_KINDS = [['performance', '表演'], ['polaroid', '拍立得'], ['deluxePhotoSet', '豪華照片組']];
+// 客人 App 基礎互動寫進來的加購品項（2026-11-25）：只用在解析／寫回 Notion 對照，不進店舖加購選單與女僕價格表單（名冊沒有這個價格欄）
+const GUEST_ADDON_KINDS = [['mealRitual', '送餐儀式']];
 const SHOP_TEST_PRICE = { performance: 300, polaroid: 200, deluxePhotoSet: 800 };
 // 2026-11-06：女僕連到 Coser 帳號才能排班。測試版：小雪＝小桃（momo，可以登入試排班），小葵、小鈴連到沒有登入帳號的測試 Coser
 // 2026-11-13：ここあ（cocoa）預設同時是 Coser 和女僕
